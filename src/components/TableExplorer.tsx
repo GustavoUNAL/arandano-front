@@ -5,6 +5,7 @@ import {
   type TableInfo,
   type TableRowsResponse,
 } from '../api'
+import { SectionSummaryBar } from './SectionSummaryBar'
 
 const PAGE_SIZE = 75
 
@@ -27,8 +28,11 @@ export function TableExplorer({ baseUrl }: { baseUrl: string }) {
 
   useEffect(() => {
     let cancelled = false
-    setTablesLoading(true)
-    setTablesError(null)
+    Promise.resolve().then(() => {
+      if (cancelled) return
+      setTablesLoading(true)
+      setTablesError(null)
+    })
     fetchTables(baseUrl)
       .then((list) => {
         if (!cancelled) setTables(list)
@@ -45,13 +49,20 @@ export function TableExplorer({ baseUrl }: { baseUrl: string }) {
   }, [baseUrl])
 
   useEffect(() => {
-    if (!selected) {
-      setData(null)
-      return
-    }
     let cancelled = false
-    setRowsLoading(true)
-    setRowsError(null)
+    if (!selected) {
+      Promise.resolve().then(() => {
+        if (!cancelled) setData(null)
+      })
+      return () => {
+        cancelled = true
+      }
+    }
+    Promise.resolve().then(() => {
+      if (cancelled) return
+      setRowsLoading(true)
+      setRowsError(null)
+    })
     fetchTableRows(baseUrl, selected, PAGE_SIZE, page * PAGE_SIZE)
       .then((res) => {
         if (!cancelled) setData(res)
@@ -75,6 +86,38 @@ export function TableExplorer({ baseUrl }: { baseUrl: string }) {
     setSelected(slug)
     setPage(0)
   }, [])
+
+  const explorerSummaryItems = useMemo(() => {
+    if (!selected) {
+      return [
+        {
+          label: 'Tablas',
+          value: tables.length,
+          title: 'Tablas expuestas por el explorador',
+        },
+      ]
+    }
+    return [
+      {
+        label: 'Filas',
+        value: data?.total ?? '—',
+        title: 'Total de filas en la tabla',
+      },
+      {
+        label: 'En página',
+        value: data?.rows.length ?? 0,
+      },
+      {
+        label: 'Columnas',
+        value: columns.length,
+      },
+      {
+        label: 'Página',
+        value:
+          totalPages > 0 ? `${page + 1} / ${totalPages}` : String(page + 1),
+      },
+    ]
+  }, [columns.length, data, page, selected, tables.length, totalPages])
 
   return (
     <div className="explorer-split">
@@ -104,14 +147,24 @@ export function TableExplorer({ baseUrl }: { baseUrl: string }) {
       </aside>
 
       <div className="explorer-main">
+        <div className="page-intro">
+          <h2 className="page-title">Explorador SQL</h2>
+          <p className="muted page-subtitle">
+            Vista de solo lectura de tablas expuestas por la API.
+          </p>
+        </div>
+
         {!selected && (
-          <div className="empty-hint">
-            <p>Elige una tabla para ver filas (solo lectura).</p>
-            <p className="muted">
-              <code>GET /explorer/tables</code>,{' '}
-              <code>GET /explorer/tables/:slug</code>
-            </p>
-          </div>
+          <>
+            <div className="empty-hint">
+              <p>Elige una tabla en la columna izquierda (solo lectura).</p>
+              <p className="muted">
+                <code>GET /explorer/tables</code>,{' '}
+                <code>GET /explorer/tables/:slug</code>
+              </p>
+            </div>
+            <SectionSummaryBar section="explorer" items={explorerSummaryItems} />
+          </>
         )}
 
         {selected && (
@@ -144,6 +197,8 @@ export function TableExplorer({ baseUrl }: { baseUrl: string }) {
                 </button>
               </div>
             </div>
+
+            <SectionSummaryBar section="explorer" items={explorerSummaryItems} />
 
             {rowsError && (
               <p className="error" role="alert">

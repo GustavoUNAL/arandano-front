@@ -6,7 +6,8 @@ import {
   fetchProduct,
   fetchProductCategories,
   fetchProducts,
-  parseProductRecipe,
+  fetchProductsCatalogStats,
+  parseProductRecipeFull,
   updateProduct,
   type CategoryRef,
   type InventoryOption,
@@ -14,6 +15,7 @@ import {
   type ProductRow,
 } from '../api'
 import { RecipeEditor } from './RecipeEditor'
+import { SectionSummaryBar, type SectionSummaryItem } from './SectionSummaryBar'
 
 const PRODUCT_TYPES = ['bebida', 'comida', 'combo'] as const
 const LIMIT = 20
@@ -102,6 +104,11 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
   })
   const [loading, setLoading] = useState(false)
   const [listError, setListError] = useState<string | null>(null)
+  const [catalogStats, setCatalogStats] = useState<{
+    active: number
+    inactive: number
+    total: number
+  } | null>(null)
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
@@ -112,6 +119,10 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
   )
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+
+  const openRecipePage = useCallback((productId: string) => {
+    window.location.hash = `#/recipes/${productId}`
+  }, [])
 
   useEffect(() => {
     const t = window.setTimeout(() => setSearchDebounced(search), 320)
@@ -186,6 +197,20 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
 
   useEffect(() => {
     let cancelled = false
+    fetchProductsCatalogStats(baseUrl)
+      .then((s) => {
+        if (!cancelled) setCatalogStats(s)
+      })
+      .catch(() => {
+        if (!cancelled) setCatalogStats(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [baseUrl])
+
+  useEffect(() => {
+    let cancelled = false
     setLoading(true)
     setListError(null)
     fetchProducts(baseUrl, {
@@ -244,6 +269,32 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
     setSaveError(null)
   }, [])
 
+  const panelOpen = creating || selectedId !== null
+
+  const refreshCatalogStats = useCallback(() => {
+    fetchProductsCatalogStats(baseUrl)
+      .then(setCatalogStats)
+      .catch(() => setCatalogStats(null))
+  }, [baseUrl])
+
+  useEffect(() => {
+    if (!panelOpen) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closePanel()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [closePanel, panelOpen])
+
+  useEffect(() => {
+    if (!panelOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [panelOpen])
+
   const save = useCallback(async () => {
     if (!draft) return
     const price = parseFloat(draft.price.replace(',', '.'))
@@ -299,6 +350,7 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
       })
       setList(res.data)
       setMeta(res.meta)
+      refreshCatalogStats()
     } catch (e) {
       setSaveError((e as Error).message)
     } finally {
@@ -310,6 +362,7 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
     closePanel,
     draft,
     productListQuery,
+    refreshCatalogStats,
     selectedId,
   ])
 
@@ -329,22 +382,86 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
       })
       setList(res.data)
       setMeta(res.meta)
+      refreshCatalogStats()
     } catch (e) {
       setSaveError((e as Error).message)
     } finally {
       setSaving(false)
     }
-  }, [baseUrl, closePanel, page, productListQuery, selectedId])
+  }, [baseUrl, closePanel, page, productListQuery, refreshCatalogStats, selectedId])
 
-  const panelOpen = creating || selectedId !== null
   const parsedRecipe = useMemo(
-    () => parseProductRecipe(detailRecipe),
+    () => parseProductRecipeFull(detailRecipe),
     [detailRecipe],
   )
+
+  const hasProductFilters = useMemo(
+    () =>
+      searchDebounced.trim() !== '' ||
+      filterCategoryId !== '' ||
+      filterActive !== 'all' ||
+      filterType !== '',
+    [searchDebounced, filterCategoryId, filterActive, filterType],
+  )
+
+  const pageBreakdown = useMemo(() => {
+    let active = 0
+    let inactive = 0
+    for (const p of list) {
+      if (p.active) active++
+      else inactive++
+    }
+    return { active, inactive, inPage: list.length }
+  }, [list])
+
+  const productSummaryItems = useMemo((): SectionSummaryItem[] => {
+    const items: SectionSummaryItem[] = []
+    if (catalogStats) {
+      items.push(
+        { label: 'Catálogo', value: catalogStats.total, title: 'Total productos' },
+        {
+          label: 'Activos',
+          value: catalogStats.active,
+          title: 'Productos activos en el sistema',
+        },
+        {
+          label: 'Inactivos',
+          value: catalogStats.inactive,
+          title: 'Productos inactivos',
+        },
+      )
+    }
+    if (meta) {
+      items.push({
+        label: hasProductFilters ? 'Coinciden' : 'Listados',
+        value: meta.total,
+        title: hasProductFilters
+          ? 'Resultados con el filtro actual'
+          : 'Mismo criterio que la tabla',
+      })
+    }
+    items.push(
+      {
+        label: 'Página',
+        value: pageBreakdown.inPage,
+        title: 'Filas en esta página',
+      },
+      { label: 'Act. pág.', value: pageBreakdown.active },
+      { label: 'Inact. pág.', value: pageBreakdown.inactive },
+    )
+    return items
+  }, [catalogStats, meta, hasProductFilters, pageBreakdown])
 
   return (
     <div className="products-layout">
       <div className="products-list-pane">
+        <div className="page-intro">
+          <h2 className="page-title">Productos</h2>
+          <p className="muted page-subtitle">
+            Catálogo para carta y ventas. Activa o desactiva ítems sin borrarlos.
+          </p>
+        </div>
+
         <div className="data-toolbar">
           <div className="search-field">
             <span className="search-icon" aria-hidden />
@@ -450,6 +567,11 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
           </div>
         </div>
 
+        <SectionSummaryBar
+          section="products"
+          items={productSummaryItems}
+        />
+
         {catError && (
           <p className="banner-warn" role="status">
             No se pudieron cargar categorías: {catError}
@@ -471,13 +593,11 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
                   className={`product-card ${selectedId === p.id ? 'active' : ''}`}
                   onClick={() => void openEdit(p.id)}
                 >
-                  <div className="product-card-thumb">
-                    {p.imageUrl ? (
+                  {p.imageUrl ? (
+                    <div className="product-card-thumb">
                       <img src={p.imageUrl} alt="" loading="lazy" />
-                    ) : (
-                      <span className="product-card-placeholder" aria-hidden />
-                    )}
-                  </div>
+                    </div>
+                  ) : null}
                   <div className="product-card-body">
                     <span className="product-card-name">{p.name}</span>
                     <span className="product-card-meta">
@@ -511,13 +631,11 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
                     className={selectedId === p.id ? 'row-active' : ''}
                   >
                     <td className="col-thumb">
-                      <div className="product-table-thumb">
-                        {p.imageUrl ? (
+                      {p.imageUrl ? (
+                        <div className="product-table-thumb">
                           <img src={p.imageUrl} alt="" loading="lazy" />
-                        ) : (
-                          <span className="product-card-placeholder" aria-hidden />
-                        )}
-                      </div>
+                        </div>
+                      ) : null}
                     </td>
                     <td>
                       <button
@@ -577,18 +695,39 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
       </div>
 
       {panelOpen && draft && (
-        <aside className="editor-panel" aria-label="Editor de producto">
-          <div className="editor-panel-head">
-            <h2>{creating ? 'Nuevo producto' : 'Editar producto'}</h2>
-            <button
-              type="button"
-              className="btn-ghost icon-close"
-              onClick={closePanel}
-              aria-label="Cerrar"
-            />
-          </div>
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closePanel()
+          }}
+        >
+          <section
+            className="modal modal--fullscreen"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Editor de producto"
+          >
+            <header className="modal-head">
+              <div className="modal-head-title">
+                <h2>{creating ? 'Nuevo producto' : 'Editar producto'}</h2>
+                {!creating && (
+                  <p className="muted small modal-subtitle">
+                    {draft.name?.trim() ? draft.name.trim() : '—'}
+                  </p>
+                )}
+              </div>
+              <div className="modal-head-actions">
+                <button
+                  type="button"
+                  className="btn-ghost icon-close"
+                  onClick={closePanel}
+                  aria-label="Cerrar"
+                />
+              </div>
+            </header>
 
-          <div className="editor-panel-body">
+            <div className="modal-body">
             {draft.imageUrl ? (
               <div className="editor-preview-img">
                 <img src={draft.imageUrl} alt="Vista previa" />
@@ -681,6 +820,17 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
 
             {!creating && selectedId && (
               <div className="recipe-embed">
+                <div className="recipe-embed-tools">
+                  <button
+                    type="button"
+                    className="btn-secondary btn-compact recipe-embed-open-recipe"
+                    onClick={() => openRecipePage(selectedId)}
+                    title="Abrir la receta en una ruta dedicada"
+                  >
+                    <span>Abrir receta</span>
+                    <span className="table-link-icon-external" aria-hidden />
+                  </button>
+                </div>
                 <RecipeEditor
                   baseUrl={baseUrl}
                   productId={selectedId}
@@ -717,8 +867,9 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
                 {saving ? 'Guardando…' : 'Guardar'}
               </button>
             </div>
-          </div>
-        </aside>
+            </div>
+          </section>
+        </div>
       )}
     </div>
   )

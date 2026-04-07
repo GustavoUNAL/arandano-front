@@ -4,10 +4,14 @@ import {
   deleteInventoryItem,
   fetchInventoryCategories,
   fetchInventoryItems,
+  fetchPurchaseLotsCodeIndex,
+  formatPurchaseLotDate,
   updateInventoryItem,
   type CategoryRef,
   type InventoryRow,
+  type PurchaseLotRow,
 } from '../api'
+import { SectionSummaryBar, type SectionSummaryItem } from './SectionSummaryBar'
 
 const LIMIT = 18
 
@@ -24,6 +28,11 @@ function formatCOP(value: string | number): string {
     currency: 'COP',
     maximumFractionDigits: 0,
   }).format(n)
+}
+
+function isAvailable(qty: string | number | null | undefined): boolean {
+  const q = num(qty)
+  return Number.isFinite(q) && q > 0
 }
 
 type Draft = {
@@ -86,6 +95,43 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+
+  const [lotByCode, setLotByCode] = useState<Map<string, PurchaseLotRow> | null>(
+    null,
+  )
+  const [lotIndexError, setLotIndexError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    setLotIndexError(null)
+    fetchPurchaseLotsCodeIndex(baseUrl)
+      .then((m) => {
+        if (!cancelled) {
+          setLotByCode(m)
+          setLotIndexError(null)
+        }
+      })
+      .catch((e: Error) => {
+        if (!cancelled) {
+          setLotByCode(null)
+          setLotIndexError(e.message)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [baseUrl])
+
+  const refreshLotIndex = useCallback(() => {
+    fetchPurchaseLotsCodeIndex(baseUrl)
+      .then((m) => {
+        setLotByCode(m)
+        setLotIndexError(null)
+      })
+      .catch((e: Error) => {
+        setLotIndexError(e.message)
+      })
+  }, [baseUrl])
 
   useEffect(() => {
     const t = window.setTimeout(() => setSearchDebounced(search), 320)
@@ -239,6 +285,7 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
       })
       setList(res.data)
       setMeta(res.meta)
+      refreshLotIndex()
     } catch (e) {
       setSaveError((e as Error).message)
     } finally {
@@ -250,6 +297,7 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
     creating,
     draft,
     inventoryListQuery,
+    refreshLotIndex,
     selectedId,
   ])
 
@@ -282,6 +330,13 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
 
   const panelOpen = creating || selectedId !== null
 
+  const draftMatchedLot = useMemo(() => {
+    if (!draft) return undefined
+    const code = draft.lot.trim()
+    if (!code || !lotByCode) return undefined
+    return lotByCode.get(code)
+  }, [draft, lotByCode])
+
   const lowStockIds = useMemo(() => {
     const s = new Set<string>()
     for (const r of list) {
@@ -292,9 +347,58 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
     return s
   }, [list])
 
+  const inventorySummaryItems = useMemo((): SectionSummaryItem[] => {
+    let available = 0
+    let consumed = 0
+    let low = 0
+    for (const r of list) {
+      if (isAvailable(r.quantity)) available++
+      else consumed++
+      if (lowStockIds.has(r.id)) low++
+    }
+    const items: SectionSummaryItem[] = []
+    if (meta != null) {
+      items.push({
+        label: 'Coinciden',
+        value: meta.total,
+        title: 'Ítems que cumplen búsqueda y categoría',
+      })
+    }
+    items.push(
+      {
+        label: 'Página',
+        value: list.length,
+        title: 'Filas en esta página',
+      },
+      {
+        label: 'Disponible',
+        value: available,
+        title: 'Cantidad mayor que 0 en esta página',
+      },
+      {
+        label: 'Consumido',
+        value: consumed,
+        title: 'Cantidad 0 en esta página',
+      },
+      {
+        label: 'Bajo mín.',
+        value: low,
+        title: 'Alerta de stock mínimo en esta página',
+      },
+    )
+    return items
+  }, [list, lowStockIds, meta])
+
   return (
     <div className="products-layout">
       <div className="products-list-pane">
+        <div className="page-intro">
+          <h2 className="page-title">Inventario</h2>
+          <p className="muted page-subtitle">
+            Insumos, lotes y costos. Enlaza con compras por código de lote.
+          </p>
+        </div>
+
         <div className="data-toolbar">
           <div className="search-field">
             <span className="search-icon" aria-hidden />
@@ -339,9 +443,18 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
           </div>
         </div>
 
+        <SectionSummaryBar section="inventory" items={inventorySummaryItems} />
+
         {catError && (
           <p className="banner-warn" role="status">
             Categorías: {catError}
+          </p>
+        )}
+        {lotIndexError && (
+          <p className="banner-warn" role="status">
+            Lotes de compra: no se pudieron cargar ({lotIndexError}). Fecha y
+            proveedor del lote aparecerán vacíos hasta que vuelva a cargar la
+            página.
           </p>
         )}
         {listError && (
@@ -358,16 +471,27 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                 <tr>
                   <th>Insumo</th>
                   <th>Categoría</th>
+                  <th>Lote</th>
+                  <th>Fecha compra</th>
+                  <th>Compra en</th>
                   <th className="num">Cantidad</th>
                   <th>Unidad</th>
                   <th className="num">Costo u.</th>
                   <th className="num">Mín.</th>
-                  <th />
+                  <th>Estado</th>
+                  <th aria-label="Alertas" />
                 </tr>
               </thead>
               <tbody>
                 {list.map((r) => {
                   const low = lowStockIds.has(r.id)
+                  const available = isAvailable(r.quantity)
+                  const lotCode = r.lot?.trim() ?? ''
+                  const pl = lotCode && lotByCode ? lotByCode.get(lotCode) : undefined
+                  const whereBought =
+                    pl?.supplier?.trim() ||
+                    r.supplier?.trim() ||
+                    ''
                   return (
                     <tr
                       key={r.id}
@@ -389,11 +513,29 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                         </button>
                       </td>
                       <td className="muted">{r.category?.name ?? '—'}</td>
+                      <td className="mono muted">
+                        {lotCode || '—'}
+                      </td>
+                      <td className="muted">
+                        {pl
+                          ? formatPurchaseLotDate(pl.purchaseDate, 'short')
+                          : '—'}
+                      </td>
+                      <td className="muted">
+                        {whereBought || '—'}
+                      </td>
                       <td className="num mono">{String(r.quantity)}</td>
                       <td>{r.unit}</td>
                       <td className="num mono">{formatCOP(r.unitCost)}</td>
                       <td className="num mono">
                         {r.minStock != null ? String(r.minStock) : '—'}
+                      </td>
+                      <td>
+                        {available ? (
+                          <span className="badge badge-ok">Disponible</span>
+                        ) : (
+                          <span className="badge badge-muted">Consumido</span>
+                        )}
                       </td>
                       <td>
                         {low && (
@@ -526,6 +668,29 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                 onChange={(e) => setDraft({ ...draft, lot: e.target.value })}
               />
             </label>
+
+            {!creating && draft.lot.trim() && draftMatchedLot && (
+              <div className="panel-lot-meta muted">
+                <div>
+                  <strong>Fecha de compra (lote):</strong>{' '}
+                  {formatPurchaseLotDate(draftMatchedLot.purchaseDate, 'short')}
+                </div>
+                <div>
+                  <strong>Compra en (lote):</strong>{' '}
+                  {draftMatchedLot.supplier?.trim() || '—'}
+                </div>
+              </div>
+            )}
+            {!creating &&
+              draft.lot.trim() &&
+              lotByCode &&
+              !draftMatchedLot && (
+                <p className="muted panel-lot-meta">
+                  No hay una compra registrada con el código de lote «
+                  {draft.lot.trim()}». La fecha y el proveedor del lote salen de
+                  Compras cuando el código coincide.
+                </p>
+              )}
 
             <label className="field">
               <span>Stock mínimo (alerta)</span>

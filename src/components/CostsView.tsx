@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fetchRecipeCosts, type RecipeCostLineRow } from '../api'
+import { SectionSummaryBar } from './SectionSummaryBar'
 
 function num(v: string | number | null | undefined): number {
   const n = parseFloat(String(v ?? '').replace(',', '.'))
@@ -64,6 +65,12 @@ export function CostsView({ baseUrl }: { baseUrl: string }) {
   > | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
+  const [searchDebounced, setSearchDebounced] = useState('')
+  const [filterKind, setFilterKind] = useState<'all' | 'FIJO' | 'VARIABLE'>(
+    'all',
+  )
+  const [filterCategory, setFilterCategory] = useState('')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -83,10 +90,86 @@ export function CostsView({ baseUrl }: { baseUrl: string }) {
     void load()
   }, [load])
 
-  const totalAll =
-    data != null
-      ? num(data.totals.fixedCOP) + num(data.totals.variableCOP)
-      : NaN
+  useEffect(() => {
+    const t = window.setTimeout(() => setSearchDebounced(search), 320)
+    return () => window.clearTimeout(t)
+  }, [search])
+
+  const allRows = useMemo(() => {
+    if (!data) return [] as RecipeCostLineRow[]
+    return [...data.fixed, ...data.variable]
+  }, [data])
+
+  const categories = useMemo(() => {
+    const s = new Set<string>()
+    for (const r of allRows) {
+      const name = (r.categoryName ?? '').trim()
+      if (name) s.add(name)
+    }
+    return Array.from(s).sort((a, b) => a.localeCompare(b, 'es'))
+  }, [allRows])
+
+  const passesFilters = useCallback(
+    (r: RecipeCostLineRow) => {
+      if (filterKind !== 'all' && r.kind !== filterKind) return false
+      if (filterCategory && (r.categoryName ?? '') !== filterCategory) return false
+      const q = searchDebounced.trim().toLowerCase()
+      if (!q) return true
+      const hay = `${r.productName} ${r.categoryName ?? ''} ${r.name}`.toLowerCase()
+      return hay.includes(q)
+    },
+    [filterCategory, filterKind, searchDebounced],
+  )
+
+  const fixedRows = useMemo(() => {
+    if (!data) return []
+    return data.fixed.filter(passesFilters)
+  }, [data, passesFilters])
+
+  const variableRows = useMemo(() => {
+    if (!data) return []
+    return data.variable.filter(passesFilters)
+  }, [data, passesFilters])
+
+  const totals = useMemo(() => {
+    const fixed = fixedRows.reduce((s, r) => s + num(r.lineTotalCOP), 0)
+    const variable = variableRows.reduce((s, r) => s + num(r.lineTotalCOP), 0)
+    return { fixed, variable, all: fixed + variable }
+  }, [fixedRows, variableRows])
+
+  const costsSummaryItems = useMemo(
+    () => [
+      {
+        label: 'Líneas total',
+        value: allRows.length,
+        title: 'FIJO + VARIABLE sin filtrar búsqueda',
+      },
+      {
+        label: 'Visibles',
+        value: fixedRows.length + variableRows.length,
+        title: 'Líneas que cumplen filtros',
+      },
+      {
+        label: 'FIJO',
+        value: fixedRows.length,
+      },
+      {
+        label: 'VARIABLE',
+        value: variableRows.length,
+      },
+      {
+        label: 'Total COP',
+        value: formatCOP(totals.all),
+        title: 'Suma de líneas visibles',
+      },
+    ],
+    [
+      allRows.length,
+      fixedRows.length,
+      variableRows.length,
+      totals.all,
+    ],
+  )
 
   return (
     <div className="products-layout">
@@ -99,7 +182,58 @@ export function CostsView({ baseUrl }: { baseUrl: string }) {
           </p>
         </div>
 
-        <div className="costs-toolbar">
+        <div className="data-toolbar data-toolbar--stack costs-toolbar">
+          <div className="search-field">
+            <span className="search-icon" aria-hidden />
+            <input
+              type="search"
+              placeholder="Buscar por producto, categoría o concepto…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Buscar costos"
+            />
+          </div>
+          <div className="toolbar-filters toolbar-filters--wrap">
+            <label className="filter-field">
+              <span>Tipo</span>
+              <select
+                value={filterKind}
+                onChange={(e) =>
+                  setFilterKind(e.target.value as 'all' | 'FIJO' | 'VARIABLE')
+                }
+              >
+                <option value="all">Todos</option>
+                <option value="FIJO">FIJO</option>
+                <option value="VARIABLE">VARIABLE</option>
+              </select>
+            </label>
+            <label className="filter-field">
+              <span>Categoría</span>
+              <select
+                value={filterCategory}
+                onChange={(e) => setFilterCategory(e.target.value)}
+              >
+                <option value="">Todas</option>
+                {categories.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="button"
+              className="btn-secondary btn-compact"
+              onClick={() => {
+                setSearch('')
+                setFilterKind('all')
+                setFilterCategory('')
+              }}
+            >
+              Limpiar filtros
+            </button>
+          </div>
+          <div className="toolbar-actions">
           <button
             type="button"
             className="btn-secondary btn-compact"
@@ -108,7 +242,12 @@ export function CostsView({ baseUrl }: { baseUrl: string }) {
           >
             Actualizar
           </button>
+          </div>
         </div>
+
+        {!loading && data && (
+          <SectionSummaryBar section="costs" items={costsSummaryItems} />
+        )}
 
         {error && (
           <p className="error" role="alert">
@@ -125,11 +264,11 @@ export function CostsView({ baseUrl }: { baseUrl: string }) {
                   Costos fijos
                 </h3>
                 <span className="cost-section-total mono">
-                  {formatCOP(data.totals.fixedCOP)}
+                  {formatCOP(totals.fixed)}
                 </span>
               </div>
               <CostTable
-                rows={data.fixed}
+                rows={fixedRows}
                 emptyLabel="No hay líneas de costo fijo registradas."
               />
             </section>
@@ -140,11 +279,11 @@ export function CostsView({ baseUrl }: { baseUrl: string }) {
                   Costos variables
                 </h3>
                 <span className="cost-section-total mono">
-                  {formatCOP(data.totals.variableCOP)}
+                  {formatCOP(totals.variable)}
                 </span>
               </div>
               <CostTable
-                rows={data.variable}
+                rows={variableRows}
                 emptyLabel="No hay líneas de costo variable registradas."
               />
             </section>
@@ -152,7 +291,7 @@ export function CostsView({ baseUrl }: { baseUrl: string }) {
             <div className="costs-summary-bar">
               <span className="muted">Suma fijos + variables</span>
               <strong className="mono costs-summary-total">
-                {formatCOP(totalAll)}
+                {formatCOP(totals.all)}
               </strong>
             </div>
           </>

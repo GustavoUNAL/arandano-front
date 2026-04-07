@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   type InventoryOption,
-  parseProductRecipe,
-  type ProductRecipeDetail,
-  type ProductRecipeLine,
+  parseProductRecipeFull,
+  type ProductRecipeCostLine,
+  type ProductRecipeFull,
+  type ProductRecipeIngredientLine,
   upsertProductRecipe,
 } from '../api'
 
@@ -18,7 +19,7 @@ type EditableLine = {
   unit: string
 }
 
-function linesFromRecipe(lines: ProductRecipeLine[]): EditableLine[] {
+function linesFromRecipe(lines: ProductRecipeIngredientLine[]): EditableLine[] {
   return lines.map((l) => ({
     key: newRowKey(),
     inventoryItemId: l.inventoryItemId,
@@ -51,11 +52,45 @@ function lineSubtotal(
 type RecipeEditorProps = {
   baseUrl: string
   productId: string
-  recipe: ProductRecipeDetail | null
+  recipe: ProductRecipeFull | null
   inventory: InventoryOption[]
-  onRecipeUpdated?: (recipe: ProductRecipeDetail | null) => void
+  onRecipeUpdated?: (recipe: ProductRecipeFull | null) => void
   /** Oculta el bloque de título (p. ej. cuando el panel ya tiene cabecera). */
   compact?: boolean
+}
+
+type EditableCostLine = {
+  key: string
+  kind: 'FIJO' | 'VARIABLE'
+  name: string
+  quantity: string
+  unit: string
+  lineTotalCOP: string
+}
+
+const ADMIN_RATE = 0.3
+const ADMIN_LABEL = 'Administración (30%)'
+
+function isAdminLineName(name: string): boolean {
+  return name.trim().toLowerCase().startsWith('administración')
+}
+
+function costsFromRecipe(costs: ProductRecipeCostLine[]): EditableCostLine[] {
+  return costs
+    .filter((c) => !isAdminLineName(c.name))
+    .map((c) => ({
+    key: newRowKey(),
+    kind: c.kind,
+    name: c.name,
+    quantity: c.quantity ? String(c.quantity) : '',
+    unit: c.unit ?? '',
+    lineTotalCOP: String(c.lineTotalCOP ?? ''),
+  }))
+}
+
+function n(v: string): number {
+  const x = parseFloat(v.replace(',', '.'))
+  return Number.isFinite(x) ? x : NaN
 }
 
 export function RecipeEditor({
@@ -68,6 +103,7 @@ export function RecipeEditor({
 }: RecipeEditorProps) {
   const [yieldStr, setYieldStr] = useState('1')
   const [rows, setRows] = useState<EditableLine[]>([])
+  const [costRows, setCostRows] = useState<EditableCostLine[]>([])
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -76,11 +112,13 @@ export function RecipeEditor({
     if (!recipe) {
       setYieldStr('1')
       setRows([])
+      setCostRows([])
       setFilters({})
       return
     }
     setYieldStr(recipe.recipeYield)
-    setRows(linesFromRecipe(recipe.lines))
+    setRows(linesFromRecipe(recipe.ingredients))
+    setCostRows(costsFromRecipe(recipe.costs ?? []))
     setFilters({})
   }, [recipe, productId])
 
@@ -107,6 +145,31 @@ export function RecipeEditor({
     setRows((prev) => prev.filter((r) => r.key !== key))
   }, [])
 
+  const addCostRow = useCallback(() => {
+    setCostRows((prev) => [
+      ...prev,
+      {
+        key: newRowKey(),
+        kind: 'FIJO',
+        name: '',
+        quantity: '',
+        unit: 'porción',
+        lineTotalCOP: '',
+      },
+    ])
+  }, [])
+
+  const removeCostRow = useCallback((key: string) => {
+    setCostRows((prev) => prev.filter((r) => r.key !== key))
+  }, [])
+
+  const updateCostRow = useCallback(
+    (key: string, patch: Partial<EditableCostLine>) => {
+      setCostRows((prev) => prev.map((r) => (r.key === key ? { ...r, ...patch } : r)))
+    },
+    [],
+  )
+
   const updateRow = useCallback(
     (key: string, patch: Partial<EditableLine>) => {
       setRows((prev) =>
@@ -127,7 +190,7 @@ export function RecipeEditor({
   const filteredOptions = useCallback(
     (rowKey: string) => {
       const q = (filters[rowKey] ?? '').trim().toLowerCase()
-      let list = !q
+      const list = !q
         ? inventory
         : inventory.filter((i) => i.name.toLowerCase().includes(q))
       return list.slice(0, 120)
@@ -136,7 +199,7 @@ export function RecipeEditor({
   )
 
   const save = useCallback(async () => {
-    const y = parseFloat(yieldStr.replace(',', '.'))
+    const y = n(yieldStr)
     if (!Number.isFinite(y) || y <= 0) {
       setError('El rendimiento debe ser un número mayor que cero.')
       return
@@ -163,7 +226,7 @@ export function RecipeEditor({
         setError('Cada fila debe tener un insumo seleccionado.')
         return
       }
-      const q = parseFloat(r.quantity.replace(',', '.'))
+      const q = n(r.quantity)
       if (!Number.isFinite(q) || q <= 0) {
         setError('Las cantidades deben ser números válidos mayores que cero.')
         return
@@ -179,23 +242,86 @@ export function RecipeEditor({
       })
     }
 
+    const costsBase: {
+      kind: 'FIJO' | 'VARIABLE'
+      name: string
+      quantity?: number
+      unit: string
+      lineTotalCOP: number
+    }[] = []
+
+    for (const c of costRows) {
+      const name = c.name.trim()
+      const unit = c.unit.trim()
+      const total = n(c.lineTotalCOP)
+      if (!name && !c.lineTotalCOP.trim() && !unit && !c.quantity.trim()) continue
+      if (isAdminLineName(name)) {
+        setError(`"${ADMIN_LABEL}" se calcula automáticamente. Borra esa línea y se recalcula sola.`)
+        return
+      }
+      if (!name) {
+        setError('Cada línea de costo debe tener un concepto (nombre).')
+        return
+      }
+      if (!unit) {
+        setError('Cada línea de costo debe tener una unidad (ej. porción).')
+        return
+      }
+      if (!Number.isFinite(total) || total < 0) {
+        setError('Los totales de costos deben ser números válidos (>= 0).')
+        return
+      }
+      const qty = c.quantity.trim() ? n(c.quantity) : NaN
+      costsBase.push({
+        kind: c.kind,
+        name,
+        unit,
+        lineTotalCOP: total,
+        quantity: Number.isFinite(qty) ? qty : undefined,
+      })
+    }
+
+    // Administración automática: 30% de (insumos + servicios/indirectos)
+    const adminBase = ingredients.reduce((acc, ing) => {
+      const inv = byId.get(ing.inventoryItemId)
+      if (!inv) return acc
+      const sub = lineSubtotal(String(ing.quantity), inv.unitCostCOP).value
+      return acc + sub
+    }, 0) + costsBase.reduce((acc, c) => acc + c.lineTotalCOP, 0)
+
+    const adminValue = Math.round(adminBase * ADMIN_RATE)
+    const costs = [
+      ...costsBase,
+      ...(adminValue > 0
+        ? ([
+            {
+              kind: 'FIJO' as const,
+              name: ADMIN_LABEL,
+              unit: 'porción',
+              lineTotalCOP: adminValue,
+            },
+          ] satisfies typeof costsBase)
+        : []),
+    ]
+
     setSaving(true)
     setError(null)
     try {
       const updated = await upsertProductRecipe(baseUrl, productId, {
         recipeYield: y,
         ingredients,
+        costs,
       })
-      const next = parseProductRecipe(updated.recipe)
+      const next = parseProductRecipeFull(updated.recipe)
       onRecipeUpdated?.(next)
     } catch (e) {
       setError((e as Error).message)
     } finally {
       setSaving(false)
     }
-  }, [baseUrl, onRecipeUpdated, productId, rows, yieldStr])
+  }, [baseUrl, byId, costRows, onRecipeUpdated, productId, rows, yieldStr])
 
-  const yieldNum = parseFloat(yieldStr.replace(',', '.'))
+  const yieldNum = n(yieldStr)
   const totalRecipeCOP = useMemo(() => {
     let t = 0
     for (const r of rows) {
@@ -207,10 +333,24 @@ export function RecipeEditor({
     return t
   }, [byId, rows])
 
-  const perUnitCOP =
-    Number.isFinite(yieldNum) && yieldNum > 0
-      ? totalRecipeCOP / yieldNum
-      : 0
+  const totalServiceCostsCOP = useMemo(() => {
+    let t = 0
+    for (const c of costRows) {
+      const v = n(c.lineTotalCOP)
+      if (Number.isFinite(v)) t += v
+    }
+    return t
+  }, [costRows])
+
+  const adminCOP = useMemo(() => {
+    const v = Math.round((totalRecipeCOP + totalServiceCostsCOP) * ADMIN_RATE)
+    return Number.isFinite(v) && v > 0 ? v : 0
+  }, [totalRecipeCOP, totalServiceCostsCOP])
+
+  const totalCostsCOP = totalServiceCostsCOP + adminCOP
+  const totalAllCOP = totalRecipeCOP + totalCostsCOP
+
+  // (la UI usa el totalAllCOP / yieldNum directamente)
 
   return (
     <div className="recipe-editor">
@@ -238,8 +378,11 @@ export function RecipeEditor({
         <div className="recipe-cost-summary">
           <span className="muted small">Costo insumos</span>
           <strong>{formatCOP(totalRecipeCOP)}</strong>
+          <span className="muted small">· indirectos/costos {formatCOP(totalCostsCOP)}</span>
           <span className="muted small">
-            · por unidad vendida ~ {formatCOP(perUnitCOP)}
+            · total {formatCOP(totalAllCOP)} · por unidad ~ {formatCOP(
+              Number.isFinite(yieldNum) && yieldNum > 0 ? totalAllCOP / yieldNum : 0,
+            )}
           </span>
         </div>
       </div>
@@ -363,6 +506,110 @@ export function RecipeEditor({
         >
           {saving ? 'Guardando receta…' : 'Guardar receta'}
         </button>
+      </div>
+
+      <div className="recipe-embed">
+        <h3 className="muted small" style={{ margin: 0 }}>
+          Servicios / indirectos (tabla <code>costos</code>)
+        </h3>
+        <div className="recipe-table-wrap" style={{ marginTop: '0.5rem' }}>
+          <table className="recipe-table">
+            <thead>
+              <tr>
+                <th>Tipo</th>
+                <th>Concepto</th>
+                <th className="col-qty">Cant.</th>
+                <th className="col-unit">Unidad</th>
+                <th className="col-cost">Total (COP)</th>
+                <th className="col-actions" aria-label="Acciones" />
+              </tr>
+            </thead>
+            <tbody>
+              {costRows.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="recipe-table-empty">
+                    Sin líneas. Añade agua/energía/servicios aquí.
+                  </td>
+                </tr>
+              )}
+              {costRows.map((c) => (
+                <tr key={c.key}>
+                  <td>
+                    <select
+                      className="recipe-select"
+                      value={c.kind}
+                      onChange={(e) =>
+                        updateCostRow(c.key, { kind: e.target.value as 'FIJO' | 'VARIABLE' })
+                      }
+                    >
+                      <option value="FIJO">FIJO</option>
+                      <option value="VARIABLE">VARIABLE</option>
+                    </select>
+                  </td>
+                  <td>
+                    <input
+                      className="input-cell"
+                      value={c.name}
+                      onChange={(e) => updateCostRow(c.key, { name: e.target.value })}
+                      placeholder="Agua (Indirecto), Energía (Indirecto)…"
+                      style={{ fontFamily: 'var(--sans)' }}
+                    />
+                  </td>
+                  <td className="col-qty">
+                    <input
+                      inputMode="decimal"
+                      className="input-cell"
+                      value={c.quantity}
+                      onChange={(e) => updateCostRow(c.key, { quantity: e.target.value })}
+                      placeholder="—"
+                    />
+                  </td>
+                  <td className="col-unit">
+                    <input
+                      className="input-cell"
+                      value={c.unit}
+                      onChange={(e) => updateCostRow(c.key, { unit: e.target.value })}
+                    />
+                  </td>
+                  <td className="col-cost">
+                    <input
+                      inputMode="decimal"
+                      className="input-cell"
+                      value={c.lineTotalCOP}
+                      onChange={(e) => updateCostRow(c.key, { lineTotalCOP: e.target.value })}
+                      placeholder="0"
+                      style={{ textAlign: 'right' }}
+                    />
+                  </td>
+                  <td className="col-actions">
+                    <button
+                      type="button"
+                      className="btn-icon-remove"
+                      title="Quitar línea"
+                      onClick={() => removeCostRow(c.key)}
+                    >
+                      Quitar
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="recipe-yield-row" style={{ marginTop: '0.75rem' }}>
+          <span className="muted small">{ADMIN_LABEL}</span>
+          <strong>{formatCOP(adminCOP)}</strong>
+          <span className="muted small">
+            · {Math.round(ADMIN_RATE * 100)}% de (insumos + servicios)
+          </span>
+        </div>
+
+        <div className="recipe-editor-footer" style={{ marginTop: '0.75rem' }}>
+          <button type="button" className="btn-secondary" onClick={addCostRow}>
+            + Añadir servicio
+          </button>
+        </div>
       </div>
 
       {inventory.length === 0 && (

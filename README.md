@@ -72,3 +72,20 @@ export default defineConfig([
 ])
 ```
 # arandano-front
+
+## Ventas (`GET /sales`, `GET /sales/:id`)
+
+El panel de ventas usa estos campos del API cuando existen:
+
+| Campo | Uso en el front |
+|--------|------------------|
+| `total` | Total numérico en COP (prioridad para moneda) |
+| `totalCOP` | Mismo total en string; respaldo si `total` no viene |
+| `saleDate` | ISO 8601 (fecha y hora; editor y texto largo) |
+| `saleDateOnly` | `YYYY-MM-DD` para la columna de fecha (sin desfase por zona) |
+| `displayPerson` | Columna **Persona** y resumen del panel |
+| `recordedByName` / `recordedByUserId` | Bloque **Registró** en el detalle |
+| `lineCount` | Columna **Líneas** (antes que `_count`) |
+| En cada línea: `lineTotal`, `lineTotalCOP`, `unitPrice` | Columna **Total línea** y precios |
+
+La función `saleRowTotalNumeric()` en `src/api.ts` aplica esa prioridad (`total` → `totalCOP` → heurísticas legacy).

@@ -1,28 +1,52 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   fetchInventoryOptions,
   fetchProduct,
   fetchProductCategories,
   fetchRecipeCatalog,
-  parseProductRecipe,
+  parseProductRecipeFull,
   type CategoryRef,
   type InventoryOption,
-  type ProductRecipeDetail,
+  type ProductRecipeFull,
   type RecipeCatalogEntry,
 } from '../api'
 import { RecipeEditor } from './RecipeEditor'
+import { SectionSummaryBar } from './SectionSummaryBar'
+
+function getRecipeIdFromHash(): string | null {
+  const raw = (window.location.hash ?? '').replace(/^#/, '') // "recipes/..."
+  const parts = raw.split('/').filter(Boolean)
+  if (parts[0] !== 'recipes') return null
+  return parts[1] ?? null
+}
+
+function pushRouteToRecipe(productId: string): void {
+  window.history.pushState({}, '', `#/recipes/${productId}`)
+}
+
+function replaceRouteToRecipesList(): void {
+  window.history.replaceState({}, '', '#/recipes')
+}
 
 export function RecipesView({ baseUrl }: { baseUrl: string }) {
   const [categories, setCategories] = useState<CategoryRef[]>([])
   const [catalog, setCatalog] = useState<RecipeCatalogEntry[]>([])
   const [inventory, setInventory] = useState<InventoryOption[]>([])
   const [filterCategoryId, setFilterCategoryId] = useState('')
+  const [search, setSearch] = useState('')
+  const [searchDebounced, setSearchDebounced] = useState('')
   const [loadError, setLoadError] = useState<string | null>(null)
   const [loadingList, setLoadingList] = useState(true)
 
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(() => {
+    try {
+      return getRecipeIdFromHash()
+    } catch {
+      return null
+    }
+  })
   const [selectedName, setSelectedName] = useState('')
-  const [detailRecipe, setDetailRecipe] = useState<ProductRecipeDetail | null>(
+  const [detailRecipe, setDetailRecipe] = useState<ProductRecipeFull | null>(
     null,
   )
   const [detailLoading, setDetailLoading] = useState(false)
@@ -35,6 +59,11 @@ export function RecipesView({ baseUrl }: { baseUrl: string }) {
     )
     setCatalog(list)
   }, [baseUrl, filterCategoryId])
+
+  useEffect(() => {
+    const t = window.setTimeout(() => setSearchDebounced(search), 320)
+    return () => window.clearTimeout(t)
+  }, [search])
 
   useEffect(() => {
     let cancelled = false
@@ -61,8 +90,11 @@ export function RecipesView({ baseUrl }: { baseUrl: string }) {
 
   useEffect(() => {
     let cancelled = false
-    setLoadingList(true)
-    setLoadError(null)
+    Promise.resolve().then(() => {
+      if (cancelled) return
+      setLoadingList(true)
+      setLoadError(null)
+    })
     fetchRecipeCatalog(baseUrl, filterCategoryId || undefined)
       .then((cat) => {
         if (!cancelled) {
@@ -81,31 +113,118 @@ export function RecipesView({ baseUrl }: { baseUrl: string }) {
     }
   }, [baseUrl, filterCategoryId])
 
+  const filteredCatalog = useMemo(() => {
+    const q = searchDebounced.trim().toLowerCase()
+    if (!q) return catalog
+    return catalog.filter((r) => r.productName.toLowerCase().includes(q))
+  }, [catalog, searchDebounced])
+
   const openRow = useCallback(
-    async (row: RecipeCatalogEntry) => {
+    (row: RecipeCatalogEntry) => {
       setSelectedId(row.productId)
       setSelectedName(row.productName)
       setDetailError(null)
       setDetailLoading(true)
       setDetailRecipe(null)
-      try {
-        const p = await fetchProduct(baseUrl, row.productId)
-        setDetailRecipe(parseProductRecipe(p.recipe) ?? null)
-      } catch (e) {
-        setDetailError((e as Error).message)
-      } finally {
-        setDetailLoading(false)
-      }
+      pushRouteToRecipe(row.productId)
     },
-    [baseUrl],
+    [],
   )
 
   const closePanel = useCallback(() => {
+    replaceRouteToRecipesList()
     setSelectedId(null)
     setSelectedName('')
     setDetailRecipe(null)
     setDetailError(null)
+    setDetailLoading(false)
   }, [])
+
+  // Sync selection with URL hash (back/forward).
+  useEffect(() => {
+    const onHash = () => {
+      const id = getRecipeIdFromHash()
+      setSelectedId(id)
+    }
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+
+  // Load recipe detail when selectedId comes from deep link or navigation.
+  useEffect(() => {
+    if (!selectedId) return
+    let cancelled = false
+    Promise.resolve().then(() => {
+      if (cancelled) return
+      setDetailLoading(true)
+      setDetailError(null)
+      setDetailRecipe(null)
+    })
+    fetchProduct(baseUrl, selectedId)
+      .then((p) => {
+        if (cancelled) return
+        setSelectedName(p.name)
+        setDetailRecipe(parseProductRecipeFull(p.recipe) ?? null)
+      })
+      .catch((e: Error) => {
+        if (cancelled) return
+        setDetailError(e.message)
+      })
+      .finally(() => {
+        if (cancelled) return
+        setDetailLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [baseUrl, selectedId])
+
+  const handleBack = useCallback(() => {
+    if (window.history.length <= 1) {
+      closePanel()
+      return
+    }
+    window.history.back()
+  }, [closePanel])
+
+  useEffect(() => {
+    if (!selectedId) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closePanel()
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [closePanel, selectedId])
+
+  useEffect(() => {
+    if (!selectedId) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [selectedId])
+
+  const recipeSummaryItems = useMemo(
+    () => [
+      {
+        label: 'Recetas',
+        value: catalog.length,
+        title: 'Productos con receta en la categoría seleccionada',
+      },
+      {
+        label: 'Visibles',
+        value: filteredCatalog.length,
+        title: 'Tras filtrar por búsqueda',
+      },
+      {
+        label: 'Insumos',
+        value: inventory.length,
+        title: 'Ítems de inventario disponibles para enlazar',
+      },
+    ],
+    [catalog.length, filteredCatalog.length, inventory.length],
+  )
 
   return (
     <div className="recipes-layout">
@@ -117,14 +236,19 @@ export function RecipesView({ baseUrl }: { baseUrl: string }) {
               Productos con ficha técnica. Elige uno para ver y editar insumos.
             </p>
           </div>
-          {!loadingList && (
-            <span className="stock-total-badge">
-              {catalog.length} receta{catalog.length !== 1 ? 's' : ''}
-            </span>
-          )}
         </div>
 
         <div className="data-toolbar data-toolbar--compact">
+          <div className="search-field">
+            <span className="search-icon" aria-hidden />
+            <input
+              type="search"
+              placeholder="Buscar receta por producto…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Buscar recetas"
+            />
+          </div>
           <div className="toolbar-filters toolbar-filters--wrap">
             <label className="filter-field">
               <span>Categoría de producto</span>
@@ -143,12 +267,19 @@ export function RecipesView({ baseUrl }: { baseUrl: string }) {
             <button
               type="button"
               className="btn-secondary btn-compact"
-              onClick={() => setFilterCategoryId('')}
+              onClick={() => {
+                setFilterCategoryId('')
+                setSearch('')
+              }}
             >
               Limpiar
             </button>
           </div>
         </div>
+
+        {!loadingList && (
+          <SectionSummaryBar section="recipes" items={recipeSummaryItems} />
+        )}
 
         {loadError && (
           <p className="error" role="alert">
@@ -163,7 +294,7 @@ export function RecipesView({ baseUrl }: { baseUrl: string }) {
           </p>
         )}
 
-        {!loadingList && catalog.length > 0 && (
+        {!loadingList && filteredCatalog.length > 0 && (
           <div className="data-table-wrap data-table-elevated">
             <table className="data-table data-table-striped">
               <thead>
@@ -176,7 +307,7 @@ export function RecipesView({ baseUrl }: { baseUrl: string }) {
                 </tr>
               </thead>
               <tbody>
-                {catalog.map((row) => (
+                {filteredCatalog.map((row) => (
                   <tr
                     key={row.productId}
                     className={
@@ -207,41 +338,63 @@ export function RecipesView({ baseUrl }: { baseUrl: string }) {
       </div>
 
       {selectedId && (
-        <aside className="recipe-side-panel" aria-label="Editor de receta">
-          <div className="editor-panel-head">
-            <div>
-              <h2>Receta</h2>
-              <p className="muted small recipe-side-sub">{selectedName}</p>
+        <div
+          className="modal-backdrop"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) closePanel()
+          }}
+        >
+          <section
+            className="modal modal--fullscreen"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Editor de receta"
+          >
+            <header className="modal-head">
+              <div className="modal-head-title">
+                <h2>Receta</h2>
+                <p className="muted small modal-subtitle">{selectedName}</p>
+              </div>
+              <div className="modal-head-actions">
+                <button
+                  type="button"
+                  className="btn-secondary btn-compact"
+                  onClick={handleBack}
+                >
+                  Volver
+                </button>
+                <button
+                  type="button"
+                  className="btn-ghost icon-close"
+                  onClick={closePanel}
+                  aria-label="Cerrar"
+                />
+              </div>
+            </header>
+
+            <div className="modal-body">
+              {detailLoading && <p className="muted">Cargando receta…</p>}
+              {detailError && (
+                <p className="error" role="alert">
+                  {detailError}
+                </p>
+              )}
+              {!detailLoading && !detailError && (
+                <RecipeEditor
+                  baseUrl={baseUrl}
+                  productId={selectedId}
+                  recipe={detailRecipe}
+                  inventory={inventory}
+                  onRecipeUpdated={(r) => {
+                    setDetailRecipe(r)
+                    void refreshCatalog()
+                  }}
+                />
+              )}
             </div>
-            <button
-              type="button"
-              className="btn-ghost icon-close"
-              onClick={closePanel}
-              aria-label="Cerrar"
-            />
-          </div>
-          <div className="recipe-side-body">
-            {detailLoading && <p className="muted">Cargando receta…</p>}
-            {detailError && (
-              <p className="error" role="alert">
-                {detailError}
-              </p>
-            )}
-            {!detailLoading && !detailError && (
-              <RecipeEditor
-                baseUrl={baseUrl}
-                productId={selectedId}
-                recipe={detailRecipe}
-                inventory={inventory}
-                compact
-                onRecipeUpdated={(r) => {
-                  setDetailRecipe(r)
-                  void refreshCatalog()
-                }}
-              />
-            )}
-          </div>
-        </aside>
+          </section>
+        </div>
       )}
     </div>
   )

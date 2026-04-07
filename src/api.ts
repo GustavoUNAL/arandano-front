@@ -1,4 +1,5 @@
 const STORAGE_KEY = 'arandano_api_base'
+const TOKEN_KEY = 'arandano_access_token'
 
 export function getApiBase(): string {
   const fromEnv = import.meta.env.VITE_API_URL as string | undefined
@@ -18,6 +19,29 @@ export function setApiBase(url: string): void {
   window.localStorage.setItem(STORAGE_KEY, url.replace(/\/$/, ''))
 }
 
+export function getAccessToken(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const t = window.localStorage.getItem(TOKEN_KEY)
+    return t?.trim() ? t.trim() : null
+  } catch {
+    return null
+  }
+}
+
+export function setAccessToken(token: string | null): void {
+  if (typeof window === 'undefined') return
+  try {
+    if (!token?.trim()) {
+      window.localStorage.removeItem(TOKEN_KEY)
+    } else {
+      window.localStorage.setItem(TOKEN_KEY, token.trim())
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
 export type TableInfo = { slug: string; sqlName: string }
 
 export type TableRowsResponse = {
@@ -27,7 +51,7 @@ export type TableRowsResponse = {
 }
 
 export async function fetchTables(base: string): Promise<TableInfo[]> {
-  const res = await fetch(`${base}/explorer/tables`)
+  const res = await apiFetch(`${base}/explorer/tables`)
   if (!res.ok) {
     throw new Error(`${res.status} ${res.statusText}`)
   }
@@ -44,7 +68,7 @@ export async function fetchTableRows(
     limit: String(limit),
     offset: String(offset),
   })
-  const res = await fetch(`${base}/explorer/tables/${slug}?${q}`)
+  const res = await apiFetch(`${base}/explorer/tables/${slug}?${q}`)
   if (!res.ok) {
     throw new Error(`${res.status} ${res.statusText}`)
   }
@@ -104,6 +128,43 @@ async function parseJsonError(res: Response): Promise<string> {
   return `${res.status} ${res.statusText}`
 }
 
+async function apiFetch(
+  url: string,
+  init?: RequestInit & { auth?: boolean },
+): Promise<Response> {
+  const auth = init?.auth !== false
+  const token = auth ? getAccessToken() : null
+  const headers = new Headers(init?.headers ?? undefined)
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+  return fetch(url, { ...init, headers })
+}
+
+export type LoginPayload = { email: string; password: string }
+export type AuthUser = { sub: string; email: string; name: string; role: string }
+export type LoginResponse = { accessToken: string; user: AuthUser }
+
+export async function login(
+  base: string,
+  payload: LoginPayload,
+): Promise<LoginResponse> {
+  const res = await apiFetch(`${base}/auth/login`, {
+    method: 'POST',
+    auth: false,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(await parseJsonError(res))
+  const out = (await res.json()) as LoginResponse
+  setAccessToken(out.accessToken)
+  return out
+}
+
+export async function fetchMe(base: string): Promise<AuthUser> {
+  const res = await apiFetch(`${base}/auth/me`)
+  if (!res.ok) throw new Error(await parseJsonError(res))
+  return res.json() as Promise<AuthUser>
+}
+
 export type ProductListSort = 'name' | 'price_asc' | 'price_desc'
 
 export async function fetchProducts(
@@ -127,7 +188,7 @@ export async function fetchProducts(
   if (opts.active === false) q.set('active', 'false')
   if (opts.type?.trim()) q.set('type', opts.type.trim())
   if (opts.sort && opts.sort !== 'name') q.set('sort', opts.sort)
-  const res = await fetch(`${base}/products?${q}`)
+  const res = await apiFetch(`${base}/products?${q}`)
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<ProductsListResponse>
 }
@@ -136,7 +197,7 @@ export async function fetchProduct(
   base: string,
   id: string,
 ): Promise<ProductRow & { recipe?: unknown }> {
-  const res = await fetch(`${base}/products/${id}`)
+  const res = await apiFetch(`${base}/products/${id}`)
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<ProductRow & { recipe?: unknown }>
 }
@@ -145,7 +206,7 @@ export async function createProduct(
   base: string,
   payload: CreateProductPayload,
 ): Promise<ProductRow> {
-  const res = await fetch(`${base}/products`, {
+  const res = await apiFetch(`${base}/products`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -159,7 +220,7 @@ export async function updateProduct(
   id: string,
   payload: UpdateProductPayload,
 ): Promise<ProductRow> {
-  const res = await fetch(`${base}/products/${id}`, {
+  const res = await apiFetch(`${base}/products/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -169,7 +230,7 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(base: string, id: string): Promise<void> {
-  const res = await fetch(`${base}/products/${id}`, { method: 'DELETE' })
+  const res = await apiFetch(`${base}/products/${id}`, { method: 'DELETE' })
   if (!res.ok) throw new Error(await parseJsonError(res))
 }
 
@@ -192,7 +253,7 @@ export async function fetchRecipeCatalog(
   const q = new URLSearchParams()
   if (categoryId?.trim()) q.set('categoryId', categoryId.trim())
   const qs = q.toString()
-  const res = await fetch(
+  const res = await apiFetch(
     `${base}/recipes${qs ? `?${qs}` : ''}`,
   )
   if (!res.ok) throw new Error(await parseJsonError(res))
@@ -225,44 +286,63 @@ export type RecipeCostsResponse = {
 export async function fetchRecipeCosts(
   base: string,
 ): Promise<RecipeCostsResponse> {
-  const res = await fetch(`${base}/recipes/costs`)
+  const res = await apiFetch(`${base}/recipes/costs`)
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<RecipeCostsResponse>
 }
 
-export type ProductRecipeLine = {
-  id: string
+export type ProductRecipeIngredientLine = {
+  id?: string
   inventoryItemId: string
-  ingredient: string
   quantity: string
   unit: string
-  unitCostCOP: string
-  lineTotalCOP: string
-  sheetUnitCost?: string | null
-  sheetQuantity?: string | null
+  sortOrder?: number
 }
 
 export type ProductRecipeDetail = {
   recipeYield: string
-  lines: ProductRecipeLine[]
+  ingredients: ProductRecipeIngredientLine[]
 }
 
 export function parseProductRecipe(
   recipe: unknown,
 ): ProductRecipeDetail | null {
   if (!recipe || typeof recipe !== 'object') return null
-  const r = recipe as { recipeYield?: string; lines?: unknown[] }
+  const r = recipe as {
+    recipeYield?: string
+    ingredients?: unknown[]
+    lines?: unknown[]
+  }
   if (typeof r.recipeYield !== 'string') return null
-  if (!Array.isArray(r.lines)) return null
+  const ingredientsRaw = Array.isArray(r.ingredients)
+    ? r.ingredients
+    : Array.isArray(r.lines)
+      ? r.lines
+      : null
+  if (!ingredientsRaw) return null
   return {
     recipeYield: r.recipeYield,
-    lines: r.lines as ProductRecipeLine[],
+    ingredients: ingredientsRaw as ProductRecipeIngredientLine[],
   }
 }
 
 export type UpsertRecipePayload = {
   recipeYield: number
-  ingredients: { inventoryItemId: string; quantity: number; unit: string }[]
+  ingredients?: {
+    inventoryItemId: string
+    quantity: number
+    unit: string
+    sortOrder?: number
+  }[]
+  costs?: {
+    kind: 'FIJO' | 'VARIABLE'
+    name: string
+    quantity?: number
+    unit: string
+    lineTotalCOP: number
+    sheetUnitCost?: number
+    sortOrder?: number
+  }[]
 }
 
 export async function upsertProductRecipe(
@@ -270,13 +350,44 @@ export async function upsertProductRecipe(
   productId: string,
   payload: UpsertRecipePayload,
 ): Promise<ProductRow & { recipe?: ProductRecipeDetail }> {
-  const res = await fetch(`${base}/products/${productId}/recipe`, {
+  const res = await apiFetch(`${base}/products/${productId}/recipe`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<ProductRow & { recipe?: ProductRecipeDetail }>
+}
+
+export type ProductRecipeCostLine = {
+  id?: string
+  kind: 'FIJO' | 'VARIABLE'
+  name: string
+  quantity?: string | null
+  unit: string
+  lineTotalCOP: string
+  sheetUnitCost?: string | null
+  sortOrder?: number
+}
+
+export type ProductRecipeFull = {
+  recipeYield: string
+  ingredients: ProductRecipeIngredientLine[]
+  costs: ProductRecipeCostLine[]
+}
+
+export function parseProductRecipeFull(recipe: unknown): ProductRecipeFull | null {
+  if (!recipe || typeof recipe !== 'object') return null
+  const r = recipe as {
+    recipeYield?: string
+    ingredients?: unknown[]
+    lines?: unknown[]
+    costs?: unknown[]
+  }
+  const base = parseProductRecipe(recipe)
+  if (!base) return null
+  const costsRaw = Array.isArray(r.costs) ? (r.costs as ProductRecipeCostLine[]) : []
+  return { ...base, costs: costsRaw }
 }
 
 export type InventoryOption = {
@@ -334,7 +445,7 @@ export async function fetchInventoryItems(
   q.set('limit', String(Math.min(opts.limit ?? 24, 100)))
   if (opts.search?.trim()) q.set('search', opts.search.trim())
   if (opts.categoryId?.trim()) q.set('categoryId', opts.categoryId.trim())
-  const res = await fetch(`${base}/inventory?${q}`)
+  const res = await apiFetch(`${base}/inventory?${q}`)
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<InventoryListResponse>
 }
@@ -343,7 +454,7 @@ export async function fetchInventoryItem(
   base: string,
   id: string,
 ): Promise<InventoryRow> {
-  const res = await fetch(`${base}/inventory/${id}`)
+  const res = await apiFetch(`${base}/inventory/${id}`)
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<InventoryRow>
 }
@@ -352,7 +463,7 @@ export async function createInventoryItem(
   base: string,
   payload: CreateInventoryPayload,
 ): Promise<InventoryRow> {
-  const res = await fetch(`${base}/inventory`, {
+  const res = await apiFetch(`${base}/inventory`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -366,7 +477,7 @@ export async function updateInventoryItem(
   id: string,
   payload: UpdateInventoryPayload,
 ): Promise<InventoryRow> {
-  const res = await fetch(`${base}/inventory/${id}`, {
+  const res = await apiFetch(`${base}/inventory/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -376,7 +487,7 @@ export async function updateInventoryItem(
 }
 
 export async function deleteInventoryItem(base: string, id: string): Promise<void> {
-  const res = await fetch(`${base}/inventory/${id}`, { method: 'DELETE' })
+  const res = await apiFetch(`${base}/inventory/${id}`, { method: 'DELETE' })
   if (!res.ok) throw new Error(await parseJsonError(res))
 }
 
@@ -408,20 +519,258 @@ export async function fetchInventoryOptions(
 
 // ——— Sales API ———
 
+export type SaleCartUserRef = {
+  id?: string
+  name?: string | null
+  email?: string | null
+}
+
 export type SaleListRow = {
   id: string
   saleDate: string
-  total: string | number
+  /** `YYYY-MM-DD` (día civil); preferido para columna “solo fecha”. */
+  saleDateOnly?: string | null
+  /** Total COP numérico (recomendado para formato moneda). */
+  total?: string | number | null
+  /** Mismo total como string (p. ej. 2 decimales). */
+  totalCOP?: string | null
+  totalAmount?: string | number | null
+  grandTotal?: string | number | null
+  amount?: string | number | null
+  total_amount?: string | number | null
+  grand_total?: string | number | null
+  /** Quién figura en la venta (empleado o usuario del carrito). */
+  displayPerson?: string | null
+  recordedByName?: string | null
+  recordedByUserId?: string | null
   paymentMethod?: string | null
   source: string
   mesa?: string | null
   notes?: string | null
-  _count: { lines: number }
+  userId?: string | null
+  createdAt?: string | null
+  updatedAt?: string | null
+  cart?: { user?: SaleCartUserRef | null } | null
+  /** Prisma / listados anteriores */
+  _count?: { lines?: number }
+  /** Cantidad de líneas (API). */
+  lineCount?: number
+  linesCount?: number
 }
 
 export type SalesListResponse = {
   data: SaleListRow[]
   meta: { page: number; limit: number; total: number; hasNextPage: boolean }
+}
+
+export function saleListRowLineCount(row: SaleListRow): number {
+  if (typeof row.lineCount === 'number' && Number.isFinite(row.lineCount)) {
+    return row.lineCount
+  }
+  const a = row._count?.lines
+  if (typeof a === 'number' && Number.isFinite(a)) return a
+  const b = row.linesCount
+  if (typeof b === 'number' && Number.isFinite(b)) return b
+  return 0
+}
+
+function parseMoneyish(v: unknown): number {
+  if (v == null || v === '') return NaN
+  if (typeof v === 'bigint') {
+    const n = Number(v)
+    return Number.isFinite(n) ? n : NaN
+  }
+  if (typeof v === 'number') return Number.isFinite(v) ? v : NaN
+  if (typeof v === 'object' && v !== null && 'toString' in v) {
+    const n = parseMoneyish((v as { toString(): string }).toString())
+    if (Number.isFinite(n)) return n
+  }
+  let s = String(v).trim()
+  if (!s) return NaN
+  // Decimal con coma, sin separador de miles: "1234,56"
+  if (/^\d+,\d{1,6}$/.test(s) && !s.includes('.')) {
+    s = s.replace(',', '.')
+  } else if (/^\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) {
+    // Miles con punto y decimal con coma: "1.234.567,89"
+    s = s.replace(/\./g, '').replace(',', '.')
+  } else {
+    s = s.replace(/,/g, '')
+  }
+  const n = parseFloat(s)
+  return Number.isFinite(n) ? n : NaN
+}
+
+const SALE_TOTAL_SCALAR_KEYS = [
+  'total',
+  'totalCOP',
+  'total_cop',
+  'totalAmount',
+  'grandTotal',
+  'amount',
+  'total_amount',
+  'grand_total',
+  'totalValue',
+  'total_value',
+  'valorTotal',
+  'valor_total',
+  'saleTotal',
+  'sale_total',
+  'priceTotal',
+  'price_total',
+  'sumTotal',
+  'sum_total',
+  'monto',
+  'montoTotal',
+  'monto_total',
+  'valor',
+  'valorVenta',
+  'valor_venta',
+] as const
+
+const SALE_LINE_ARRAY_KEYS = [
+  'lines',
+  'saleLines',
+  'sale_lines',
+  'items',
+  'lineItems',
+  'line_items',
+  'detalle',
+  'saleLineItems',
+] as const
+
+function lineMonetaryContribution(line: Record<string, unknown>): number {
+  const explicit = [
+    'lineTotal',
+    'line_total',
+    'subtotal',
+    'subTotal',
+    'sub_total',
+    'importe',
+    'importeLinea',
+    'importe_linea',
+    'total',
+    'totalLine',
+    'total_line',
+    'valorLinea',
+    'valor_linea',
+    'extendedPrice',
+    'extended_price',
+    'grossAmount',
+    'gross_amount',
+    'lineTotalCOP',
+    'line_total_cop',
+  ] as const
+  for (const k of explicit) {
+    if (k in line) {
+      const n = parseMoneyish(line[k])
+      if (Number.isFinite(n)) return n
+    }
+  }
+  const qtyKeys = ['quantity', 'qty', 'count', 'cantidad', 'amount'] as const
+  const priceKeys = [
+    'unitPrice',
+    'unit_price',
+    'price',
+    'precio',
+    'valorUnitario',
+    'valor_unitario',
+    'unitario',
+  ] as const
+  let q = NaN
+  let p = NaN
+  for (const k of qtyKeys) {
+    if (k in line) {
+      q = parseMoneyish(line[k])
+      if (Number.isFinite(q)) break
+    }
+  }
+  for (const k of priceKeys) {
+    if (k in line) {
+      p = parseMoneyish(line[k])
+      if (Number.isFinite(p)) break
+    }
+  }
+  if (Number.isFinite(q) && Number.isFinite(p)) return q * p
+  return NaN
+}
+
+function sumFromLineArrays(row: Record<string, unknown>): number | undefined {
+  for (const key of SALE_LINE_ARRAY_KEYS) {
+    const raw = row[key]
+    if (!Array.isArray(raw) || raw.length === 0) continue
+    let sum = 0
+    let used = 0
+    for (const item of raw) {
+      if (!item || typeof item !== 'object') continue
+      const n = lineMonetaryContribution(item as Record<string, unknown>)
+      if (Number.isFinite(n)) {
+        sum += n
+        used++
+      }
+    }
+    if (used > 0) return sum
+  }
+  return undefined
+}
+
+/**
+ * Total en COP: escanea claves habituales del API y suma líneas / subtotales por ítem.
+ */
+export function resolveSaleTotal(
+  row: SaleListRow | SaleDetail | Record<string, unknown>,
+): number | undefined {
+  const r = row as Record<string, unknown>
+
+  for (const k of SALE_TOTAL_SCALAR_KEYS) {
+    if (!(k in r)) continue
+    const v = r[k]
+    if (v == null || v === '') continue
+    const n = parseMoneyish(v)
+    if (Number.isFinite(n)) return n
+  }
+
+  for (const ck of ['totalInCents', 'total_in_cents', 'amountCents', 'amount_cents'] as const) {
+    if (!(ck in r)) continue
+    const n = parseMoneyish(r[ck])
+    if (Number.isFinite(n)) return n / 100
+  }
+
+  const nestedKeys = ['totals', 'summary', 'aggregate', '_sum'] as const
+  for (const nk of nestedKeys) {
+    const sub = r[nk]
+    if (sub && typeof sub === 'object' && !Array.isArray(sub)) {
+      for (const k of SALE_TOTAL_SCALAR_KEYS) {
+        if (!(k in sub)) continue
+        const n = parseMoneyish((sub as Record<string, unknown>)[k])
+        if (Number.isFinite(n)) return n
+      }
+    }
+  }
+
+  const fromLines = sumFromLineArrays(r)
+  if (fromLines !== undefined) return fromLines
+
+  return undefined
+}
+
+/**
+ * Total en COP para mostrar: prioriza `total` numérico y `totalCOP` del API;
+ * si faltan, usa `resolveSaleTotal`.
+ */
+export function saleRowTotalNumeric(
+  row: SaleListRow | SaleDetail | Record<string, unknown>,
+): number | undefined {
+  const o = row as SaleListRow & SaleDetail
+  if (typeof o.total === 'number' && Number.isFinite(o.total)) return o.total
+  if (o.total != null && o.total !== '') {
+    const n = parseMoneyish(o.total)
+    if (Number.isFinite(n)) return n
+  }
+  if (o.totalCOP != null && String(o.totalCOP).trim() !== '') {
+    const n = parseMoneyish(o.totalCOP)
+    if (Number.isFinite(n)) return n
+  }
+  return resolveSaleTotal(row)
 }
 
 export type SaleLineDetail = {
@@ -430,7 +779,11 @@ export type SaleLineDetail = {
   productId: string | null
   productName: string
   quantity: string | number
-  unitPrice: string | number
+  unitPrice?: string | number | null
+  unit_price?: string | number | null
+  unitPriceCOP?: string | null
+  lineTotal?: string | number | null
+  lineTotalCOP?: string | null
   costAtSale?: string | number | null
   profit?: string | number | null
   product?: { id: string; name: string } | null
@@ -439,13 +792,26 @@ export type SaleLineDetail = {
 export type SaleDetail = {
   id: string
   saleDate: string
-  total: string | number
+  saleDateOnly?: string | null
+  total?: string | number | null
+  totalCOP?: string | null
+  totalAmount?: string | number | null
+  grandTotal?: string | number | null
+  amount?: string | number | null
+  total_amount?: string | number | null
+  grand_total?: string | number | null
+  displayPerson?: string | null
+  recordedByName?: string | null
+  recordedByUserId?: string | null
   paymentMethod?: string | null
   source: string
   mesa?: string | null
   notes?: string | null
   userId?: string | null
-  lines: SaleLineDetail[]
+  createdAt?: string | null
+  updatedAt?: string | null
+  cart?: { user?: SaleCartUserRef | null } | null
+  lines?: SaleLineDetail[]
 }
 
 export type SaleLineInputPayload = {
@@ -494,13 +860,13 @@ export async function fetchSales(
   if (opts.source?.trim()) q.set('source', opts.source.trim())
   if (opts.dateFrom?.trim()) q.set('dateFrom', opts.dateFrom.trim())
   if (opts.dateTo?.trim()) q.set('dateTo', opts.dateTo.trim())
-  const res = await fetch(`${base}/sales?${q}`)
+  const res = await apiFetch(`${base}/sales?${q}`)
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<SalesListResponse>
 }
 
 export async function fetchSale(base: string, id: string): Promise<SaleDetail> {
-  const res = await fetch(`${base}/sales/${id}`)
+  const res = await apiFetch(`${base}/sales/${id}`)
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<SaleDetail>
 }
@@ -509,7 +875,7 @@ export async function createSale(
   base: string,
   payload: CreateSalePayload,
 ): Promise<SaleDetail> {
-  const res = await fetch(`${base}/sales`, {
+  const res = await apiFetch(`${base}/sales`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -523,7 +889,7 @@ export async function patchSale(
   id: string,
   payload: PatchSalePayload,
 ): Promise<SaleDetail> {
-  const res = await fetch(`${base}/sales/${id}`, {
+  const res = await apiFetch(`${base}/sales/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -537,7 +903,7 @@ export async function replaceSaleLines(
   id: string,
   lines: SaleLineInputPayload[],
 ): Promise<SaleDetail> {
-  const res = await fetch(`${base}/sales/${id}/lines`, {
+  const res = await apiFetch(`${base}/sales/${id}/lines`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ lines }),
@@ -572,6 +938,44 @@ export type PatchPurchaseLotPayload = {
   totalValue?: number
 }
 
+/**
+ * Día de compra del lote: el API suele mandar `YYYY-MM-DD` o ISO (`…T…Z`).
+ * `new Date("YYYY-MM-DD")` se interpreta en UTC y en Colombia puede mostrarse un día antes;
+ * aquí usamos siempre el día civil del prefijo `YYYY-MM-DD` cuando existe.
+ */
+export function parsePurchaseLotDate(value: string): Date | null {
+  const s = value.trim()
+  if (!s) return null
+  const prefix = /^(\d{4})-(\d{2})-(\d{2})(?:$|[T\s])/i.exec(s)
+  if (prefix) {
+    const y = Number(prefix[1])
+    const mo = Number(prefix[2])
+    const d = Number(prefix[3])
+    const dt = new Date(y, mo - 1, d)
+    return Number.isNaN(dt.getTime()) ? null : dt
+  }
+  const dt = new Date(s)
+  return Number.isNaN(dt.getTime()) ? null : dt
+}
+
+export function formatPurchaseLotDate(
+  value: string | null | undefined,
+  dateStyle: 'short' | 'medium' | 'long' = 'medium',
+): string {
+  if (!value?.trim()) return '—'
+  const d = parsePurchaseLotDate(value)
+  if (!d) return value.trim()
+  return new Intl.DateTimeFormat('es-CO', { dateStyle }).format(d)
+}
+
+/** Valor para `<input type="date">` a partir de `purchaseDate` del API. */
+export function purchaseLotDateToInputValue(value: string): string {
+  const d = parsePurchaseLotDate(value)
+  if (!d) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
 export async function fetchPurchaseLots(
   base: string,
   opts: {
@@ -588,16 +992,35 @@ export async function fetchPurchaseLots(
   if (opts.search?.trim()) q.set('search', opts.search.trim())
   if (opts.dateFrom?.trim()) q.set('dateFrom', opts.dateFrom.trim())
   if (opts.dateTo?.trim()) q.set('dateTo', opts.dateTo.trim())
-  const res = await fetch(`${base}/purchase-lots?${q}`)
+  const res = await apiFetch(`${base}/purchase-lots?${q}`)
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<PurchaseLotsListResponse>
+}
+
+/** Mapa `purchase_lots.code` → fila (para cruzar con `inventory.lot`). */
+export async function fetchPurchaseLotsCodeIndex(
+  base: string,
+): Promise<Map<string, PurchaseLotRow>> {
+  const m = new Map<string, PurchaseLotRow>()
+  let page = 1
+  while (true) {
+    const res = await fetchPurchaseLots(base, { page, limit: 100 })
+    for (const row of res.data) {
+      const code = row.code?.trim()
+      if (code) m.set(code, row)
+    }
+    if (!res.meta.hasNextPage) break
+    page++
+    if (page > 200) break
+  }
+  return m
 }
 
 export async function fetchPurchaseLot(
   base: string,
   id: string,
 ): Promise<PurchaseLotRow> {
-  const res = await fetch(`${base}/purchase-lots/${id}`)
+  const res = await apiFetch(`${base}/purchase-lots/${id}`)
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<PurchaseLotRow>
 }
@@ -607,7 +1030,7 @@ export async function patchPurchaseLot(
   id: string,
   payload: PatchPurchaseLotPayload,
 ): Promise<PurchaseLotRow> {
-  const res = await fetch(`${base}/purchase-lots/${id}`, {
+  const res = await apiFetch(`${base}/purchase-lots/${id}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -654,4 +1077,48 @@ export async function fetchInventoryCategories(
             ? String(r.parent_id)
             : null,
     }))
+}
+
+export async function fetchActiveProductsCount(base: string): Promise<number> {
+  const res = await fetchProducts(base, { page: 1, limit: 1, active: true })
+  return res.meta.total
+}
+
+/** Totales globales del catálogo (sin filtros de búsqueda). */
+export async function fetchProductsCatalogStats(base: string): Promise<{
+  active: number
+  inactive: number
+  total: number
+}> {
+  const [activeRes, inactiveRes, allRes] = await Promise.all([
+    fetchProducts(base, { page: 1, limit: 1, active: true }),
+    fetchProducts(base, { page: 1, limit: 1, active: false }),
+    fetchProducts(base, { page: 1, limit: 1 }),
+  ])
+  return {
+    active: activeRes.meta.total,
+    inactive: inactiveRes.meta.total,
+    total: allRes.meta.total,
+  }
+}
+
+function qtyToNumber(v: string | number): number {
+  if (typeof v === 'number') return v
+  const n = parseFloat(String(v).replace(',', '.'))
+  return Number.isFinite(n) ? n : 0
+}
+
+export async function fetchInventoryInStockCount(base: string): Promise<number> {
+  let page = 1
+  let count = 0
+  while (true) {
+    const res = await fetchInventoryItems(base, { page, limit: 100 })
+    for (const row of res.data) {
+      if (qtyToNumber(row.quantity) > 0) count++
+    }
+    if (!res.meta.hasNextPage) break
+    page++
+    if (page > 100) break
+  }
+  return count
 }

@@ -4,13 +4,17 @@ import {
   fetchProducts,
   fetchSale,
   fetchSales,
+  formatPurchaseLotDate,
   patchSale,
   replaceSaleLines,
   type ProductRow,
+  saleListRowLineCount,
+  saleRowTotalNumeric,
   type SaleDetail,
   type SaleLineDetail,
   type SaleListRow,
 } from '../api'
+import { SectionSummaryBar, type SectionSummaryItem } from './SectionSummaryBar'
 
 const LIMIT = 15
 const SALE_SOURCES = ['MANUAL', 'CART', 'AI'] as const
@@ -34,13 +38,52 @@ function formatCOP(value: string | number): string {
   }).format(n)
 }
 
-function formatSaleDate(iso: string): string {
+function formatSaleDateLong(iso: string): string {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
   return new Intl.DateTimeFormat('es-CO', {
-    dateStyle: 'short',
+    dateStyle: 'full',
     timeStyle: 'short',
   }).format(d)
+}
+
+function formatSaleDateList(iso: string): { date: string; time: string } {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return { date: iso, time: '' }
+  return {
+    date: new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' }).format(d),
+    time: new Intl.DateTimeFormat('es-CO', { timeStyle: 'short' }).format(d),
+  }
+}
+
+function timeOnlyFromSaleDate(iso: string | null | undefined): string {
+  if (!iso?.trim()) return ''
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return new Intl.DateTimeFormat('es-CO', { timeStyle: 'short' }).format(d)
+}
+
+/** Fecha de columna: `saleDateOnly` (sin desfase TZ) + hora desde `saleDate`. */
+function saleListRowDateParts(row: SaleListRow): { date: string; time: string } {
+  if (row.saleDateOnly?.trim()) {
+    return {
+      date: formatPurchaseLotDate(row.saleDateOnly, 'medium'),
+      time: timeOnlyFromSaleDate(row.saleDate),
+    }
+  }
+  return formatSaleDateList(row.saleDate)
+}
+
+function truncateText(s: string | null | undefined, max: number): string {
+  const t = (s ?? '').trim()
+  if (!t) return '—'
+  if (t.length <= max) return t
+  return `${t.slice(0, max - 1)}…`
+}
+
+function shortSaleId(id: string): string {
+  if (id.length <= 10) return id
+  return `${id.slice(0, 8)}…`
 }
 
 function toDatetimeLocalValue(iso: string): string {
@@ -52,6 +95,8 @@ function toDatetimeLocalValue(iso: string): string {
 
 type LineDraft = {
   key: string
+  /** Id de línea en el servidor (para costo/margen de solo lectura). */
+  lineId?: string
   productId: string
   productName: string
   quantity: string
@@ -61,10 +106,11 @@ type LineDraft = {
 function linesFromDetail(lines: SaleLineDetail[]): LineDraft[] {
   return lines.map((l) => ({
     key: newLineKey(),
+    lineId: l.id,
     productId: l.productId ?? '',
     productName: l.productName,
     quantity: String(l.quantity),
-    unitPrice: String(l.unitPrice),
+    unitPrice: String(l.unitPrice ?? l.unit_price ?? ''),
   }))
 }
 
@@ -201,7 +247,7 @@ export function SalesManager({ baseUrl }: { baseUrl: string }) {
         const s = await fetchSale(baseUrl, id)
         setDetail(s)
         setHeader(headerFromSale(s))
-        setLineRows(linesFromDetail(s.lines))
+        setLineRows(linesFromDetail(s.lines ?? []))
       } catch (e) {
         setDetailError((e as Error).message)
         setDetail(null)
@@ -387,7 +433,7 @@ export function SalesManager({ baseUrl }: { baseUrl: string }) {
       const updated = await replaceSaleLines(baseUrl, selectedId, payloadLines)
       setDetail(updated)
       setHeader(headerFromSale(updated))
-      setLineRows(linesFromDetail(updated.lines))
+      setLineRows(linesFromDetail(updated.lines ?? []))
       const res = await fetchSales(baseUrl, {
         page,
         limit: LIMIT,
@@ -427,9 +473,53 @@ export function SalesManager({ baseUrl }: { baseUrl: string }) {
     return s + q * p
   }, 0)
 
+  const salesSummaryItems = useMemo((): SectionSummaryItem[] => {
+    let pageTotal = 0
+    let lineRowsCount = 0
+    for (const row of list) {
+      const t = saleRowTotalNumeric(row)
+      if (t != null) pageTotal += t
+      lineRowsCount += saleListRowLineCount(row)
+    }
+    const items: SectionSummaryItem[] = []
+    if (meta != null) {
+      items.push({
+        label: 'Ventas (filtro)',
+        value: meta.total,
+        title: 'Registros que cumplen búsqueda y fechas',
+      })
+    }
+    items.push(
+      {
+        label: 'En página',
+        value: list.length,
+        title: 'Filas en esta página',
+      },
+      {
+        label: 'Total pág.',
+        value: formatCOP(pageTotal),
+        title: 'Suma de totales de ventas en esta página',
+      },
+      {
+        label: 'Líneas pág.',
+        value: lineRowsCount,
+        title: 'Suma de líneas de ticket en esta página',
+      },
+    )
+    return items
+  }, [list, meta])
+
   return (
     <div className="products-layout">
       <div className="products-list-pane">
+        <div className="page-intro">
+          <h2 className="page-title">Ventas</h2>
+          <p className="muted page-subtitle">
+            Registro de ventas con fecha, totales y líneas. Abre una fila para
+            ver y editar el detalle.
+          </p>
+        </div>
+
         <div className="data-toolbar data-toolbar--stack">
           <div className="search-field">
             <span className="search-icon" aria-hidden />
@@ -492,6 +582,8 @@ export function SalesManager({ baseUrl }: { baseUrl: string }) {
           </div>
         </div>
 
+        <SectionSummaryBar section="sales" items={salesSummaryItems} />
+
         {listError && (
           <p className="error" role="alert">
             {listError}
@@ -504,12 +596,15 @@ export function SalesManager({ baseUrl }: { baseUrl: string }) {
             <table className="data-table data-table-striped">
               <thead>
                 <tr>
-                  <th>Fecha</th>
+                  <th>Ref.</th>
+                  <th>Fecha de venta</th>
+                  <th>Persona</th>
                   <th className="num">Total</th>
                   <th className="num">Líneas</th>
                   <th>Origen</th>
                   <th>Pago</th>
                   <th>Mesa</th>
+                  <th>Notas</th>
                 </tr>
               </thead>
               <tbody>
@@ -518,22 +613,48 @@ export function SalesManager({ baseUrl }: { baseUrl: string }) {
                     key={row.id}
                     className={selectedId === row.id ? 'row-active' : ''}
                   >
+                    <td className="mono muted" title={row.id}>
+                      {shortSaleId(row.id)}
+                    </td>
                     <td>
                       <button
                         type="button"
-                        className="table-link"
+                        className="table-link sale-list-datetime"
                         onClick={() => openSale(row.id)}
                       >
-                        {formatSaleDate(row.saleDate)}
+                        {(() => {
+                          const { date, time } = saleListRowDateParts(row)
+                          return (
+                            <>
+                              <span className="sale-list-date">{date}</span>
+                              {time && (
+                                <span className="sale-list-time muted">
+                                  {time}
+                                </span>
+                              )}
+                            </>
+                          )
+                        })()}
                       </button>
                     </td>
-                    <td className="num mono">{formatCOP(row.total)}</td>
-                    <td className="num">{row._count.lines}</td>
+                    <td className="muted sale-person-cell" title={row.displayPerson ?? undefined}>
+                      {row.displayPerson?.trim() || '—'}
+                    </td>
+                    <td className="num mono">
+                      {formatCOP(saleRowTotalNumeric(row) ?? Number.NaN)}
+                    </td>
+                    <td className="num">{saleListRowLineCount(row)}</td>
                     <td>
                       <span className="pill">{row.source}</span>
                     </td>
                     <td className="muted">{row.paymentMethod ?? '—'}</td>
                     <td className="muted">{row.mesa ?? '—'}</td>
+                    <td
+                      className="muted sale-notes-cell"
+                      title={(row.notes ?? '').trim() || undefined}
+                    >
+                      {truncateText(row.notes, 42)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -594,7 +715,108 @@ export function SalesManager({ baseUrl }: { baseUrl: string }) {
 
             {(!detailLoading || creating) && header && (
               <>
+                {!creating && detail && (
+                  <div
+                    className="panel-lot-meta sale-detail-readonly"
+                    aria-label="Resumen de la venta"
+                  >
+                    <div className="sale-detail-readonly-grid">
+                      <div>
+                        <strong>ID</strong>
+                        <div className="mono wrap-break">{detail.id}</div>
+                      </div>
+                      <div>
+                        <strong>Fecha de venta</strong>
+                        <div>
+                          {detail.saleDateOnly?.trim() && (
+                            <div>
+                              {formatPurchaseLotDate(detail.saleDateOnly, 'long')}
+                            </div>
+                          )}
+                          <div
+                            className={
+                              detail.saleDateOnly?.trim() ? 'muted small' : ''
+                            }
+                          >
+                            {formatSaleDateLong(detail.saleDate)}
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <strong>Persona</strong>
+                        <div>{detail.displayPerson?.trim() || '—'}</div>
+                      </div>
+                      {(detail.recordedByName?.trim() ||
+                        detail.recordedByUserId?.trim()) && (
+                        <div>
+                          <strong>Registró</strong>
+                          <div>
+                            {detail.recordedByName?.trim() || '—'}
+                            {detail.recordedByUserId?.trim() && (
+                              <span className="mono muted">
+                                {' '}
+                                · {detail.recordedByUserId}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      <div>
+                        <strong>Total</strong>
+                        <div className="mono">
+                          {formatCOP(saleRowTotalNumeric(detail) ?? Number.NaN)}
+                        </div>
+                      </div>
+                      <div>
+                        <strong>Origen</strong>
+                        <div>
+                          <span className="pill">{detail.source}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <strong>Medio de pago</strong>
+                        <div>{detail.paymentMethod?.trim() || '—'}</div>
+                      </div>
+                      <div>
+                        <strong>Mesa / ref.</strong>
+                        <div>{detail.mesa?.trim() || '—'}</div>
+                      </div>
+                      <div className="sale-detail-span">
+                        <strong>Notas</strong>
+                        <div className="wrap-break">
+                          {detail.notes?.trim() || '—'}
+                        </div>
+                      </div>
+                      <div>
+                        <strong>Líneas</strong>
+                        <div>{(detail.lines ?? []).length}</div>
+                      </div>
+                      {detail.userId?.trim() &&
+                        !detail.recordedByUserId?.trim() && (
+                          <div>
+                            <strong>Usuario (id)</strong>
+                            <div className="mono wrap-break">{detail.userId}</div>
+                          </div>
+                        )}
+                      {detail.createdAt && (
+                        <div>
+                          <strong>Creada (sistema)</strong>
+                          <div>{formatSaleDateLong(detail.createdAt)}</div>
+                        </div>
+                      )}
+                      {detail.updatedAt &&
+                        detail.updatedAt !== detail.createdAt && (
+                          <div>
+                            <strong>Última actualización</strong>
+                            <div>{formatSaleDateLong(detail.updatedAt)}</div>
+                          </div>
+                        )}
+                    </div>
+                  </div>
+                )}
+
                 <div className="sales-header-block">
+                  <h3 className="sales-edit-section-title">Editar cabecera</h3>
                   <label className="field">
                     <span>Fecha y hora</span>
                     <input
@@ -685,7 +907,7 @@ export function SalesManager({ baseUrl }: { baseUrl: string }) {
                           {' '}
                           · Total registrado:{' '}
                           <strong className="mono">
-                            {formatCOP(detail.total)}
+                            {formatCOP(saleRowTotalNumeric(detail) ?? Number.NaN)}
                           </strong>
                         </>
                       )}
@@ -711,6 +933,9 @@ export function SalesManager({ baseUrl }: { baseUrl: string }) {
                           <th className="col-qty">Cant.</th>
                           <th className="col-cost">P. unit.</th>
                           <th className="col-cost">Subt.</th>
+                          <th className="col-cost">Total línea</th>
+                          <th className="col-cost">Costo u.</th>
+                          <th className="col-cost">Margen</th>
                           <th className="col-actions" />
                         </tr>
                       </thead>
@@ -722,6 +947,29 @@ export function SalesManager({ baseUrl }: { baseUrl: string }) {
                             Number.isFinite(q) && Number.isFinite(p)
                               ? formatCOP(q * p)
                               : '—'
+                          const lineDetail =
+                            !creating && r.lineId && detail
+                              ? (detail.lines ?? []).find(
+                                  (x) => x.id === r.lineId,
+                                )
+                              : undefined
+                          const costCell =
+                            lineDetail?.costAtSale != null &&
+                            lineDetail.costAtSale !== ''
+                              ? formatCOP(lineDetail.costAtSale)
+                              : '—'
+                          const profitCell =
+                            lineDetail?.profit != null && lineDetail.profit !== ''
+                              ? formatCOP(lineDetail.profit)
+                              : '—'
+                          const lineTotalApi =
+                            lineDetail?.lineTotal != null &&
+                            lineDetail.lineTotal !== ''
+                              ? formatCOP(lineDetail.lineTotal)
+                              : lineDetail?.lineTotalCOP != null &&
+                                  String(lineDetail.lineTotalCOP).trim() !== ''
+                                ? formatCOP(lineDetail.lineTotalCOP)
+                                : '—'
                           return (
                             <tr key={r.key}>
                               <td>
@@ -783,6 +1031,9 @@ export function SalesManager({ baseUrl }: { baseUrl: string }) {
                                 />
                               </td>
                               <td className="col-cost mono">{sub}</td>
+                              <td className="col-cost mono muted">{lineTotalApi}</td>
+                              <td className="col-cost mono muted">{costCell}</td>
+                              <td className="col-cost mono muted">{profitCell}</td>
                               <td className="col-actions">
                                 <button
                                   type="button"

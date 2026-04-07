@@ -35,6 +35,39 @@
   --mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
+/* Tema claro */
+html[data-theme='light'] {
+  --text: #0f172a;
+  --heading: #0b1220;
+  --muted: #475569;
+  --surface: #f6f7fb;
+  --surface-elevated: #ffffff;
+  --border: #e2e8f0;
+  --input-bg: #ffffff;
+  --hover: rgba(15, 23, 42, 0.06);
+  --table-header: #f1f5f9;
+  --code-bg: rgba(15, 23, 42, 0.08);
+  --table-stripe: rgba(2, 132, 199, 0.06);
+  --header-border: rgba(2, 132, 199, 0.25);
+  --accent: #0ea5e9;
+  --accent-soft: rgba(14, 165, 233, 0.14);
+  --accent-text: #075985;
+  --accent-border: rgba(14, 165, 233, 0.35);
+  --berry: #0ea5e9;
+  --berry-light: #38bdf8;
+  --berry-dark: #0284c7;
+  --berry-glow: rgba(14, 165, 233, 0.22);
+  --tan: #f97316;
+  --tan-soft: rgba(249, 115, 22, 0.16);
+  --olive: #16a34a;
+  --shadow-soft: rgba(2, 6, 23, 0.08);
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.12);
+  --danger-border: rgba(220, 38, 38, 0.35);
+  --warn: #f97316;
+  --warn-soft: rgba(249, 115, 22, 0.14);
+}
+
 *,
 *::before,
 *::after {
@@ -49,6 +82,11 @@ body {
   color: var(--text);
   background: var(--surface);
   -webkit-font-smoothing: antialiased;
+}
+
+input[type='search'] {
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 #root {

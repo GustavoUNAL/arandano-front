@@ -2,9 +2,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   fetchPurchaseLot,
   fetchPurchaseLots,
+  formatPurchaseLotDate,
   patchPurchaseLot,
+  purchaseLotDateToInputValue,
   type PurchaseLotRow,
 } from '../api'
+import { SectionSummaryBar, type SectionSummaryItem } from './SectionSummaryBar'
 
 const LIMIT = 18
 
@@ -21,21 +24,6 @@ function formatCOP(value: string | number | null | undefined): string {
     currency: 'COP',
     maximumFractionDigits: 0,
   }).format(n)
-}
-
-function formatDate(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return iso
-  return new Intl.DateTimeFormat('es-CO', {
-    dateStyle: 'medium',
-  }).format(d)
-}
-
-function toDateInput(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
 export function PurchaseLotsView({ baseUrl }: { baseUrl: string }) {
@@ -113,7 +101,7 @@ export function PurchaseLotsView({ baseUrl }: { baseUrl: string }) {
       try {
         const d = await fetchPurchaseLot(baseUrl, row.id)
         setDraft({
-          purchaseDate: toDateInput(d.purchaseDate),
+          purchaseDate: purchaseLotDateToInputValue(d.purchaseDate),
           supplier: d.supplier ?? '',
           notes: d.notes ?? '',
           totalValue:
@@ -138,17 +126,19 @@ export function PurchaseLotsView({ baseUrl }: { baseUrl: string }) {
 
   const save = useCallback(async () => {
     if (!selectedId || !draft) return
-    const parts = draft.purchaseDate.split('-')
-    if (parts.length !== 3) {
+    const dateStr = draft.purchaseDate.trim()
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
       setSaveError('Fecha inválida.')
       return
     }
-    const iso = new Date(
-      Number(parts[0]),
-      Number(parts[1]) - 1,
-      Number(parts[2]),
-    )
-    if (Number.isNaN(iso.getTime())) {
+    const [y, mo, da] = dateStr.split('-').map(Number)
+    const check = new Date(y, mo - 1, da)
+    if (
+      Number.isNaN(check.getTime()) ||
+      check.getFullYear() !== y ||
+      check.getMonth() !== mo - 1 ||
+      check.getDate() !== da
+    ) {
       setSaveError('Fecha inválida.')
       return
     }
@@ -168,7 +158,7 @@ export function PurchaseLotsView({ baseUrl }: { baseUrl: string }) {
     setSaveError(null)
     try {
       await patchPurchaseLot(baseUrl, selectedId, {
-        purchaseDate: iso.toISOString(),
+        purchaseDate: dateStr,
         supplier: draft.supplier.trim() || undefined,
         notes: draft.notes.trim() || undefined,
         totalValue,
@@ -187,6 +177,46 @@ export function PurchaseLotsView({ baseUrl }: { baseUrl: string }) {
       setSaving(false)
     }
   }, [baseUrl, closePanel, draft, listQuery, page, selectedId])
+
+  const purchaseSummaryItems = useMemo((): SectionSummaryItem[] => {
+    let itemSum = 0
+    let valueSum = 0
+    for (const r of list) {
+      const ic =
+        typeof r.itemCount === 'number' && Number.isFinite(r.itemCount)
+          ? r.itemCount
+          : 0
+      itemSum += ic
+      const v = num(r.totalValue)
+      if (Number.isFinite(v)) valueSum += v
+    }
+    const items: SectionSummaryItem[] = []
+    if (meta != null) {
+      items.push({
+        label: 'Lotes (filtro)',
+        value: meta.total,
+        title: 'Compras que cumplen búsqueda y fechas',
+      })
+    }
+    items.push(
+      {
+        label: 'En página',
+        value: list.length,
+        title: 'Filas en esta página',
+      },
+      {
+        label: 'Ítems pág.',
+        value: itemSum,
+        title: 'Suma de ítems por lote en esta página',
+      },
+      {
+        label: 'Valor pág.',
+        value: formatCOP(valueSum),
+        title: 'Suma de valor total por lote en esta página',
+      },
+    )
+    return items
+  }, [list, meta])
 
   return (
     <div className="products-layout">
@@ -240,6 +270,8 @@ export function PurchaseLotsView({ baseUrl }: { baseUrl: string }) {
           </div>
         </div>
 
+        <SectionSummaryBar section="purchases" items={purchaseSummaryItems} />
+
         {listError && (
           <p className="error" role="alert">
             {listError}
@@ -274,7 +306,7 @@ export function PurchaseLotsView({ baseUrl }: { baseUrl: string }) {
                         {row.code}
                       </button>
                     </td>
-                    <td>{formatDate(row.purchaseDate)}</td>
+                    <td>{formatPurchaseLotDate(row.purchaseDate)}</td>
                     <td className="muted">{row.supplier ?? '—'}</td>
                     <td className="num">{row.itemCount}</td>
                     <td className="num mono">{formatCOP(row.totalValue)}</td>
