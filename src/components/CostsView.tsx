@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { fetchRecipeCosts, type RecipeCostLineRow } from '../api'
+import { CollapsibleFiltersToolbar } from './CollapsibleFiltersToolbar'
 import { SectionSummaryBar } from './SectionSummaryBar'
 
 function num(v: string | number | null | undefined): number {
@@ -17,6 +18,23 @@ function formatCOP(value: string | number | null | undefined): string {
   }).format(n)
 }
 
+function sortByProductAndOrder(a: RecipeCostLineRow, b: RecipeCostLineRow): number {
+  const pa = (a.productName ?? '').localeCompare(b.productName ?? '', 'es')
+  if (pa !== 0) return pa
+  return (a.sortOrder ?? 0) - (b.sortOrder ?? 0)
+}
+
+function paginationDots(current: number, total: number): number[] {
+  if (total <= 1) return []
+  const out: number[] = []
+  const start = Math.max(1, current - 2)
+  const end = Math.min(total, current + 2)
+  for (let p = start; p <= end; p++) out.push(p)
+  if (!out.includes(1)) out.unshift(1)
+  if (!out.includes(total)) out.push(total)
+  return out
+}
+
 function CostTable({
   rows,
   emptyLabel,
@@ -32,8 +50,6 @@ function CostTable({
       <table className="data-table data-table-striped">
         <thead>
           <tr>
-            <th>Producto</th>
-            <th>Categoría</th>
             <th>Concepto</th>
             <th className="num">Cant.</th>
             <th>Unidad</th>
@@ -44,8 +60,6 @@ function CostTable({
         <tbody>
           {rows.map((r) => (
             <tr key={r.id}>
-              <td>{r.productName}</td>
-              <td className="muted">{r.categoryName ?? '—'}</td>
               <td>{r.name}</td>
               <td className="num mono">{r.quantity ?? '—'}</td>
               <td className="muted">{r.unit}</td>
@@ -60,6 +74,7 @@ function CostTable({
 }
 
 export function CostsView({ baseUrl }: { baseUrl: string }) {
+  const PAGE_SIZE = 9
   const [data, setData] = useState<Awaited<
     ReturnType<typeof fetchRecipeCosts>
   > | null>(null)
@@ -71,6 +86,7 @@ export function CostsView({ baseUrl }: { baseUrl: string }) {
     'all',
   )
   const [filterCategory, setFilterCategory] = useState('')
+  const [page, setPage] = useState(1)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -95,155 +111,204 @@ export function CostsView({ baseUrl }: { baseUrl: string }) {
     return () => window.clearTimeout(t)
   }, [search])
 
-  const allRows = useMemo(() => {
-    if (!data) return [] as RecipeCostLineRow[]
-    return [...data.fixed, ...data.variable]
-  }, [data])
+  useEffect(() => {
+    setPage(1)
+  }, [searchDebounced, filterCategory, filterKind])
+
+  const products = useMemo(() => data?.products ?? [], [data])
 
   const categories = useMemo(() => {
     const s = new Set<string>()
-    for (const r of allRows) {
-      const name = (r.categoryName ?? '').trim()
+    for (const p of products) {
+      const name = (p.categoryName ?? '').trim()
       if (name) s.add(name)
     }
     return Array.from(s).sort((a, b) => a.localeCompare(b, 'es'))
-  }, [allRows])
+  }, [products])
 
-  const passesFilters = useCallback(
-    (r: RecipeCostLineRow) => {
-      if (filterKind !== 'all' && r.kind !== filterKind) return false
-      if (filterCategory && (r.categoryName ?? '') !== filterCategory) return false
-      const q = searchDebounced.trim().toLowerCase()
-      if (!q) return true
-      const hay = `${r.productName} ${r.categoryName ?? ''} ${r.name}`.toLowerCase()
-      return hay.includes(q)
-    },
-    [filterCategory, filterKind, searchDebounced],
-  )
+  const filteredProducts = useMemo(() => {
+    const q = searchDebounced.trim().toLowerCase()
+    return products
+      .map((p) => {
+        if (filterCategory && (p.categoryName ?? '') !== filterCategory) return null
 
-  const fixedRows = useMemo(() => {
-    if (!data) return []
-    return data.fixed.filter(passesFilters)
-  }, [data, passesFilters])
+        const baseRows = (p.rows ?? [...(p.fixed ?? []), ...(p.variable ?? [])]).map(
+          (r) => ({ ...r, productName: p.productName, categoryName: p.categoryName }),
+        )
 
-  const variableRows = useMemo(() => {
-    if (!data) return []
-    return data.variable.filter(passesFilters)
-  }, [data, passesFilters])
+        const rowsFiltered = baseRows.filter((r) => {
+          if (filterKind !== 'all' && r.kind !== filterKind) return false
+          if (!q) return true
+          const hay = `${p.productName} ${p.categoryName ?? ''} ${r.name}`.toLowerCase()
+          return hay.includes(q)
+        })
+
+        const visibleLineCount = rowsFiltered.length
+        if (q && visibleLineCount === 0) return null
+        return {
+          ...p,
+          rows: [...rowsFiltered].sort(sortByProductAndOrder),
+        }
+      })
+      .filter(Boolean) as Array<
+      (typeof products)[number] & {
+        rows: RecipeCostLineRow[]
+      }
+    >
+  }, [products, searchDebounced, filterCategory, filterKind])
 
   const totals = useMemo(() => {
-    const fixed = fixedRows.reduce((s, r) => s + num(r.lineTotalCOP), 0)
-    const variable = variableRows.reduce((s, r) => s + num(r.lineTotalCOP), 0)
-    return { fixed, variable, all: fixed + variable }
-  }, [fixedRows, variableRows])
+    let fixed = 0
+    let variable = 0
+    let fixedLines = 0
+    let variableLines = 0
+    for (const p of filteredProducts) {
+      for (const r of p.rows) {
+        if (r.kind === 'FIJO') {
+          fixed += num(r.lineTotalCOP)
+          fixedLines++
+        } else {
+          variable += num(r.lineTotalCOP)
+          variableLines++
+        }
+      }
+    }
+    return {
+      fixed,
+      variable,
+      all: fixed + variable,
+      fixedLines,
+      variableLines,
+      linesAll: fixedLines + variableLines,
+    }
+  }, [filteredProducts])
+
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE))
+  const pageSafe = Math.min(page, totalPages)
+  const pageDots = paginationDots(pageSafe, totalPages)
+  const pageStart = (pageSafe - 1) * PAGE_SIZE
+  const pageProducts = filteredProducts.slice(pageStart, pageStart + PAGE_SIZE)
 
   const costsSummaryItems = useMemo(
     () => [
       {
-        label: 'Líneas total',
-        value: allRows.length,
-        title: 'FIJO + VARIABLE sin filtrar búsqueda',
+        label: 'Productos',
+        value: products.length,
+        title: 'Productos con costos (según API)',
       },
       {
         label: 'Visibles',
-        value: fixedRows.length + variableRows.length,
-        title: 'Líneas que cumplen filtros',
+        value: filteredProducts.length,
+        title: 'Productos que cumplen filtros',
+      },
+      {
+        label: 'Líneas',
+        value: totals.linesAll,
+        title: 'Total líneas visibles (FIJO + VARIABLE)',
       },
       {
         label: 'FIJO',
-        value: fixedRows.length,
+        value: totals.fixedLines,
       },
       {
         label: 'VARIABLE',
-        value: variableRows.length,
+        value: totals.variableLines,
       },
       {
-        label: 'Total COP',
+        label: 'Total visible',
         value: formatCOP(totals.all),
         title: 'Suma de líneas visibles',
       },
+      ...(data
+        ? [
+            {
+              label: 'Total global',
+              value: formatCOP(data.totals.totalCOP),
+              title: 'Totales globales devueltos por la API',
+            },
+          ]
+        : []),
     ],
     [
-      allRows.length,
-      fixedRows.length,
-      variableRows.length,
+      data,
+      filteredProducts.length,
+      products.length,
       totals.all,
+      totals.fixedLines,
+      totals.linesAll,
+      totals.variableLines,
     ],
   )
+
+  const hasExtraFilters =
+    filterKind !== 'all' || filterCategory !== ''
 
   return (
     <div className="products-layout">
       <div className="products-list-pane">
-        <div className="page-intro">
-          <h2 className="page-title">Costos de recetas</h2>
+        <div className="page-intro page-intro--tight">
+          <h2 className="page-title">Costos por producto</h2>
           <p className="muted">
-            Líneas de costeo fijo y variable por producto (tabla{' '}
-            <span className="mono">costos</span> en la API).
+            <code className="mono">GET /recipes/costs</code> · Líneas por receta. Gastos
+            generales del negocio: menú <strong>Gastos</strong> (
+            <code className="mono">GET /gastos</code>).
           </p>
         </div>
 
-        <div className="data-toolbar data-toolbar--stack costs-toolbar">
-          <div className="search-field">
-            <span className="search-icon" aria-hidden />
-            <input
-              type="search"
-              placeholder="Buscar por producto, categoría o concepto…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="Buscar costos"
-            />
-          </div>
-          <div className="toolbar-filters toolbar-filters--wrap">
-            <label className="filter-field">
-              <span>Tipo</span>
-              <select
-                value={filterKind}
-                onChange={(e) =>
-                  setFilterKind(e.target.value as 'all' | 'FIJO' | 'VARIABLE')
-                }
-              >
-                <option value="all">Todos</option>
-                <option value="FIJO">FIJO</option>
-                <option value="VARIABLE">VARIABLE</option>
-              </select>
-            </label>
-            <label className="filter-field">
-              <span>Categoría</span>
-              <select
-                value={filterCategory}
-                onChange={(e) => setFilterCategory(e.target.value)}
-              >
-                <option value="">Todas</option>
-                {categories.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="button"
-              className="btn-secondary btn-compact"
-              onClick={() => {
-                setSearch('')
-                setFilterKind('all')
-                setFilterCategory('')
-              }}
-            >
-              Limpiar filtros
-            </button>
-          </div>
-          <div className="toolbar-actions">
-          <button
-            type="button"
-            className="btn-secondary btn-compact"
-            onClick={() => void load()}
-            disabled={loading}
-          >
-            Actualizar
-          </button>
-          </div>
-        </div>
+        <CollapsibleFiltersToolbar
+          search={search}
+          onSearchChange={setSearch}
+          searchPlaceholder="Buscar producto, categoría o concepto…"
+          searchAriaLabel="Buscar costos"
+          onRefresh={load}
+          refreshDisabled={loading}
+          hasActiveFilters={hasExtraFilters}
+          filterDrawer={
+            <div className="inventory-filter-bar__controls">
+              <label className="inventory-filter">
+                <span className="inventory-filter__label">Tipo</span>
+                <select
+                  className="inventory-filter__input"
+                  value={filterKind}
+                  onChange={(e) =>
+                    setFilterKind(e.target.value as 'all' | 'FIJO' | 'VARIABLE')
+                  }
+                >
+                  <option value="all">Todos</option>
+                  <option value="FIJO">FIJO</option>
+                  <option value="VARIABLE">VARIABLE</option>
+                </select>
+              </label>
+              <label className="inventory-filter">
+                <span className="inventory-filter__label">Categoría</span>
+                <select
+                  className="inventory-filter__input"
+                  value={filterCategory}
+                  onChange={(e) => setFilterCategory(e.target.value)}
+                >
+                  <option value="">Todas</option>
+                  {categories.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="inventory-filter-bar__actions inventory-filter-bar__actions--inline">
+                <button
+                  type="button"
+                  className="btn-secondary btn-compact"
+                  onClick={() => {
+                    setFilterKind('all')
+                    setFilterCategory('')
+                  }}
+                >
+                  Limpiar
+                </button>
+              </div>
+            </div>
+          }
+        />
 
         {!loading && data && (
           <SectionSummaryBar section="costs" items={costsSummaryItems} />
@@ -258,40 +323,119 @@ export function CostsView({ baseUrl }: { baseUrl: string }) {
 
         {!loading && data && (
           <>
-            <section className="cost-section" aria-labelledby="costs-fixed-h">
+            <div className="cost-overview-strip" aria-label="Resumen del filtro actual">
+              <span>
+                <strong>{filteredProducts.length}</strong> producto(s)
+              </span>
+              <span className="sep" aria-hidden>
+                ·
+              </span>
+              <span>
+                FIJO{' '}
+                <strong className="mono">{formatCOP(totals.fixed)}</strong>
+              </span>
+              <span className="sep" aria-hidden>
+                ·
+              </span>
+              <span>
+                VARIABLE{' '}
+                <strong className="mono">{formatCOP(totals.variable)}</strong>
+              </span>
+              <span className="sep" aria-hidden>
+                ·
+              </span>
+              <span>
+                Total filtrado <strong className="mono">{formatCOP(totals.all)}</strong>
+              </span>
+            </div>
+
+            <section className="cost-section" aria-label="Costos por producto">
               <div className="cost-section-head">
-                <h3 id="costs-fixed-h" className="cost-section-title">
-                  Costos fijos
-                </h3>
-                <span className="cost-section-total mono">
-                  {formatCOP(totals.fixed)}
-                </span>
+                <h3 className="cost-section-title">Productos</h3>
+                <span className="muted small">Expandir cada fila para el detalle</span>
               </div>
-              <CostTable
-                rows={fixedRows}
-                emptyLabel="No hay líneas de costo fijo registradas."
-              />
+
+              {filteredProducts.length === 0 ? (
+                <p className="empty-hint">No hay productos que coincidan con los filtros.</p>
+              ) : (
+                <>
+                  <div className="cost-products-grid">
+                    {pageProducts.map((p) => (
+                      <details
+                        key={p.productId}
+                        className="cost-product-details"
+                        aria-label={`Costos por producto: ${p.productName}`}
+                      >
+                        <summary className="cost-product-summary">
+                          <span className="cost-product-summary-title">
+                            {p.productName}{' '}
+                            {!p.productActive && (
+                              <span className="badge badge-muted">Inactivo</span>
+                            )}
+                          </span>
+                          <span className="cost-product-meta">
+                            {[p.categoryName?.trim() || '—', `${p.rows.length} línea(s)`].join(
+                              ' · ',
+                            )}
+                          </span>
+                          <span className="mono">{formatCOP(p.totals.totalCOP)}</span>
+                        </summary>
+
+                        <CostTable
+                          rows={p.rows}
+                          emptyLabel="Sin líneas visibles para este producto."
+                        />
+                      </details>
+                    ))}
+                  </div>
+                  {filteredProducts.length > PAGE_SIZE && (
+                    <div className="pagination-bar">
+                      <span className="muted">
+                        Página {pageSafe} de {totalPages} · {filteredProducts.length} producto
+                        {filteredProducts.length !== 1 ? 's' : ''}
+                      </span>
+                      {pageDots.length > 1 && (
+                        <div className="pager-dots" aria-hidden>
+                          {pageDots.map((p) => (
+                            <span
+                              key={p}
+                              className={`pager-dot${p === pageSafe ? ' is-active' : ''}`}
+                            />
+                          ))}
+                        </div>
+                      )}
+                      <div className="pager">
+                        <button
+                          type="button"
+                          disabled={pageSafe <= 1}
+                          onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        >
+                          Anterior
+                        </button>
+                        <button
+                          type="button"
+                          disabled={pageSafe >= totalPages}
+                          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        >
+                          Siguiente
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </section>
 
-            <section className="cost-section" aria-labelledby="costs-var-h">
-              <div className="cost-section-head">
-                <h3 id="costs-var-h" className="cost-section-title cost-section-title--var">
-                  Costos variables
-                </h3>
-                <span className="cost-section-total mono">
-                  {formatCOP(totals.variable)}
-                </span>
-              </div>
-              <CostTable
-                rows={variableRows}
-                emptyLabel="No hay líneas de costo variable registradas."
-              />
-            </section>
-
-            <div className="costs-summary-bar">
-              <span className="muted">Suma fijos + variables</span>
+            <div className="costs-summary-bar costs-summary-bar--slim">
+              <span className="muted">Total visible</span>
               <strong className="mono costs-summary-total">
                 {formatCOP(totals.all)}
+              </strong>
+              <span className="muted" style={{ marginLeft: '0.75rem' }}>
+                · Total global
+              </span>
+              <strong className="mono costs-summary-total">
+                {formatCOP(data.totals.totalCOP)}
               </strong>
             </div>
           </>

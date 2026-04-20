@@ -42,12 +42,28 @@ export function setAccessToken(token: string | null): void {
   }
 }
 
-export type TableInfo = { slug: string; sqlName: string }
+export type TableInfo = {
+  slug: string
+  sqlName: string
+  /** Presente en tablas con metadatos (p. ej. inventory, sales). */
+  title?: string
+  description?: string
+}
+
+/** Definición de columna alineada con Prisma (inventory, sales, etc.). */
+export type ExplorerColumnDef = {
+  key: string
+  label: string
+  description: string
+}
 
 export type TableRowsResponse = {
   total: number
+  /** Orden de celdas: mismo orden que columnDefs cuando aplica; si no, claves como antes. */
   columns: string[]
   rows: Record<string, unknown>[]
+  /** Si viene, usar label/description en cabeceras; orden igual que columns. */
+  columnDefs?: ExplorerColumnDef[]
 }
 
 export async function fetchTables(base: string): Promise<TableInfo[]> {
@@ -266,7 +282,10 @@ export type RecipeCostLineRow = {
   id: string
   recipeId: string
   productId: string
-  productName: string
+  productName?: string
+  productType?: string
+  productActive?: boolean
+  categoryId?: string
   categoryName: string | null
   kind: RecipeCostKind
   name: string
@@ -277,10 +296,26 @@ export type RecipeCostLineRow = {
   sortOrder: number
 }
 
-export type RecipeCostsResponse = {
+export type RecipeCostsProductGroup = {
+  productId: string
+  productName: string
+  productType?: string
+  productActive: boolean
+  categoryId?: string
+  categoryName: string | null
+  recipeId: string
   fixed: RecipeCostLineRow[]
   variable: RecipeCostLineRow[]
-  totals: { fixedCOP: string; variableCOP: string }
+  /** Flat (fixed + variable) ordenado para UI. */
+  rows?: RecipeCostLineRow[]
+  totals: { fixedCOP: string; variableCOP: string; totalCOP: string }
+}
+
+export type RecipeCostsResponse = {
+  products: RecipeCostsProductGroup[]
+  /** Flat global (una fila por costo) para UI. */
+  rows?: RecipeCostLineRow[]
+  totals: { fixedCOP: string; variableCOP: string; totalCOP: string }
 }
 
 export async function fetchRecipeCosts(
@@ -289,6 +324,54 @@ export async function fetchRecipeCosts(
   const res = await apiFetch(`${base}/recipes/costs`)
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<RecipeCostsResponse>
+}
+
+export type GastosByTypeGroup = {
+  type: string
+  items: Array<{
+    id: string
+    type: string
+    name: string
+    kind: RecipeCostKind
+    unit: string
+    lineTotalCOP: string
+  }>
+  totalCOP: string
+}
+
+export type GastosResponse = {
+  fixed: Array<{
+    id: string
+    type: string
+    name: string
+    unit: string
+    lineTotalCOP: string
+  }>
+  variable: Array<{
+    id: string
+    type: string
+    name: string
+    unit: string
+    lineTotalCOP: string
+  }>
+  /** Flat con todos los gastos (ideal para tablas). */
+  items?: Array<{
+    id: string
+    type: string
+    name: string
+    kind: RecipeCostKind
+    unit: string
+    lineTotalCOP: string
+  }>
+  fixedByType?: GastosByTypeGroup[]
+  variableByType?: GastosByTypeGroup[]
+  totals: { fixedCOP: string; variableCOP: string; totalCOP: string }
+}
+
+export async function fetchGastos(base: string): Promise<GastosResponse> {
+  const res = await apiFetch(`${base}/gastos`)
+  if (!res.ok) throw new Error(await parseJsonError(res))
+  return res.json() as Promise<GastosResponse>
 }
 
 export type ProductRecipeIngredientLine = {
@@ -374,6 +457,8 @@ export type ProductRecipeFull = {
   recipeYield: string
   ingredients: ProductRecipeIngredientLine[]
   costs: ProductRecipeCostLine[]
+  /** Tasa de administración (p. ej. 0.30). */
+  adminRate?: number
 }
 
 export function parseProductRecipeFull(recipe: unknown): ProductRecipeFull | null {
@@ -383,11 +468,79 @@ export function parseProductRecipeFull(recipe: unknown): ProductRecipeFull | nul
     ingredients?: unknown[]
     lines?: unknown[]
     costs?: unknown[]
+    adminRate?: number
   }
   const base = parseProductRecipe(recipe)
   if (!base) return null
   const costsRaw = Array.isArray(r.costs) ? (r.costs as ProductRecipeCostLine[]) : []
-  return { ...base, costs: costsRaw }
+  const adminRate =
+    typeof r.adminRate === 'number' && Number.isFinite(r.adminRate)
+      ? r.adminRate
+      : undefined
+  return { ...base, costs: costsRaw, ...(adminRate !== undefined ? { adminRate } : {}) }
+}
+
+/** Totales base y tasa de administración (GET /products/:id/recipe/cost-controls). */
+export type RecipeCostControlsResponse = {
+  adminRate: number
+  materialsCOP: number
+  servicesCOP: number
+  baseCOP: number
+}
+
+export async function fetchRecipeCostControls(
+  base: string,
+  productId: string,
+): Promise<RecipeCostControlsResponse> {
+  const res = await apiFetch(`${base}/products/${productId}/recipe/cost-controls`)
+  if (!res.ok) throw new Error(await parseJsonError(res))
+  return res.json() as Promise<RecipeCostControlsResponse>
+}
+
+export async function updateRecipeAdminRate(
+  base: string,
+  productId: string,
+  payload: { adminRate: number },
+): Promise<void> {
+  const res = await apiFetch(`${base}/products/${productId}/recipe/admin`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(await parseJsonError(res))
+}
+
+// ——— Compras: tipos base (anidados en inventario y usados más abajo en el API) ———
+
+export type PurchaseLotRow = {
+  id: string
+  code: string
+  /** Nombre legible del lote (si el API lo envía); si no, usar `code` en UI. */
+  name?: string | null
+  purchaseDate: string
+  supplier?: string | null
+  /**
+   * Proveedor del lote (`purchase_lots.supplier`) o, si vacío, el primer
+   * proveedor no nulo de inventario con el mismo código de lote (GET list/detail).
+   */
+  supplierResolved?: string | null
+  notes?: string | null
+  itemCount: number
+  totalValue?: string | number | null
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type PurchaseLotsListResponse = {
+  data: PurchaseLotRow[]
+  meta: { page: number; limit: number; total: number; hasNextPage: boolean }
+}
+
+export type PatchPurchaseLotPayload = {
+  purchaseDate?: string
+  supplier?: string
+  notes?: string
+  totalValue?: number
 }
 
 export type InventoryOption = {
@@ -396,9 +549,29 @@ export type InventoryOption = {
   unit: string
   unitCostCOP: string
   quantity: string
+  /** Nombre/código de lote para UI (desde `purchaseLot` o `lot`). */
+  lotLabel?: string | null
 }
 
 // ——— Inventory API ———
+
+/** Agregados de movimientos (tipos IN, SALE, OUT, WASTE, ADJUSTMENT) cuando `includeStats=true`. */
+export type InventoryMovementStats = {
+  received?: number
+  consumedViaSales?: number
+  consumedViaOut?: number
+  consumedTotal?: number
+  waste?: number
+  adjustment?: number
+}
+
+/** Estadísticas físicas por ítem (GET /inventory?includeStats=true). */
+export type InventoryItemStats = {
+  onHand?: number
+  minStock?: number | null
+  belowMinimum?: boolean
+  movements?: InventoryMovementStats
+}
 
 export type InventoryRow = {
   id: string
@@ -411,6 +584,13 @@ export type InventoryRow = {
   lot?: string | null
   minStock?: string | number | null
   category: { id: string; name: string; type: string }
+  /**
+   * Lote de compra enlazado por FK (`inventory.lot` → `purchase_lots.code`).
+   * Listado y detalle; `null` si `lot` es null.
+   */
+  purchaseLot?: PurchaseLotRow | null
+  /** Presente cuando la petición lleva `includeStats=true`. */
+  stats?: InventoryItemStats
 }
 
 export type InventoryListResponse = {
@@ -438,6 +618,14 @@ export async function fetchInventoryItems(
     limit?: number
     search?: string
     categoryId?: string
+    /** Incluye agregados de movimientos y flags de mínimo (contrato API). */
+    includeStats?: boolean
+    /** Disponible (cantidad mayor que 0) vs consumido (0). Omitir = todos. */
+    availability?: 'available' | 'depleted'
+    /** Solo ítems bajo stock mínimo (API debe soportar el query). */
+    belowMinimum?: boolean
+    /** Filtro por código de lote (coincidencia según backend). */
+    lot?: string
   },
 ): Promise<InventoryListResponse> {
   const q = new URLSearchParams()
@@ -445,6 +633,12 @@ export async function fetchInventoryItems(
   q.set('limit', String(Math.min(opts.limit ?? 24, 100)))
   if (opts.search?.trim()) q.set('search', opts.search.trim())
   if (opts.categoryId?.trim()) q.set('categoryId', opts.categoryId.trim())
+  if (opts.includeStats) q.set('includeStats', 'true')
+  if (opts.availability === 'available' || opts.availability === 'depleted') {
+    q.set('availability', opts.availability)
+  }
+  if (opts.belowMinimum === true) q.set('belowMinimum', 'true')
+  if (opts.lot?.trim()) q.set('lot', opts.lot.trim())
   const res = await apiFetch(`${base}/inventory?${q}`)
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<InventoryListResponse>
@@ -453,8 +647,12 @@ export async function fetchInventoryItems(
 export async function fetchInventoryItem(
   base: string,
   id: string,
+  opts?: { includeStats?: boolean },
 ): Promise<InventoryRow> {
-  const res = await apiFetch(`${base}/inventory/${id}`)
+  const q = new URLSearchParams()
+  if (opts?.includeStats) q.set('includeStats', 'true')
+  const qs = q.toString()
+  const res = await apiFetch(`${base}/inventory/${id}${qs ? `?${qs}` : ''}`)
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<InventoryRow>
 }
@@ -491,6 +689,84 @@ export async function deleteInventoryItem(base: string, id: string): Promise<voi
   if (!res.ok) throw new Error(await parseJsonError(res))
 }
 
+// ——— Navigation (contrato front / API) ———
+
+/** Sección en GET /navigation (domainModel v2 o raíz). */
+export type NavigationSectionContract = {
+  id?: string
+  key?: string
+  title?: string
+  subtitle?: string
+  domain?: string
+  domainModel?: {
+    version?: number
+    purchases?: {
+      mapsTo?: Record<string, string>
+      note?: string
+    }
+    inventory?: {
+      listWithStats?: string
+      stock_movements?: string
+      note?: string
+    }
+  }
+}
+
+export type NavigationPayload = {
+  version?: number
+  sections?: NavigationSectionContract[]
+  domainModel?: {
+    version?: number
+    sections?: NavigationSectionContract[]
+  }
+}
+
+/** Normaliza respuesta: a veces `sections` viene bajo `domainModel`. */
+export function normalizeNavigationPayload(raw: unknown): NavigationPayload | null {
+  if (!raw || typeof raw !== 'object') return null
+  const o = raw as NavigationPayload & Record<string, unknown>
+  const dm = o.domainModel
+  if (dm && typeof dm === 'object' && Array.isArray(dm.sections)) {
+    return {
+      version: dm.version ?? o.version,
+      sections: dm.sections,
+      domainModel: dm,
+    }
+  }
+  if (Array.isArray(o.sections)) return o
+  return null
+}
+
+export async function fetchNavigation(base: string): Promise<NavigationPayload | null> {
+  const res = await apiFetch(`${base}/navigation`)
+  if (!res.ok) throw new Error(await parseJsonError(res))
+  const raw = await res.json()
+  return normalizeNavigationPayload(raw)
+}
+
+/** Subtítulo de sección por `id` o por `domain` (p. ej. financial_entry vs stock físico). */
+export function navigationSubtitleFor(
+  nav: NavigationPayload | null,
+  match: 'purchases' | 'inventory',
+): string | undefined {
+  const sections = nav?.sections ?? nav?.domainModel?.sections
+  if (!sections?.length) return undefined
+  if (match === 'purchases') {
+    const hit =
+      sections.find((s) => s.id === 'purchases' || s.key === 'purchases') ??
+      sections.find((s) => s.domain === 'financial_entry')
+    return hit?.subtitle
+  }
+  const hit =
+    sections.find((s) => s.id === 'inventory' || s.key === 'inventory') ??
+    sections.find(
+      (s) =>
+        s.domain &&
+        /physical|inventory|stock|resource/i.test(String(s.domain)),
+    )
+  return hit?.subtitle
+}
+
 /** Insumos activos para recetas (pagina GET /inventory). */
 export async function fetchInventoryOptions(
   base: string,
@@ -507,6 +783,7 @@ export async function fetchInventoryOptions(
         unit: row.unit,
         unitCostCOP: String(row.unitCost),
         quantity: String(row.quantity),
+        lotLabel: inventoryLotDisplayLabel(row),
       })
       if (out.length >= maxRows) break
     }
@@ -912,31 +1189,7 @@ export async function replaceSaleLines(
   return res.json() as Promise<SaleDetail>
 }
 
-// ——— Compras (lotes de compra) ———
-
-export type PurchaseLotRow = {
-  id: string
-  code: string
-  purchaseDate: string
-  supplier?: string | null
-  notes?: string | null
-  itemCount: number
-  totalValue?: string | number | null
-  createdAt?: string
-  updatedAt?: string
-}
-
-export type PurchaseLotsListResponse = {
-  data: PurchaseLotRow[]
-  meta: { page: number; limit: number; total: number; hasNextPage: boolean }
-}
-
-export type PatchPurchaseLotPayload = {
-  purchaseDate?: string
-  supplier?: string
-  notes?: string
-  totalValue?: number
-}
+// ——— Compras (lotes de compra): fechas, fetch ———
 
 /**
  * Día de compra del lote: el API suele mandar `YYYY-MM-DD` o ISO (`…T…Z`).
@@ -974,6 +1227,42 @@ export function purchaseLotDateToInputValue(value: string): string {
   if (!d) return ''
   const pad = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+/** Texto de proveedor para UI: resuelto (lote + fallback inventario) o `supplier` del lote. */
+export function displayPurchaseLotSupplier(row: {
+  supplier?: string | null
+  supplierResolved?: string | null
+}): string {
+  const r = row.supplierResolved?.trim()
+  if (r) return r
+  return row.supplier?.trim() || ''
+}
+
+/** Etiqueta de lote para filas de inventario (prioriza `purchaseLot` del API). */
+export function inventoryLotDisplayLabel(row: InventoryRow): string | null {
+  const pl = row.purchaseLot
+  if (pl) {
+    const n = pl.name?.trim()
+    if (n) return n
+    const c = pl.code?.trim()
+    return c || null
+  }
+  return row.lot?.trim() || null
+}
+
+/**
+ * Metadatos del lote para una fila de inventario: objeto anidado `purchaseLot`
+ * o, en su defecto, entrada del mapa por código (respaldo).
+ */
+export function inventoryResolvedPurchaseLot(
+  row: InventoryRow,
+  fallbackByCode?: Map<string, PurchaseLotRow> | null,
+): PurchaseLotRow | undefined {
+  if (row.purchaseLot) return row.purchaseLot
+  const code = row.lot?.trim()
+  if (code && fallbackByCode) return fallbackByCode.get(code)
+  return undefined
 }
 
 export async function fetchPurchaseLots(
@@ -1099,6 +1388,51 @@ export async function fetchProductsCatalogStats(base: string): Promise<{
     active: activeRes.meta.total,
     inactive: inactiveRes.meta.total,
     total: allRes.meta.total,
+  }
+}
+
+function productRowPriceNum(p: ProductRow): number {
+  if (typeof p.price === 'number') return p.price
+  const n = parseFloat(String(p.price).replace(',', '.'))
+  return Number.isFinite(n) ? n : 0
+}
+
+/** Recorre todo el catálogo (sin filtros) para precio medio y conteos por categoría. */
+export type ProductsCatalogSummary = {
+  total: number
+  averagePriceCOP: number
+  perCategory: { categoryId: string; count: number }[]
+}
+
+export async function fetchProductsCatalogSummary(
+  base: string,
+): Promise<ProductsCatalogSummary> {
+  const all: ProductRow[] = []
+  let page = 1
+  const limit = 100
+  let reportedTotal = 0
+  while (true) {
+    const res = await fetchProducts(base, { page, limit, sort: 'name' })
+    if (page === 1) reportedTotal = res.meta.total
+    all.push(...res.data)
+    if (!res.meta.hasNextPage) break
+    page += 1
+    if (page > 500) break
+  }
+  const byCat = new Map<string, number>()
+  let sum = 0
+  for (const p of all) {
+    sum += productRowPriceNum(p)
+    byCat.set(p.categoryId, (byCat.get(p.categoryId) ?? 0) + 1)
+  }
+  const n = all.length
+  const perCategory = [...byCat.entries()]
+    .map(([categoryId, count]) => ({ categoryId, count }))
+    .sort((a, b) => b.count - a.count)
+  return {
+    total: reportedTotal || n,
+    averagePriceCOP: n > 0 ? sum / n : 0,
+    perCategory,
   }
 }
 

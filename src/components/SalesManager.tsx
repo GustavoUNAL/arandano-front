@@ -19,6 +19,17 @@ import { SectionSummaryBar, type SectionSummaryItem } from './SectionSummaryBar'
 const LIMIT = 15
 const SALE_SOURCES = ['MANUAL', 'CART', 'AI'] as const
 
+function paginationDots(current: number, total: number): number[] {
+  if (total <= 1) return []
+  const out: number[] = []
+  const start = Math.max(1, current - 2)
+  const end = Math.min(total, current + 2)
+  for (let p = start; p <= end; p++) out.push(p)
+  if (!out.includes(1)) out.unshift(1)
+  if (!out.includes(total)) out.push(total)
+  return out
+}
+
 function newLineKey(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
 }
@@ -185,7 +196,7 @@ export function SalesManager({ baseUrl }: { baseUrl: string }) {
 
   const salesListQuery = useMemo(
     () => ({
-      search: searchDebounced,
+      search: searchDebounced.trim() || undefined,
       source: filterSource || undefined,
       dateFrom: filterDateFrom || undefined,
       dateTo: filterDateTo || undefined,
@@ -484,9 +495,9 @@ export function SalesManager({ baseUrl }: { baseUrl: string }) {
     const items: SectionSummaryItem[] = []
     if (meta != null) {
       items.push({
-        label: 'Ventas (filtro)',
+        label: 'Ventas',
         value: meta.total,
-        title: 'Registros que cumplen búsqueda y fechas',
+        title: 'Total de registros',
       })
     }
     items.push(
@@ -508,33 +519,34 @@ export function SalesManager({ baseUrl }: { baseUrl: string }) {
     )
     return items
   }, [list, meta])
+  const totalPages =
+    meta && meta.limit > 0 ? Math.max(1, Math.ceil(meta.total / meta.limit)) : 1
+  const pageDots = paginationDots(page, totalPages)
 
   return (
     <div className="products-layout">
       <div className="products-list-pane">
         <div className="page-intro">
           <h2 className="page-title">Ventas</h2>
-          <p className="muted page-subtitle">
-            Registro de ventas con fecha, totales y líneas. Abre una fila para
-            ver y editar el detalle.
-          </p>
         </div>
 
-        <div className="data-toolbar data-toolbar--stack">
-          <div className="search-field">
-            <span className="search-icon" aria-hidden />
-            <input
-              type="search"
-              placeholder="Buscar por producto, mesa, pago…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="Buscar ventas"
-            />
-          </div>
-          <div className="toolbar-filters toolbar-filters--wrap">
-            <label className="filter-field">
-              <span>Origen</span>
+        <div className="inventory-filter-bar app-toolbar-zone">
+          <div className="inventory-filter-bar__controls" role="search">
+            <label className="inventory-filter">
+              <span className="inventory-filter__label">Buscar</span>
+              <input
+                className="inventory-filter__input"
+                type="search"
+                placeholder="Producto, mesa, pago, notas…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                aria-label="Buscar ventas"
+              />
+            </label>
+            <label className="inventory-filter">
+              <span className="inventory-filter__label">Origen</span>
               <select
+                className="inventory-filter__input"
                 value={filterSource}
                 onChange={(e) => setFilterSource(e.target.value)}
               >
@@ -546,22 +558,26 @@ export function SalesManager({ baseUrl }: { baseUrl: string }) {
                 ))}
               </select>
             </label>
-            <label className="filter-field">
-              <span>Desde</span>
+            <label className="inventory-filter">
+              <span className="inventory-filter__label">Desde</span>
               <input
+                className="inventory-filter__input"
                 type="date"
                 value={filterDateFrom}
                 onChange={(e) => setFilterDateFrom(e.target.value)}
               />
             </label>
-            <label className="filter-field">
-              <span>Hasta</span>
+            <label className="inventory-filter">
+              <span className="inventory-filter__label">Hasta</span>
               <input
+                className="inventory-filter__input"
                 type="date"
                 value={filterDateTo}
                 onChange={(e) => setFilterDateTo(e.target.value)}
               />
             </label>
+          </div>
+          <div className="inventory-filter-bar__actions">
             <button
               type="button"
               className="btn-secondary btn-compact"
@@ -572,10 +588,8 @@ export function SalesManager({ baseUrl }: { baseUrl: string }) {
                 setFilterDateTo('')
               }}
             >
-              Limpiar filtros
+              Limpiar
             </button>
-          </div>
-          <div className="toolbar-actions">
             <button type="button" className="btn-primary" onClick={openCreate}>
               Nueva venta
             </button>
@@ -667,6 +681,16 @@ export function SalesManager({ baseUrl }: { baseUrl: string }) {
             <span className="muted">
               {meta.total} venta{meta.total !== 1 ? 's' : ''}
             </span>
+            {pageDots.length > 1 && (
+              <div className="pager-dots" aria-hidden>
+                {pageDots.map((p) => (
+                  <span
+                    key={p}
+                    className={`pager-dot${p === page ? ' is-active' : ''}`}
+                  />
+                ))}
+              </div>
+            )}
             <div className="pager">
               <button
                 type="button"

@@ -13,16 +13,18 @@ export type SectionSummarySection =
   | 'sales'
   | 'purchases'
   | 'costs'
+  | 'gastos'
   | 'explorer'
 
 const SECTION_HEADINGS: Record<SectionSummarySection, string> = {
   products: 'Resumen · Productos',
   recipes: 'Resumen · Recetas',
   inventory: 'Resumen · Inventario',
-  sales: 'Resumen · Ventas',
+  sales: 'Resumen',
   purchases: 'Resumen · Compras',
-  costs: 'Resumen · Costos',
-  explorer: 'Resumen · Explorador',
+  costs: 'Resumen · Costos por producto',
+  gastos: 'Resumen · Gastos',
+  explorer: 'Resumen · DB',
 }
 
 export function SectionSummaryBar({

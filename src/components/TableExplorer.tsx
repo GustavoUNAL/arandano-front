@@ -2,12 +2,24 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   fetchTableRows,
   fetchTables,
+  type ExplorerColumnDef,
   type TableInfo,
   type TableRowsResponse,
 } from '../api'
 import { SectionSummaryBar } from './SectionSummaryBar'
 
 const PAGE_SIZE = 75
+
+function paginationDots(current: number, total: number): number[] {
+  if (total <= 1) return []
+  const out: number[] = []
+  const start = Math.max(1, current - 2)
+  const end = Math.min(total, current + 2)
+  for (let p = start; p <= end; p++) out.push(p)
+  if (!out.includes(1)) out.unshift(1)
+  if (!out.includes(total)) out.push(total)
+  return out
+}
 
 function cellPreview(value: unknown): string {
   if (value === null || value === undefined) return '—'
@@ -79,8 +91,25 @@ export function TableExplorer({ baseUrl }: { baseUrl: string }) {
   }, [baseUrl, selected, page])
 
   const columns = useMemo(() => data?.columns ?? [], [data])
+
+  const columnDefByKey = useMemo(() => {
+    const defs = data?.columnDefs
+    if (!defs?.length) return null
+    const m = new Map<string, ExplorerColumnDef>()
+    for (const d of defs) {
+      m.set(d.key, d)
+    }
+    return m
+  }, [data?.columnDefs])
+
+  const selectedMeta = useMemo(
+    () => (selected ? tables.find((t) => t.slug === selected) : undefined),
+    [selected, tables],
+  )
+
   const totalPages =
     data && data.total > 0 ? Math.ceil(data.total / PAGE_SIZE) : 0
+  const pageDots = paginationDots(page + 1, totalPages)
 
   const pickTable = useCallback((slug: string) => {
     setSelected(slug)
@@ -137,8 +166,14 @@ export function TableExplorer({ baseUrl }: { baseUrl: string }) {
                   type="button"
                   className={t.slug === selected ? 'active' : ''}
                   onClick={() => pickTable(t.slug)}
+                  title={t.description ?? t.sqlName}
                 >
-                  {t.slug}
+                  <span className="explorer-nav__label">
+                    {t.title ?? t.slug}
+                  </span>
+                  {t.title && t.title !== t.slug && (
+                    <span className="explorer-nav__slug muted">{t.slug}</span>
+                  )}
                 </button>
               </li>
             ))}
@@ -148,7 +183,7 @@ export function TableExplorer({ baseUrl }: { baseUrl: string }) {
 
       <div className="explorer-main">
         <div className="page-intro">
-          <h2 className="page-title">Explorador SQL</h2>
+          <h2 className="page-title">DB</h2>
           <p className="muted page-subtitle">
             Vista de solo lectura de tablas expuestas por la API.
           </p>
@@ -169,14 +204,36 @@ export function TableExplorer({ baseUrl }: { baseUrl: string }) {
 
         {selected && (
           <>
-            <div className="toolbar">
-              <h2 className="mono">{selected}</h2>
+            <div className="toolbar explorer-toolbar">
+              <div className="explorer-toolbar__titles">
+                <h2 className="explorer-toolbar__name">
+                  {selectedMeta?.title ?? selected}
+                </h2>
+                {selectedMeta?.description && (
+                  <p className="explorer-toolbar__desc muted">
+                    {selectedMeta.description}
+                  </p>
+                )}
+                <p className="explorer-toolbar__slug mono muted">
+                  <code>{selected}</code>
+                </p>
+              </div>
               {data && (
                 <span className="muted">
                   {data.total} fila{data.total !== 1 ? 's' : ''} · página{' '}
                   {page + 1}
                   {totalPages > 0 ? ` / ${totalPages}` : ''}
                 </span>
+              )}
+              {pageDots.length > 1 && (
+                <div className="pager-dots" aria-hidden>
+                  {pageDots.map((p) => (
+                    <span
+                      key={p}
+                      className={`pager-dot${p === page + 1 ? ' is-active' : ''}`}
+                    />
+                  ))}
+                </div>
               )}
               <div className="pager">
                 <button
@@ -208,23 +265,39 @@ export function TableExplorer({ baseUrl }: { baseUrl: string }) {
             {rowsLoading && <p className="muted">Cargando filas…</p>}
 
             {data && columns.length > 0 && (
-              <div className="table-wrap">
-                <table>
+              <div className="table-wrap explorer-table-wrap">
+                <table className="explorer-data-table">
                   <thead>
                     <tr>
-                      {columns.map((c) => (
-                        <th key={c}>{c}</th>
-                      ))}
+                      {columns.map((c) => {
+                        const def = columnDefByKey?.get(c)
+                        const header = def?.label ?? c
+                        const tip = def?.description?.trim()
+                        return (
+                          <th key={c} title={tip || undefined} scope="col">
+                            {header}
+                          </th>
+                        )
+                      })}
                     </tr>
                   </thead>
                   <tbody>
                     {data.rows.map((row, i) => (
                       <tr key={row.id != null ? String(row.id) : i}>
-                        {columns.map((c) => (
-                          <td key={c} title={cellPreview(row[c])}>
-                            {cellPreview(row[c])}
-                          </td>
-                        ))}
+                        {columns.map((c) => {
+                          const def = columnDefByKey?.get(c)
+                          const raw = row[c]
+                          const preview = cellPreview(raw)
+                          const cellTip =
+                            def?.description != null && def.description !== ''
+                              ? `${def.label}: ${def.description}\n\n${preview}`
+                              : preview
+                          return (
+                            <td key={c} title={cellTip}>
+                              {preview}
+                            </td>
+                          )
+                        })}
                       </tr>
                     ))}
                   </tbody>

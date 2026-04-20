@@ -28,13 +28,25 @@ function replaceRouteToRecipesList(): void {
   window.history.replaceState({}, '', '#/recipes')
 }
 
+function paginationDots(current: number, total: number): number[] {
+  if (total <= 1) return []
+  const out: number[] = []
+  const start = Math.max(1, current - 2)
+  const end = Math.min(total, current + 2)
+  for (let p = start; p <= end; p++) out.push(p)
+  if (!out.includes(1)) out.unshift(1)
+  if (!out.includes(total)) out.push(total)
+  return out
+}
+
 export function RecipesView({ baseUrl }: { baseUrl: string }) {
+  const PAGE_SIZE = 24
   const [categories, setCategories] = useState<CategoryRef[]>([])
   const [catalog, setCatalog] = useState<RecipeCatalogEntry[]>([])
   const [inventory, setInventory] = useState<InventoryOption[]>([])
-  const [filterCategoryId, setFilterCategoryId] = useState('')
   const [search, setSearch] = useState('')
   const [searchDebounced, setSearchDebounced] = useState('')
+  const [page, setPage] = useState(1)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [loadingList, setLoadingList] = useState(true)
 
@@ -52,18 +64,14 @@ export function RecipesView({ baseUrl }: { baseUrl: string }) {
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
 
-  const refreshCatalog = useCallback(async () => {
-    const list = await fetchRecipeCatalog(
-      baseUrl,
-      filterCategoryId || undefined,
-    )
-    setCatalog(list)
-  }, [baseUrl, filterCategoryId])
-
   useEffect(() => {
     const t = window.setTimeout(() => setSearchDebounced(search), 320)
     return () => window.clearTimeout(t)
   }, [search])
+
+  useEffect(() => {
+    setPage(1)
+  }, [searchDebounced])
 
   useEffect(() => {
     let cancelled = false
@@ -95,7 +103,7 @@ export function RecipesView({ baseUrl }: { baseUrl: string }) {
       setLoadingList(true)
       setLoadError(null)
     })
-    fetchRecipeCatalog(baseUrl, filterCategoryId || undefined)
+    fetchRecipeCatalog(baseUrl)
       .then((cat) => {
         if (!cancelled) {
           setCatalog(cat)
@@ -111,13 +119,64 @@ export function RecipesView({ baseUrl }: { baseUrl: string }) {
     return () => {
       cancelled = true
     }
-  }, [baseUrl, filterCategoryId])
+  }, [baseUrl])
 
   const filteredCatalog = useMemo(() => {
     const q = searchDebounced.trim().toLowerCase()
     if (!q) return catalog
     return catalog.filter((r) => r.productName.toLowerCase().includes(q))
   }, [catalog, searchDebounced])
+
+  const totalPages = Math.max(1, Math.ceil(filteredCatalog.length / PAGE_SIZE))
+  const pageSafe = Math.min(page, totalPages)
+  const pageDots = paginationDots(pageSafe, totalPages)
+  const pageRows = useMemo(
+    () =>
+      filteredCatalog.slice((pageSafe - 1) * PAGE_SIZE, pageSafe * PAGE_SIZE),
+    [filteredCatalog, pageSafe, PAGE_SIZE],
+  )
+
+  const recipeSections = useMemo(() => {
+    const known = new Set(categories.map((c) => c.id))
+    const buckets = new Map<string, RecipeCatalogEntry[]>()
+    for (const c of categories) buckets.set(c.id, [])
+    const orphans: RecipeCatalogEntry[] = []
+    for (const r of pageRows) {
+      const cid = r.categoryId ?? ''
+      if (cid && known.has(cid)) {
+        buckets.get(cid)!.push(r)
+      } else {
+        orphans.push(r)
+      }
+    }
+    const sortRows = (rows: RecipeCatalogEntry[]) =>
+      [...rows].sort((a, b) =>
+        a.productName.localeCompare(b.productName, 'es'),
+      )
+    const sections = categories.map((c) => ({
+      id: c.id,
+      name: c.name,
+      rows: sortRows(buckets.get(c.id) ?? []),
+    }))
+    if (orphans.length > 0) {
+      sections.push({
+        id: '_other',
+        name: 'Otras categorías',
+        rows: sortRows(orphans),
+      })
+    }
+    return sections
+  }, [categories, pageRows])
+
+  const reloadCatalog = useCallback(async () => {
+    try {
+      const list = await fetchRecipeCatalog(baseUrl)
+      setCatalog(list)
+      setLoadError(null)
+    } catch (e) {
+      setLoadError((e as Error).message)
+    }
+  }, [baseUrl])
 
   const openRow = useCallback(
     (row: RecipeCatalogEntry) => {
@@ -210,12 +269,17 @@ export function RecipesView({ baseUrl }: { baseUrl: string }) {
       {
         label: 'Recetas',
         value: catalog.length,
-        title: 'Productos con receta en la categoría seleccionada',
+        title: 'Productos con ficha técnica en el catálogo',
       },
       {
         label: 'Visibles',
         value: filteredCatalog.length,
-        title: 'Tras filtrar por búsqueda',
+        title: 'Tras filtrar por búsqueda (todas las páginas)',
+      },
+      {
+        label: 'En página',
+        value: pageRows.length,
+        title: `Página ${pageSafe} de ${totalPages}`,
       },
       {
         label: 'Insumos',
@@ -223,7 +287,7 @@ export function RecipesView({ baseUrl }: { baseUrl: string }) {
         title: 'Ítems de inventario disponibles para enlazar',
       },
     ],
-    [catalog.length, filteredCatalog.length, inventory.length],
+    [catalog.length, filteredCatalog.length, inventory.length, pageRows.length, pageSafe, totalPages],
   )
 
   return (
@@ -238,37 +302,25 @@ export function RecipesView({ baseUrl }: { baseUrl: string }) {
           </div>
         </div>
 
-        <div className="data-toolbar data-toolbar--compact">
-          <div className="search-field">
-            <span className="search-icon" aria-hidden />
-            <input
-              type="search"
-              placeholder="Buscar receta por producto…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="Buscar recetas"
-            />
-          </div>
-          <div className="toolbar-filters toolbar-filters--wrap">
-            <label className="filter-field">
-              <span>Categoría de producto</span>
-              <select
-                value={filterCategoryId}
-                onChange={(e) => setFilterCategoryId(e.target.value)}
-              >
-                <option value="">Todas</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+        <div className="inventory-filter-bar app-toolbar-zone">
+          <div className="inventory-filter-bar__controls" role="search">
+            <label className="inventory-filter">
+              <span className="inventory-filter__label">Buscar</span>
+              <input
+                className="inventory-filter__input"
+                type="search"
+                placeholder="Receta por producto…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                aria-label="Buscar recetas"
+              />
             </label>
+          </div>
+          <div className="inventory-filter-bar__actions">
             <button
               type="button"
               className="btn-secondary btn-compact"
               onClick={() => {
-                setFilterCategoryId('')
                 setSearch('')
               }}
             >
@@ -295,44 +347,94 @@ export function RecipesView({ baseUrl }: { baseUrl: string }) {
         )}
 
         {!loadingList && filteredCatalog.length > 0 && (
-          <div className="data-table-wrap data-table-elevated">
-            <table className="data-table data-table-striped">
-              <thead>
-                <tr>
-                  <th>Producto</th>
-                  <th>Categoría</th>
-                  <th>Tipo</th>
-                  <th className="num">Rendimiento</th>
-                  <th className="num">Insumos</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredCatalog.map((row) => (
-                  <tr
-                    key={row.productId}
-                    className={
-                      selectedId === row.productId ? 'row-active' : ''
-                    }
-                  >
-                    <td>
-                      <button
-                        type="button"
-                        className="table-link"
-                        onClick={() => void openRow(row)}
-                      >
-                        {row.productName}
-                      </button>
-                    </td>
-                    <td className="muted">{row.categoryName ?? '—'}</td>
-                    <td>
-                      <span className="pill">{row.productType}</span>
-                    </td>
-                    <td className="num mono">{row.recipeYield}</td>
-                    <td className="num">{row.ingredientCount}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="catalog-by-category" aria-label="Recetas por categoría">
+            <div className="pagination-bar">
+              <span className="muted">
+                Página {pageSafe} de {totalPages} · {filteredCatalog.length} receta
+                {filteredCatalog.length !== 1 ? 's' : ''}
+              </span>
+              {pageDots.length > 1 && (
+                <div className="pager-dots" aria-hidden>
+                  {pageDots.map((p) => (
+                    <span
+                      key={p}
+                      className={`pager-dot${p === pageSafe ? ' is-active' : ''}`}
+                    />
+                  ))}
+                </div>
+              )}
+              <div className="pager">
+                <button
+                  type="button"
+                  disabled={pageSafe <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  Anterior
+                </button>
+                <button
+                  type="button"
+                  disabled={pageSafe >= totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                >
+                  Siguiente
+                </button>
+              </div>
+            </div>
+            {recipeSections.map((section) =>
+              section.rows.length === 0 ? null : (
+                <details key={section.id} className="catalog-category-block">
+                  <summary className="catalog-category-block__summary">
+                    <span className="catalog-category-block__summary-main">
+                      <span className="catalog-category-block__chevron" aria-hidden />
+                      <h3 className="catalog-category-block__title">{section.name}</h3>
+                    </span>
+                    <span className="muted small">
+                      {section.rows.length} receta
+                      {section.rows.length !== 1 ? 's' : ''}
+                    </span>
+                  </summary>
+                  <div className="catalog-category-block__body">
+                    <div className="data-table-wrap data-table-elevated">
+                    <table className="data-table data-table-striped">
+                      <thead>
+                        <tr>
+                          <th>Producto</th>
+                          <th>Tipo</th>
+                          <th className="num">Rendimiento</th>
+                          <th className="num">Insumos</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {section.rows.map((row) => (
+                          <tr
+                            key={row.productId}
+                            className={
+                              selectedId === row.productId ? 'row-active' : ''
+                            }
+                          >
+                            <td>
+                              <button
+                                type="button"
+                                className="table-link"
+                                onClick={() => void openRow(row)}
+                              >
+                                {row.productName}
+                              </button>
+                            </td>
+                            <td>
+                              <span className="pill">{row.productType}</span>
+                            </td>
+                            <td className="num mono">{row.recipeYield}</td>
+                            <td className="num">{row.ingredientCount}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    </div>
+                  </div>
+                </details>
+              ),
+            )}
           </div>
         )}
       </div>
@@ -388,7 +490,7 @@ export function RecipesView({ baseUrl }: { baseUrl: string }) {
                   inventory={inventory}
                   onRecipeUpdated={(r) => {
                     setDetailRecipe(r)
-                    void refreshCatalog()
+                    void reloadCatalog()
                   }}
                 />
               )}

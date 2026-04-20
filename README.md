@@ -1,81 +1,62 @@
-# React + TypeScript + Vite
+# Arándano Café Bar — Front
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Panel web (React + Vite + TypeScript) para operar el local: catálogo, recetas, inventario, ventas, compras y finanzas. Habla con un **API HTTP** (`VITE_API_URL`); no conecta a PostgreSQL desde el navegador.
 
-Currently, two official plugins are available:
+## Requisitos
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node.js reciente
+- Backend API en ejecución (misma máquina u host desplegado)
 
-## React Compiler
+## Configuración
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. Copia el ejemplo de variables:
 
-## Expanding the ESLint configuration
+   ```bash
+   cp .env.example .env.local
+   ```
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+2. Edita **`.env.local`** (no se sube a git):
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+   | Variable        | Uso |
+   |-----------------|-----|
+   | `VITE_API_URL`  | URL base del API, **sin** barra final. Ej.: `http://localhost:3000` o la URL pública de tu backend en Railway. |
+   | `DATABASE_URL`  | Solo si ejecutas **scripts o backend** en este repo que lean el mismo archivo. El front en el browser **no** usa esta variable. En Railway, suele ir en el servicio que corre Node y habla con Postgres. |
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+3. Formato típico de conexión PostgreSQL (referencia, **no pegues contraseñas en el repo**):
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+   ```text
+   postgresql://USUARIO:CONTRASEÑA@HOST:PUERTO/NOMBRE_BD
+   ```
+
+   En **Railway**: pestaña de la base de datos → *Connect* / *Variables* → copia la URL al entorno del servicio que debe conectar.
+
+## Scripts
+
+```bash
+npm install
+npm run dev      # desarrollo
+npm run build    # producción
+npm run preview  # vista previa del build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Autenticación
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+El front usa el token guardado por el API (`login` → `Authorization: Bearer …`). Sin sesión válida, algunas vistas pueden fallar al cargar datos.
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-# arandano-front
+## Módulos del menú
 
-## Ventas (`GET /sales`, `GET /sales/:id`)
+| Área      | Vistas |
+|-----------|--------|
+| Catálogo  | Productos, Recetas |
+| Inventario | Inventario |
+| Ventas    | Ventas |
+| Compras   | Compras |
+| Finanzas  | Costos, Gastos |
+| Datos     | DB (tablas expuestas por el API, solo lectura) |
 
-El panel de ventas usa estos campos del API cuando existen:
+## Ventas — campos del API (`GET /sales`, `GET /sales/:id`)
+
+El panel de ventas usa estos campos cuando existen:
 
 | Campo | Uso en el front |
 |--------|------------------|
@@ -89,3 +70,8 @@ El panel de ventas usa estos campos del API cuando existen:
 | En cada línea: `lineTotal`, `lineTotalCOP`, `unitPrice` | Columna **Total línea** y precios |
 
 La función `saleRowTotalNumeric()` en `src/api.ts` aplica esa prioridad (`total` → `totalCOP` → heurísticas legacy).
+
+## Seguridad
+
+- No subas **`.env.local`** ni URLs con usuario/contraseña a git ni a issues públicos.
+- Si una credencial pudo filtrarse, **rótala** en Railway (nueva contraseña o nueva URL).

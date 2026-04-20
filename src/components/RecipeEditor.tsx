@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  fetchRecipeCostControls,
   type InventoryOption,
   parseProductRecipeFull,
   type ProductRecipeCostLine,
   type ProductRecipeFull,
   type ProductRecipeIngredientLine,
+  type RecipeCostControlsResponse,
+  updateRecipeAdminRate,
   upsertProductRecipe,
 } from '../api'
 
@@ -68,8 +71,8 @@ type EditableCostLine = {
   lineTotalCOP: string
 }
 
-const ADMIN_RATE = 0.3
-const ADMIN_LABEL = 'Administración (30%)'
+const DEFAULT_ADMIN_RATE = 0.3
+const ADMIN_LABEL = 'Administración'
 
 function isAdminLineName(name: string): boolean {
   return name.trim().toLowerCase().startsWith('administración')
@@ -93,6 +96,13 @@ function n(v: string): number {
   return Number.isFinite(x) ? x : NaN
 }
 
+function inventoryOptionMenuLabel(o: InventoryOption): string {
+  const lot = o.lotLabel?.trim()
+  return lot
+    ? `${o.name} · lote ${lot} · stock ${o.quantity} ${o.unit}`
+    : `${o.name} · stock ${o.quantity} ${o.unit}`
+}
+
 export function RecipeEditor({
   baseUrl,
   productId,
@@ -107,6 +117,24 @@ export function RecipeEditor({
   const [filters, setFilters] = useState<Record<string, string>>({})
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [adminRateStr, setAdminRateStr] = useState(String(DEFAULT_ADMIN_RATE))
+  const [costControls, setCostControls] = useState<RecipeCostControlsResponse | null>(
+    null,
+  )
+
+  const reloadCostControls = useCallback(async () => {
+    try {
+      const ctrl = await fetchRecipeCostControls(baseUrl, productId)
+      setCostControls(ctrl)
+      setAdminRateStr(String(ctrl.adminRate))
+    } catch {
+      setCostControls(null)
+    }
+  }, [baseUrl, productId])
+
+  useEffect(() => {
+    void reloadCostControls()
+  }, [reloadCostControls])
 
   useEffect(() => {
     if (!recipe) {
@@ -114,12 +142,16 @@ export function RecipeEditor({
       setRows([])
       setCostRows([])
       setFilters({})
+      setAdminRateStr(String(DEFAULT_ADMIN_RATE))
       return
     }
     setYieldStr(recipe.recipeYield)
     setRows(linesFromRecipe(recipe.ingredients))
     setCostRows(costsFromRecipe(recipe.costs ?? []))
     setFilters({})
+    if (recipe.adminRate != null && Number.isFinite(recipe.adminRate)) {
+      setAdminRateStr(String(recipe.adminRate))
+    }
   }, [recipe, productId])
 
   const byId = useMemo(() => {
@@ -256,7 +288,9 @@ export function RecipeEditor({
       const total = n(c.lineTotalCOP)
       if (!name && !c.lineTotalCOP.trim() && !unit && !c.quantity.trim()) continue
       if (isAdminLineName(name)) {
-        setError(`"${ADMIN_LABEL}" se calcula automáticamente. Borra esa línea y se recalcula sola.`)
+        setError(
+          `"${ADMIN_LABEL}" la calcula el servidor según la tasa. Quita esa línea del listado.`,
+        )
         return
       }
       if (!name) {
@@ -281,28 +315,11 @@ export function RecipeEditor({
       })
     }
 
-    // Administración automática: 30% de (insumos + servicios/indirectos)
-    const adminBase = ingredients.reduce((acc, ing) => {
-      const inv = byId.get(ing.inventoryItemId)
-      if (!inv) return acc
-      const sub = lineSubtotal(String(ing.quantity), inv.unitCostCOP).value
-      return acc + sub
-    }, 0) + costsBase.reduce((acc, c) => acc + c.lineTotalCOP, 0)
-
-    const adminValue = Math.round(adminBase * ADMIN_RATE)
-    const costs = [
-      ...costsBase,
-      ...(adminValue > 0
-        ? ([
-            {
-              kind: 'FIJO' as const,
-              name: ADMIN_LABEL,
-              unit: 'porción',
-              lineTotalCOP: adminValue,
-            },
-          ] satisfies typeof costsBase)
-        : []),
-    ]
+    const adminRate = parseFloat(adminRateStr.replace(',', '.'))
+    if (!Number.isFinite(adminRate) || adminRate < 0 || adminRate > 1) {
+      setError('La tasa de administración debe ser un número entre 0 y 1 (ej. 0.30).')
+      return
+    }
 
     setSaving(true)
     setError(null)
@@ -310,16 +327,27 @@ export function RecipeEditor({
       const updated = await upsertProductRecipe(baseUrl, productId, {
         recipeYield: y,
         ingredients,
-        costs,
+        costs: costsBase,
       })
+      await updateRecipeAdminRate(baseUrl, productId, { adminRate })
       const next = parseProductRecipeFull(updated.recipe)
       onRecipeUpdated?.(next)
+      await reloadCostControls()
     } catch (e) {
       setError((e as Error).message)
     } finally {
       setSaving(false)
     }
-  }, [baseUrl, byId, costRows, onRecipeUpdated, productId, rows, yieldStr])
+  }, [
+    adminRateStr,
+    baseUrl,
+    costRows,
+    onRecipeUpdated,
+    productId,
+    reloadCostControls,
+    rows,
+    yieldStr,
+  ])
 
   const yieldNum = n(yieldStr)
   const totalRecipeCOP = useMemo(() => {
@@ -342,10 +370,17 @@ export function RecipeEditor({
     return t
   }, [costRows])
 
+  const adminRateNum = useMemo(() => {
+    const r = parseFloat(adminRateStr.replace(',', '.'))
+    return Number.isFinite(r) ? r : DEFAULT_ADMIN_RATE
+  }, [adminRateStr])
+
+  const baseCOP = totalRecipeCOP + totalServiceCostsCOP
+
   const adminCOP = useMemo(() => {
-    const v = Math.round((totalRecipeCOP + totalServiceCostsCOP) * ADMIN_RATE)
+    const v = Math.round(baseCOP * adminRateNum)
     return Number.isFinite(v) && v > 0 ? v : 0
-  }, [totalRecipeCOP, totalServiceCostsCOP])
+  }, [baseCOP, adminRateNum])
 
   const totalCostsCOP = totalServiceCostsCOP + adminCOP
   const totalAllCOP = totalRecipeCOP + totalCostsCOP
@@ -376,17 +411,24 @@ export function RecipeEditor({
           />
         </label>
         <div className="recipe-cost-summary">
-          <span className="muted small">Costo insumos</span>
+          <span className="muted small">Insumos</span>
           <strong>{formatCOP(totalRecipeCOP)}</strong>
-          <span className="muted small">· indirectos/costos {formatCOP(totalCostsCOP)}</span>
+          <span className="muted small">· Gastos</span>
+          <strong>{formatCOP(totalServiceCostsCOP)}</strong>
+          <span className="muted small">· Administración</span>
+          <strong>{formatCOP(adminCOP)}</strong>
           <span className="muted small">
-            · total {formatCOP(totalAllCOP)} · por unidad ~ {formatCOP(
+            · Total {formatCOP(totalAllCOP)} · por unidad ~{' '}
+            {formatCOP(
               Number.isFinite(yieldNum) && yieldNum > 0 ? totalAllCOP / yieldNum : 0,
             )}
           </span>
         </div>
       </div>
 
+      <h3 className="muted small" style={{ margin: '0.75rem 0 0.35rem' }}>
+        Costos por producto
+      </h3>
       <div className="recipe-table-wrap">
         <table className="recipe-table">
           <thead>
@@ -447,7 +489,7 @@ export function RecipeEditor({
                       )}
                       {opts.map((o) => (
                         <option key={o.id} value={o.id}>
-                          {o.name} · stock {o.quantity} {o.unit}
+                          {inventoryOptionMenuLabel(o)}
                         </option>
                       ))}
                     </select>
@@ -510,8 +552,11 @@ export function RecipeEditor({
 
       <div className="recipe-embed">
         <h3 className="muted small" style={{ margin: 0 }}>
-          Servicios / indirectos (tabla <code>costos</code>)
+          Gastos
         </h3>
+        <p className="muted small" style={{ margin: '0.25rem 0 0' }}>
+          Servicios e indirectos (líneas en <code>costos</code> de la receta).
+        </p>
         <div className="recipe-table-wrap" style={{ marginTop: '0.5rem' }}>
           <table className="recipe-table">
             <thead>
@@ -597,12 +642,28 @@ export function RecipeEditor({
           </table>
         </div>
 
-        <div className="recipe-yield-row" style={{ marginTop: '0.75rem' }}>
+        <div className="recipe-yield-row" style={{ marginTop: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <label className="field field-inline">
+            <span>Tasa {ADMIN_LABEL.toLowerCase()}</span>
+            <input
+              inputMode="decimal"
+              className="input-narrow"
+              value={adminRateStr}
+              onChange={(e) => setAdminRateStr(e.target.value)}
+              title="Entre 0 y 1 (ej. 0.30 = 30%). Se guarda con «Guardar receta»."
+              aria-label="Tasa de administración entre cero y uno"
+            />
+          </label>
           <span className="muted small">{ADMIN_LABEL}</span>
           <strong>{formatCOP(adminCOP)}</strong>
           <span className="muted small">
-            · {Math.round(ADMIN_RATE * 100)}% de (insumos + servicios)
+            · {Math.round(adminRateNum * 100)}% de (insumos + gastos)
           </span>
+          {costControls && (
+            <span className="muted small">
+              · base API {formatCOP(costControls.baseCOP)}
+            </span>
+          )}
         </div>
 
         <div className="recipe-editor-footer" style={{ marginTop: '0.75rem' }}>

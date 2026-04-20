@@ -6,7 +6,7 @@ import {
   fetchProduct,
   fetchProductCategories,
   fetchProducts,
-  fetchProductsCatalogStats,
+  fetchProductsCatalogSummary,
   parseProductRecipeFull,
   updateProduct,
   type CategoryRef,
@@ -14,12 +14,12 @@ import {
   type ProductListSort,
   type ProductRow,
 } from '../api'
+import { ProductSummaryCard } from './ProductSummaryCard'
 import { RecipeEditor } from './RecipeEditor'
-import { SectionSummaryBar, type SectionSummaryItem } from './SectionSummaryBar'
 
 const PRODUCT_TYPES = ['bebida', 'comida', 'combo'] as const
-const LIMIT = 20
-const VIEW_STORAGE_KEY = 'arandano_products_view'
+const FETCH_PAGE_SIZE = 100
+const MAX_PRODUCT_PAGES = 100
 
 function priceToNumber(p: string | number): number {
   if (typeof p === 'number') return p
@@ -60,6 +60,18 @@ function emptyDraft(categories: CategoryRef[]): Draft {
   }
 }
 
+function sortProductRows(rows: ProductRow[], sort: ProductListSort): ProductRow[] {
+  const copy = [...rows]
+  if (sort === 'name') {
+    copy.sort((a, b) => a.name.localeCompare(b.name, 'es'))
+  } else if (sort === 'price_asc') {
+    copy.sort((a, b) => priceToNumber(a.price) - priceToNumber(b.price))
+  } else {
+    copy.sort((a, b) => priceToNumber(b.price) - priceToNumber(a.price))
+  }
+  return copy
+}
+
 function rowToDraft(p: ProductRow): Draft {
   return {
     name: p.name,
@@ -77,38 +89,21 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
   const [categories, setCategories] = useState<CategoryRef[]>([])
   const [catError, setCatError] = useState<string | null>(null)
 
-  const [list, setList] = useState<ProductRow[]>([])
-  const [meta, setMeta] = useState<{
-    page: number
-    limit: number
-    total: number
-    hasNextPage: boolean
-  } | null>(null)
-  const [page, setPage] = useState(1)
+  const [allProducts, setAllProducts] = useState<ProductRow[]>([])
+  const [catalogTruncated, setCatalogTruncated] = useState(false)
   const [search, setSearch] = useState('')
   const [searchDebounced, setSearchDebounced] = useState('')
-  const [filterCategoryId, setFilterCategoryId] = useState('')
   const [filterActive, setFilterActive] = useState<
     'all' | 'active' | 'inactive'
   >('all')
   const [filterType, setFilterType] = useState('')
   const [sortBy, setSortBy] = useState<ProductListSort>('name')
-  const [viewMode, setViewMode] = useState<'cards' | 'table'>(() => {
-    try {
-      const v = localStorage.getItem(VIEW_STORAGE_KEY)
-      if (v === 'table' || v === 'cards') return v
-    } catch {
-      /* ignore */
-    }
-    return 'cards'
-  })
   const [loading, setLoading] = useState(false)
   const [listError, setListError] = useState<string | null>(null)
-  const [catalogStats, setCatalogStats] = useState<{
-    active: number
-    inactive: number
-    total: number
-  } | null>(null)
+  const [catalogSummary, setCatalogSummary] = useState<Awaited<
+    ReturnType<typeof fetchProductsCatalogSummary>
+  > | null>(null)
+  const [summaryLoading, setSummaryLoading] = useState(true)
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
@@ -129,23 +124,9 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
     return () => window.clearTimeout(t)
   }, [search])
 
-  useEffect(() => {
-    setPage(1)
-  }, [searchDebounced, filterCategoryId, filterActive, filterType, sortBy])
-
-  const setViewModePersist = useCallback((mode: 'cards' | 'table') => {
-    setViewMode(mode)
-    try {
-      localStorage.setItem(VIEW_STORAGE_KEY, mode)
-    } catch {
-      /* ignore */
-    }
-  }, [])
-
   const productListQuery = useMemo(
     () => ({
       search: searchDebounced,
-      categoryId: filterCategoryId || undefined,
       active:
         filterActive === 'all'
           ? undefined
@@ -155,14 +136,67 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
       type: filterType || undefined,
       sort: sortBy,
     }),
-    [
-      searchDebounced,
-      filterCategoryId,
-      filterActive,
-      filterType,
-      sortBy,
-    ],
+    [searchDebounced, filterActive, filterType, sortBy],
   )
+
+  const loadAllProducts = useCallback(async () => {
+    setLoading(true)
+    setListError(null)
+    setCatalogTruncated(false)
+    try {
+      const acc: ProductRow[] = []
+      let p = 1
+      let truncated = false
+      while (p <= MAX_PRODUCT_PAGES) {
+        const res = await fetchProducts(baseUrl, {
+          page: p,
+          limit: FETCH_PAGE_SIZE,
+          ...productListQuery,
+        })
+        acc.push(...res.data)
+        if (!res.meta.hasNextPage) break
+        if (p === MAX_PRODUCT_PAGES) {
+          truncated = true
+          break
+        }
+        p++
+      }
+      setAllProducts(acc)
+      setCatalogTruncated(truncated)
+    } catch (e) {
+      setListError((e as Error).message)
+      setAllProducts([])
+    } finally {
+      setLoading(false)
+    }
+  }, [baseUrl, productListQuery])
+
+  const productSections = useMemo(() => {
+    const buckets = new Map<string, ProductRow[]>()
+    for (const c of categories) buckets.set(c.id, [])
+    const orphans: ProductRow[] = []
+    const known = new Set(categories.map((c) => c.id))
+    for (const row of allProducts) {
+      if (known.has(row.categoryId)) {
+        buckets.get(row.categoryId)!.push(row)
+      } else {
+        orphans.push(row)
+      }
+    }
+    const sections = categories.map((c) => ({
+      id: c.id,
+      name: c.name,
+      products: sortProductRows(buckets.get(c.id) ?? [], sortBy),
+    }))
+    if (orphans.length > 0) {
+      sections.push({
+        id: '_other',
+        name: 'Otras categorías',
+        products: sortProductRows(orphans, sortBy),
+      })
+    }
+    return sections
+  }, [allProducts, categories, sortBy])
 
   useEffect(() => {
     let cancelled = false
@@ -195,45 +229,27 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
     }
   }, [baseUrl])
 
-  useEffect(() => {
-    let cancelled = false
-    fetchProductsCatalogStats(baseUrl)
+  const refreshCatalogSummary = useCallback(() => {
+    setSummaryLoading(true)
+    fetchProductsCatalogSummary(baseUrl)
       .then((s) => {
-        if (!cancelled) setCatalogStats(s)
+        setCatalogSummary(s)
       })
       .catch(() => {
-        if (!cancelled) setCatalogStats(null)
+        setCatalogSummary(null)
       })
-    return () => {
-      cancelled = true
-    }
+      .finally(() => {
+        setSummaryLoading(false)
+      })
   }, [baseUrl])
 
   useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    setListError(null)
-    fetchProducts(baseUrl, {
-      page,
-      limit: LIMIT,
-      ...productListQuery,
-    })
-      .then((res) => {
-        if (!cancelled) {
-          setList(res.data)
-          setMeta(res.meta)
-        }
-      })
-      .catch((e: Error) => {
-        if (!cancelled) setListError(e.message)
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [baseUrl, page, productListQuery])
+    refreshCatalogSummary()
+  }, [refreshCatalogSummary])
+
+  useEffect(() => {
+    void loadAllProducts()
+  }, [loadAllProducts])
 
   const openCreate = useCallback(() => {
     setCreating(true)
@@ -270,12 +286,6 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
   }, [])
 
   const panelOpen = creating || selectedId !== null
-
-  const refreshCatalogStats = useCallback(() => {
-    fetchProductsCatalogStats(baseUrl)
-      .then(setCatalogStats)
-      .catch(() => setCatalogStats(null))
-  }, [baseUrl])
 
   useEffect(() => {
     if (!panelOpen) return
@@ -342,15 +352,8 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
         })
       }
       closePanel()
-      setPage(1)
-      const res = await fetchProducts(baseUrl, {
-        page: 1,
-        limit: LIMIT,
-        ...productListQuery,
-      })
-      setList(res.data)
-      setMeta(res.meta)
-      refreshCatalogStats()
+      await loadAllProducts()
+      refreshCatalogSummary()
     } catch (e) {
       setSaveError((e as Error).message)
     } finally {
@@ -361,8 +364,8 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
     creating,
     closePanel,
     draft,
-    productListQuery,
-    refreshCatalogStats,
+    loadAllProducts,
+    refreshCatalogSummary,
     selectedId,
   ])
 
@@ -375,202 +378,119 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
     try {
       await deleteProduct(baseUrl, selectedId)
       closePanel()
-      const res = await fetchProducts(baseUrl, {
-        page,
-        limit: LIMIT,
-        ...productListQuery,
-      })
-      setList(res.data)
-      setMeta(res.meta)
-      refreshCatalogStats()
+      await loadAllProducts()
+      refreshCatalogSummary()
     } catch (e) {
       setSaveError((e as Error).message)
     } finally {
       setSaving(false)
     }
-  }, [baseUrl, closePanel, page, productListQuery, refreshCatalogStats, selectedId])
+  }, [baseUrl, closePanel, loadAllProducts, refreshCatalogSummary, selectedId])
 
   const parsedRecipe = useMemo(
     () => parseProductRecipeFull(detailRecipe),
     [detailRecipe],
   )
 
-  const hasProductFilters = useMemo(
-    () =>
-      searchDebounced.trim() !== '' ||
-      filterCategoryId !== '' ||
-      filterActive !== 'all' ||
-      filterType !== '',
-    [searchDebounced, filterCategoryId, filterActive, filterType],
-  )
-
-  const pageBreakdown = useMemo(() => {
-    let active = 0
-    let inactive = 0
-    for (const p of list) {
-      if (p.active) active++
-      else inactive++
-    }
-    return { active, inactive, inPage: list.length }
-  }, [list])
-
-  const productSummaryItems = useMemo((): SectionSummaryItem[] => {
-    const items: SectionSummaryItem[] = []
-    if (catalogStats) {
-      items.push(
-        { label: 'Catálogo', value: catalogStats.total, title: 'Total productos' },
-        {
-          label: 'Activos',
-          value: catalogStats.active,
-          title: 'Productos activos en el sistema',
-        },
-        {
-          label: 'Inactivos',
-          value: catalogStats.inactive,
-          title: 'Productos inactivos',
-        },
-      )
-    }
-    if (meta) {
-      items.push({
-        label: hasProductFilters ? 'Coinciden' : 'Listados',
-        value: meta.total,
-        title: hasProductFilters
-          ? 'Resultados con el filtro actual'
-          : 'Mismo criterio que la tabla',
-      })
-    }
-    items.push(
-      {
-        label: 'Página',
-        value: pageBreakdown.inPage,
-        title: 'Filas en esta página',
-      },
-      { label: 'Act. pág.', value: pageBreakdown.active },
-      { label: 'Inact. pág.', value: pageBreakdown.inactive },
-    )
-    return items
-  }, [catalogStats, meta, hasProductFilters, pageBreakdown])
-
   return (
     <div className="products-layout">
       <div className="products-list-pane">
-        <div className="page-intro">
-          <h2 className="page-title">Productos</h2>
-          <p className="muted page-subtitle">
-            Catálogo para carta y ventas. Activa o desactiva ítems sin borrarlos.
-          </p>
-        </div>
-
-        <div className="data-toolbar">
-          <div className="search-field">
-            <span className="search-icon" aria-hidden />
-            <input
-              type="search"
-              placeholder="Buscar por nombre…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="Buscar productos"
-            />
+        <div className="products-page-head">
+          <div className="page-intro products-page-intro">
+            <h2 className="page-title">Productos</h2>
+            <p className="muted page-subtitle">
+              Catálogo para carta y ventas. Activa o desactiva ítems sin borrarlos.
+            </p>
           </div>
-          <div className="toolbar-filters">
-            <label className="filter-field">
-              <span>Categoría</span>
-              <select
-                value={filterCategoryId}
-                onChange={(e) => setFilterCategoryId(e.target.value)}
-              >
-                <option value="">Todas</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="filter-field">
-              <span>Estado</span>
-              <select
-                value={filterActive}
-                onChange={(e) =>
-                  setFilterActive(
-                    e.target.value as 'all' | 'active' | 'inactive',
-                  )
-                }
-              >
-                <option value="all">Todos</option>
-                <option value="active">Activos</option>
-                <option value="inactive">Inactivos</option>
-              </select>
-            </label>
-            <label className="filter-field">
-              <span>Tipo</span>
-              <select
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-              >
-                <option value="">Todos</option>
-                {PRODUCT_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {t}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="filter-field">
-              <span>Orden</span>
-              <select
-                value={sortBy}
-                onChange={(e) =>
-                  setSortBy(e.target.value as ProductListSort)
-                }
-              >
-                <option value="name">Nombre (A-Z)</option>
-                <option value="price_asc">Precio ↑</option>
-                <option value="price_desc">Precio ↓</option>
-              </select>
-            </label>
-            <button
-              type="button"
-              className="btn-secondary btn-compact"
-              onClick={() => {
-                setSearch('')
-                setFilterCategoryId('')
-                setFilterActive('all')
-                setFilterType('')
-                setSortBy('name')
-              }}
-            >
-              Limpiar filtros
-            </button>
-          </div>
-          <div className="toolbar-actions">
-            <div className="view-toggle" role="group" aria-label="Vista">
-              <button
-                type="button"
-                className={viewMode === 'cards' ? 'active' : ''}
-                onClick={() => setViewModePersist('cards')}
-              >
-                Tarjetas
-              </button>
-              <button
-                type="button"
-                className={viewMode === 'table' ? 'active' : ''}
-                onClick={() => setViewModePersist('table')}
-              >
-                Tabla
-              </button>
-            </div>
+          <div className="products-toolbar-actions products-toolbar-actions--top">
             <button type="button" className="btn-primary" onClick={openCreate}>
               Nuevo producto
             </button>
           </div>
         </div>
 
-        <SectionSummaryBar
-          section="products"
-          items={productSummaryItems}
+        <ProductSummaryCard
+          summary={catalogSummary}
+          categories={categories}
+          loading={summaryLoading}
         />
+
+        <div className="products-toolbar-row app-toolbar-zone">
+          <div className="inventory-filter-bar">
+            <div className="inventory-filter-bar__controls" role="search">
+              <label className="inventory-filter">
+                <span className="inventory-filter__label">Buscar</span>
+                <input
+                  className="inventory-filter__input"
+                  type="search"
+                  placeholder="Nombre…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  aria-label="Buscar productos"
+                />
+              </label>
+              <label className="inventory-filter">
+                <span className="inventory-filter__label">Estado</span>
+                <select
+                  className="inventory-filter__input"
+                  value={filterActive}
+                  onChange={(e) =>
+                    setFilterActive(
+                      e.target.value as 'all' | 'active' | 'inactive',
+                    )
+                  }
+                >
+                  <option value="all">Todos</option>
+                  <option value="active">Activos</option>
+                  <option value="inactive">Inactivos</option>
+                </select>
+              </label>
+              <label className="inventory-filter">
+                <span className="inventory-filter__label">Tipo</span>
+                <select
+                  className="inventory-filter__input"
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                >
+                  <option value="">Todos</option>
+                  {PRODUCT_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {t}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="inventory-filter">
+                <span className="inventory-filter__label">Orden</span>
+                <select
+                  className="inventory-filter__input"
+                  value={sortBy}
+                  onChange={(e) =>
+                    setSortBy(e.target.value as ProductListSort)
+                  }
+                >
+                  <option value="name">Nombre (A-Z)</option>
+                  <option value="price_asc">Precio ↑</option>
+                  <option value="price_desc">Precio ↓</option>
+                </select>
+              </label>
+            </div>
+            <div className="inventory-filter-bar__actions">
+              <button
+                type="button"
+                className="btn-secondary btn-compact"
+                onClick={() => {
+                  setSearch('')
+                  setFilterActive('all')
+                  setFilterType('')
+                  setSortBy('name')
+                }}
+              >
+                Limpiar
+              </button>
+            </div>
+          </div>
+        </div>
 
         {catError && (
           <p className="banner-warn" role="status">
@@ -584,112 +504,84 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
         )}
         {loading && <p className="muted">Cargando productos…</p>}
 
-        {viewMode === 'cards' ? (
-          <ul className="product-cards">
-            {list.map((p) => (
-              <li key={p.id}>
-                <button
-                  type="button"
-                  className={`product-card ${selectedId === p.id ? 'active' : ''}`}
-                  onClick={() => void openEdit(p.id)}
-                >
-                  {p.imageUrl ? (
-                    <div className="product-card-thumb">
-                      <img src={p.imageUrl} alt="" loading="lazy" />
-                    </div>
-                  ) : null}
-                  <div className="product-card-body">
-                    <span className="product-card-name">{p.name}</span>
-                    <span className="product-card-meta">
-                      {p.category?.name ?? '—'} · {formatCOP(p.price)}
-                    </span>
-                    {!p.active && (
-                      <span className="badge badge-muted">Inactivo</span>
-                    )}
+        {catalogTruncated && !listError && (
+          <p className="banner-warn" role="status">
+            Se alcanzó el límite de carga ({MAX_PRODUCT_PAGES * FETCH_PAGE_SIZE} ítems). Afina
+            búsqueda o filtros para ver el resto.
+          </p>
+        )}
+
+        <div className="catalog-by-category" aria-label="Productos por categoría">
+          {productSections.map((section) =>
+            section.products.length === 0 ? null : (
+              <details key={section.id} className="catalog-category-block">
+                <summary className="catalog-category-block__summary">
+                  <span className="catalog-category-block__summary-main">
+                    <span className="catalog-category-block__chevron" aria-hidden />
+                    <h3 className="catalog-category-block__title">{section.name}</h3>
+                  </span>
+                  <span className="muted small">
+                    {section.products.length} producto
+                    {section.products.length !== 1 ? 's' : ''}
+                  </span>
+                </summary>
+                <div className="catalog-category-block__body">
+                  <div className="data-table-wrap data-table-elevated">
+                  <table className="data-table data-table-striped">
+                    <thead>
+                      <tr>
+                        <th className="col-thumb" aria-hidden />
+                        <th>Producto</th>
+                        <th>Tipo</th>
+                        <th className="num">Precio</th>
+                        <th>Estado</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {section.products.map((p) => (
+                        <tr
+                          key={p.id}
+                          className={selectedId === p.id ? 'row-active' : ''}
+                        >
+                          <td className="col-thumb">
+                            {p.imageUrl ? (
+                              <div className="product-table-thumb">
+                                <img src={p.imageUrl} alt="" loading="lazy" />
+                              </div>
+                            ) : null}
+                          </td>
+                          <td>
+                            <button
+                              type="button"
+                              className="table-link"
+                              onClick={() => void openEdit(p.id)}
+                            >
+                              {p.name}
+                            </button>
+                          </td>
+                          <td>
+                            <span className="pill">{p.type}</span>
+                          </td>
+                          <td className="num mono">{formatCOP(p.price)}</td>
+                          <td>
+                            {p.active ? (
+                              <span className="badge badge-ok">Activo</span>
+                            ) : (
+                              <span className="badge badge-muted">Inactivo</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                   </div>
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="data-table-wrap data-table-elevated">
-            <table className="data-table data-table-striped">
-              <thead>
-                <tr>
-                  <th className="col-thumb" aria-hidden />
-                  <th>Producto</th>
-                  <th>Categoría</th>
-                  <th>Tipo</th>
-                  <th className="num">Precio</th>
-                  <th>Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {list.map((p) => (
-                  <tr
-                    key={p.id}
-                    className={selectedId === p.id ? 'row-active' : ''}
-                  >
-                    <td className="col-thumb">
-                      {p.imageUrl ? (
-                        <div className="product-table-thumb">
-                          <img src={p.imageUrl} alt="" loading="lazy" />
-                        </div>
-                      ) : null}
-                    </td>
-                    <td>
-                      <button
-                        type="button"
-                        className="table-link"
-                        onClick={() => void openEdit(p.id)}
-                      >
-                        {p.name}
-                      </button>
-                    </td>
-                    <td className="muted">{p.category?.name ?? '—'}</td>
-                    <td>
-                      <span className="pill">{p.type}</span>
-                    </td>
-                    <td className="num mono">{formatCOP(p.price)}</td>
-                    <td>
-                      {p.active ? (
-                        <span className="badge badge-ok">Activo</span>
-                      ) : (
-                        <span className="badge badge-muted">Inactivo</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                </div>
+              </details>
+            ),
+          )}
+        </div>
 
-        {meta && meta.total > 0 && (
-          <div className="pagination-bar">
-            <span className="muted">
-              {meta.total} producto{meta.total !== 1 ? 's' : ''}
-            </span>
-            <div className="pager">
-              <button
-                type="button"
-                disabled={page <= 1 || loading}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-              >
-                Anterior
-              </button>
-              <button
-                type="button"
-                disabled={!meta.hasNextPage || loading}
-                onClick={() => setPage((p) => p + 1)}
-              >
-                Siguiente
-              </button>
-            </div>
-          </div>
-        )}
-
-        {!loading && list.length === 0 && !listError && (
+        {!loading && allProducts.length === 0 && !listError && (
           <p className="empty-hint">No hay productos. Crea uno o ajusta la búsqueda.</p>
         )}
       </div>

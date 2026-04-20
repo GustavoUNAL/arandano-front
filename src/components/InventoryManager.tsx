@@ -3,17 +3,48 @@ import {
   createInventoryItem,
   deleteInventoryItem,
   fetchInventoryCategories,
+  fetchInventoryItem,
   fetchInventoryItems,
+  displayPurchaseLotSupplier,
   fetchPurchaseLotsCodeIndex,
   formatPurchaseLotDate,
+  inventoryLotDisplayLabel,
+  inventoryResolvedPurchaseLot,
   updateInventoryItem,
   type CategoryRef,
+  type InventoryMovementStats,
   type InventoryRow,
   type PurchaseLotRow,
 } from '../api'
+import { useNavigation } from '../NavigationContext'
 import { SectionSummaryBar, type SectionSummaryItem } from './SectionSummaryBar'
 
 const LIMIT = 18
+
+function paginationDots(current: number, total: number): number[] {
+  if (total <= 1) return []
+  const out: number[] = []
+  const start = Math.max(1, current - 2)
+  const end = Math.min(total, current + 2)
+  for (let p = start; p <= end; p++) out.push(p)
+  if (!out.includes(1)) out.unshift(1)
+  if (!out.includes(total)) out.push(total)
+  return out
+}
+
+/** Prefijo técnico en nombres de categoría de inventario (no mostrar en UI). */
+const INVENTORY_CATEGORY_NAME_PREFIX = 'INVENTORY::'
+
+function inventoryCategoryLabel(name: string | null | undefined): string {
+  if (name == null || name === '') return '—'
+  if (name.startsWith(INVENTORY_CATEGORY_NAME_PREFIX)) {
+    const rest = name.slice(INVENTORY_CATEGORY_NAME_PREFIX.length).trim()
+    return rest !== '' ? rest : name
+  }
+  return name
+}
+
+type AvailabilityFilter = '' | 'available' | 'depleted'
 
 function num(v: string | number | null | undefined): number {
   const n = parseFloat(String(v ?? '').replace(',', '.'))
@@ -33,6 +64,70 @@ function formatCOP(value: string | number): string {
 function isAvailable(qty: string | number | null | undefined): boolean {
   const q = num(qty)
   return Number.isFinite(q) && q > 0
+}
+
+function fmtStat(n: number | undefined): string {
+  if (n == null || !Number.isFinite(n)) return '—'
+  return n % 1 === 0 ? String(n) : n.toFixed(2).replace(/\.?0+$/, '')
+}
+
+/** Valor en celdas de movimiento: ausente → —; cero → 0; resto formateado. */
+function fmtMovCell(n: number | undefined): string {
+  if (n == null || !Number.isFinite(n)) return '—'
+  if (n === 0) return '0'
+  return n % 1 === 0 ? String(n) : n.toFixed(2).replace(/\.?0+$/, '')
+}
+
+function MovementSummaryCell({ st }: { st?: InventoryMovementStats }) {
+  if (!st) {
+    return <span className="mov-summary mov-summary--na">—</span>
+  }
+  const items: {
+    id: string
+    lab: string
+    tip: string
+    v: number | undefined
+  }[] = [
+    { id: 'ent', lab: 'Ent', tip: 'Entradas (IN)', v: st.received },
+    {
+      id: 'sal',
+      lab: 'Sal',
+      tip: 'Salidas acumuladas (SALE + OUT)',
+      v: st.consumedTotal,
+    },
+    { id: 'mer', lab: 'Mer', tip: 'Merma (WASTE)', v: st.waste },
+    { id: 'aju', lab: 'Aju', tip: 'Ajuste (ADJUSTMENT)', v: st.adjustment },
+  ]
+  return (
+    <div
+      className="mov-summary"
+      role="group"
+      aria-label="Movimientos acumulados por tipo"
+    >
+      {items.map((x) => {
+        const text = fmtMovCell(x.v)
+        const emptyish = text === '—' || text === '0'
+        return (
+          <div
+            key={x.id}
+            className="mov-summary__item"
+            title={`${x.tip}: ${text}`}
+          >
+            <span className="mov-summary__lab">{x.lab}</span>
+            <span
+              className={
+                emptyish
+                  ? 'mov-summary__val mov-summary__val--soft'
+                  : 'mov-summary__val'
+              }
+            >
+              {text}
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 type Draft = {
@@ -73,6 +168,7 @@ function rowToDraft(r: InventoryRow): Draft {
 }
 
 export function InventoryManager({ baseUrl }: { baseUrl: string }) {
+  const { inventorySubtitle } = useNavigation()
   const [categories, setCategories] = useState<CategoryRef[]>([])
   const [catError, setCatError] = useState<string | null>(null)
 
@@ -84,9 +180,11 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
     hasNextPage: boolean
   } | null>(null)
   const [page, setPage] = useState(1)
-  const [search, setSearch] = useState('')
-  const [searchDebounced, setSearchDebounced] = useState('')
   const [filterCategoryId, setFilterCategoryId] = useState('')
+  const [filterAvailability, setFilterAvailability] =
+    useState<AvailabilityFilter>('')
+  const [lotFilter, setLotFilter] = useState('')
+  const [lotFilterDebounced, setLotFilterDebounced] = useState('')
   const [loading, setLoading] = useState(false)
   const [listError, setListError] = useState<string | null>(null)
 
@@ -95,6 +193,10 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
   const [draft, setDraft] = useState<Draft | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  /** Fila con `includeStats` al editar (agregados de movimientos). */
+  const [selectedRowFull, setSelectedRowFull] = useState<InventoryRow | null>(
+    null,
+  )
 
   const [lotByCode, setLotByCode] = useState<Map<string, PurchaseLotRow> | null>(
     null,
@@ -134,20 +236,24 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
   }, [baseUrl])
 
   useEffect(() => {
-    const t = window.setTimeout(() => setSearchDebounced(search), 320)
+    const t = window.setTimeout(() => setLotFilterDebounced(lotFilter), 320)
     return () => window.clearTimeout(t)
-  }, [search])
+  }, [lotFilter])
 
   useEffect(() => {
     setPage(1)
-  }, [searchDebounced, filterCategoryId])
+  }, [filterCategoryId, filterAvailability, lotFilterDebounced])
 
   const inventoryListQuery = useMemo(
     () => ({
-      search: searchDebounced,
       categoryId: filterCategoryId || undefined,
+      availability:
+        filterAvailability === 'available' || filterAvailability === 'depleted'
+          ? filterAvailability
+          : undefined,
+      lot: lotFilterDebounced.trim() || undefined,
     }),
-    [searchDebounced, filterCategoryId],
+    [filterCategoryId, filterAvailability, lotFilterDebounced],
   )
 
   useEffect(() => {
@@ -174,6 +280,7 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
     fetchInventoryItems(baseUrl, {
       page,
       limit: LIMIT,
+      includeStats: true,
       ...inventoryListQuery,
     })
       .then((res) => {
@@ -196,21 +303,36 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
   const openCreate = useCallback(() => {
     setCreating(true)
     setSelectedId(null)
+    setSelectedRowFull(null)
     setDraft(emptyDraft(categories))
     setSaveError(null)
   }, [categories])
 
-  const openEdit = useCallback((row: InventoryRow) => {
-    setCreating(false)
-    setSelectedId(row.id)
-    setDraft(rowToDraft(row))
-    setSaveError(null)
-  }, [])
+  const openEdit = useCallback(
+    async (row: InventoryRow) => {
+      setCreating(false)
+      setSelectedId(row.id)
+      setSaveError(null)
+      setDraft(rowToDraft(row))
+      setSelectedRowFull(null)
+      try {
+        const full = await fetchInventoryItem(baseUrl, row.id, {
+          includeStats: true,
+        })
+        setDraft(rowToDraft(full))
+        setSelectedRowFull(full)
+      } catch {
+        setSelectedRowFull(row)
+      }
+    },
+    [baseUrl],
+  )
 
   const closePanel = useCallback(() => {
     setSelectedId(null)
     setCreating(false)
     setDraft(null)
+    setSelectedRowFull(null)
     setSaveError(null)
   }, [])
 
@@ -281,6 +403,7 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
       const res = await fetchInventoryItems(baseUrl, {
         page: 1,
         limit: LIMIT,
+        includeStats: true,
         ...inventoryListQuery,
       })
       setList(res.data)
@@ -317,6 +440,7 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
       const res = await fetchInventoryItems(baseUrl, {
         page,
         limit: LIMIT,
+        includeStats: true,
         ...inventoryListQuery,
       })
       setList(res.data)
@@ -329,17 +453,33 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
   }, [baseUrl, closePanel, inventoryListQuery, page, selectedId])
 
   const panelOpen = creating || selectedId !== null
+  const totalPages =
+    meta && meta.limit > 0 ? Math.max(1, Math.ceil(meta.total / meta.limit)) : 1
+  const pageDots = paginationDots(page, totalPages)
 
   const draftMatchedLot = useMemo(() => {
     if (!draft) return undefined
     const code = draft.lot.trim()
-    if (!code || !lotByCode) return undefined
-    return lotByCode.get(code)
-  }, [draft, lotByCode])
+    if (!code) return undefined
+    if (
+      !creating &&
+      selectedRowFull?.purchaseLot &&
+      selectedRowFull.purchaseLot.code?.trim() === code
+    ) {
+      return selectedRowFull.purchaseLot
+    }
+    if (lotByCode) return lotByCode.get(code)
+    return undefined
+  }, [creating, draft, lotByCode, selectedRowFull])
 
   const lowStockIds = useMemo(() => {
     const s = new Set<string>()
     for (const r of list) {
+      if (r.stats?.belowMinimum === true) {
+        s.add(r.id)
+        continue
+      }
+      if (r.stats?.belowMinimum === false) continue
       const q = num(r.quantity)
       const m = num(r.minStock)
       if (Number.isFinite(q) && Number.isFinite(m) && q <= m) s.add(r.id)
@@ -394,49 +534,68 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
       <div className="products-list-pane">
         <div className="page-intro">
           <h2 className="page-title">Inventario</h2>
-          <p className="muted page-subtitle">
-            Insumos, lotes y costos. Enlaza con compras por código de lote.
-          </p>
+          {inventorySubtitle ? (
+            <p className="muted page-subtitle">{inventorySubtitle}</p>
+          ) : null}
         </div>
 
-        <div className="data-toolbar">
-          <div className="search-field">
-            <span className="search-icon" aria-hidden />
-            <input
-              type="search"
-              placeholder="Buscar por nombre…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="Buscar inventario"
-            />
-          </div>
-          <div className="toolbar-filters">
-            <label className="filter-field">
-              <span>Categoría</span>
+        <div className="inventory-filter-bar">
+          <div className="inventory-filter-bar__controls" role="search">
+            <label className="inventory-filter">
+              <span className="inventory-filter__label">Categoría</span>
               <select
+                className="inventory-filter__input"
                 value={filterCategoryId}
                 onChange={(e) => setFilterCategoryId(e.target.value)}
+                aria-label="Filtrar por categoría"
               >
                 <option value="">Todas</option>
                 {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
+                  <option key={c.id} value={c.id} title={c.name}>
+                    {inventoryCategoryLabel(c.name)}
                   </option>
                 ))}
               </select>
             </label>
+            <label className="inventory-filter">
+              <span className="inventory-filter__label">Lote</span>
+              <input
+                className="inventory-filter__input"
+                type="search"
+                placeholder="Código…"
+                value={lotFilter}
+                onChange={(e) => setLotFilter(e.target.value)}
+                aria-label="Filtrar por código de lote"
+              />
+            </label>
+            <label className="inventory-filter">
+              <span className="inventory-filter__label">Estado</span>
+              <select
+                className="inventory-filter__input"
+                value={filterAvailability}
+                onChange={(e) =>
+                  setFilterAvailability(e.target.value as AvailabilityFilter)
+                }
+                aria-label="Filtrar por estado de stock"
+              >
+                <option value="">Todos</option>
+                <option value="available">Disponible</option>
+                <option value="depleted">Consumido</option>
+              </select>
+            </label>
+          </div>
+          <div className="inventory-filter-bar__actions">
             <button
               type="button"
               className="btn-secondary btn-compact"
               onClick={() => {
-                setSearch('')
                 setFilterCategoryId('')
+                setFilterAvailability('')
+                setLotFilter('')
               }}
             >
-              Limpiar filtros
+              Limpiar
             </button>
-          </div>
-          <div className="toolbar-actions">
             <button type="button" className="btn-primary" onClick={openCreate}>
               Nuevo ítem
             </button>
@@ -452,9 +611,9 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
         )}
         {lotIndexError && (
           <p className="banner-warn" role="status">
-            Lotes de compra: no se pudieron cargar ({lotIndexError}). Fecha y
-            proveedor del lote aparecerán vacíos hasta que vuelva a cargar la
-            página.
+            Respaldo de lotes (mapa código → compra): no se cargó ({lotIndexError}
+            ). Si el API ya envía <code className="mono">purchaseLot</code> en
+            cada ítem, la vista sigue funcionando; si no, recarga la página.
           </p>
         )}
         {listError && (
@@ -478,6 +637,7 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                   <th>Unidad</th>
                   <th className="num">Costo u.</th>
                   <th className="num">Mín.</th>
+                  <th className="inventory-th-mov">Movimientos</th>
                   <th>Estado</th>
                   <th aria-label="Alertas" />
                 </tr>
@@ -487,9 +647,10 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                   const low = lowStockIds.has(r.id)
                   const available = isAvailable(r.quantity)
                   const lotCode = r.lot?.trim() ?? ''
-                  const pl = lotCode && lotByCode ? lotByCode.get(lotCode) : undefined
+                  const pl = inventoryResolvedPurchaseLot(r, lotByCode)
+                  const lotTitle = inventoryLotDisplayLabel(r)
                   const whereBought =
-                    pl?.supplier?.trim() ||
+                    (pl ? displayPurchaseLotSupplier(pl) : '') ||
                     r.supplier?.trim() ||
                     ''
                   return (
@@ -507,14 +668,33 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                         <button
                           type="button"
                           className="table-link"
-                          onClick={() => openEdit(r)}
+                          onClick={() => void openEdit(r)}
                         >
                           {r.name}
                         </button>
                       </td>
-                      <td className="muted">{r.category?.name ?? '—'}</td>
-                      <td className="mono muted">
-                        {lotCode || '—'}
+                      <td className="muted" title={r.category?.name}>
+                        {inventoryCategoryLabel(r.category?.name)}
+                      </td>
+                      <td>
+                        {lotCode ? (
+                          <a
+                            className="table-link inventory-table-lot-cell"
+                            href="#/purchases"
+                            title={`Abrir Compras (${lotCode})`}
+                          >
+                            <span className="inventory-table-lot-cell__name">
+                              {lotTitle ?? lotCode}
+                            </span>
+                            {lotTitle && lotTitle !== lotCode ? (
+                              <span className="inventory-table-lot-cell__code muted small mono">
+                                {lotCode}
+                              </span>
+                            ) : null}
+                          </a>
+                        ) : (
+                          <span className="muted">—</span>
+                        )}
                       </td>
                       <td className="muted">
                         {pl
@@ -529,6 +709,9 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                       <td className="num mono">{formatCOP(r.unitCost)}</td>
                       <td className="num mono">
                         {r.minStock != null ? String(r.minStock) : '—'}
+                      </td>
+                      <td className="inventory-td-mov">
+                        <MovementSummaryCell st={r.stats?.movements} />
                       </td>
                       <td>
                         {available ? (
@@ -555,6 +738,16 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
             <span className="muted">
               {meta.total} ítem{meta.total !== 1 ? 's' : ''}
             </span>
+            {pageDots.length > 1 && (
+              <div className="pager-dots" aria-hidden>
+                {pageDots.map((p) => (
+                  <span
+                    key={p}
+                    className={`pager-dot${p === page ? ' is-active' : ''}`}
+                  />
+                ))}
+              </div>
+            )}
             <div className="pager">
               <button
                 type="button"
@@ -612,8 +805,8 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                   <option value="">— Sin categorías —</option>
                 )}
                 {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
+                  <option key={c.id} value={c.id} title={c.name}>
+                    {inventoryCategoryLabel(c.name)}
                   </option>
                 ))}
               </select>
@@ -677,7 +870,7 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                 </div>
                 <div>
                   <strong>Compra en (lote):</strong>{' '}
-                  {draftMatchedLot.supplier?.trim() || '—'}
+                  {displayPurchaseLotSupplier(draftMatchedLot) || '—'}
                 </div>
               </div>
             )}
@@ -686,9 +879,9 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
               lotByCode &&
               !draftMatchedLot && (
                 <p className="muted panel-lot-meta">
-                  No hay una compra registrada con el código de lote «
-                  {draft.lot.trim()}». La fecha y el proveedor del lote salen de
-                  Compras cuando el código coincide.
+                  No hay compra con ese código en los datos cargados. Al guardar,
+                  el backend puede crear un registro mínimo de lote si hace falta
+                  para enlazar el inventario.
                 </p>
               )}
 
@@ -703,6 +896,37 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                 placeholder="Opcional"
               />
             </label>
+
+            {!creating && selectedRowFull?.stats?.movements && (
+              <div className="panel-stats-block" aria-label="Resumen de movimientos">
+                <p className="panel-stats-block__title">Movimientos (acumulado)</p>
+                <dl className="panel-stats-dl">
+                  <dt>Entradas (IN)</dt>
+                  <dd className="mono">{fmtStat(selectedRowFull.stats.movements.received)}</dd>
+                  <dt>Venta / receta (SALE)</dt>
+                  <dd className="mono">
+                    {fmtStat(selectedRowFull.stats.movements.consumedViaSales)}
+                  </dd>
+                  <dt>Otras salidas (OUT)</dt>
+                  <dd className="mono">
+                    {fmtStat(selectedRowFull.stats.movements.consumedViaOut)}
+                  </dd>
+                  <dt>Salidas (Σ)</dt>
+                  <dd className="mono">
+                    {fmtStat(selectedRowFull.stats.movements.consumedTotal)}
+                  </dd>
+                  <dt>Mermas (WASTE)</dt>
+                  <dd className="mono">{fmtStat(selectedRowFull.stats.movements.waste)}</dd>
+                  <dt>Ajustes (ADJUSTMENT)</dt>
+                  <dd className="mono">
+                    {fmtStat(selectedRowFull.stats.movements.adjustment)}
+                  </dd>
+                </dl>
+                <p className="muted small panel-stats-foot">
+                  Detalle de líneas: endpoint de movimientos según contrato del API.
+                </p>
+              </div>
+            )}
 
             {saveError && (
               <p className="error" role="alert">
