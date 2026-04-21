@@ -526,6 +526,32 @@ export type PurchaseLotRow = {
   supplierResolved?: string | null
   notes?: string | null
   itemCount: number
+  /** Conteo heredado para compatibilidad (ítems activos enlazados). */
+  linkedActiveItemCount?: number
+  /**
+   * Métricas de consumo del lote (si el backend las expone en list/detail).
+   * `remainingValue` representa valor remanente del lote, no el valor histórico total.
+   */
+  inventoryMetrics?: {
+    productsCount?: number | string
+    availableItemsCount?: number | string
+    consumedItemsCount?: number | string
+    /** Backend puede enviar Decimal/numeric como string. */
+    remainingUnits?: number | string
+    remainingValue?: string | number | null
+    consumptionStatus?: 'EMPTY' | 'FRESH' | 'PARTIAL' | 'DEPLETED'
+    isDepleted?: boolean
+    lotAgeDays?: number
+  } | null
+  /** Detalle compacto de productos del lote (GET /purchase-lots/:id). */
+  items?: Array<{
+    name: string
+    category?: string | null
+    quantity: string | number
+    unit: string
+    unitCost: string | number
+    available?: string | number | boolean | null
+  }> | null
   totalValue?: string | number | null
   createdAt?: string
   updatedAt?: string
@@ -541,6 +567,9 @@ export type PatchPurchaseLotPayload = {
   supplier?: string
   notes?: string
   totalValue?: number
+  /** Si el backend lo expone en PATCH: lote agotado vs aún con saldo. */
+  isDepleted?: boolean
+  consumptionStatus?: 'EMPTY' | 'FRESH' | 'PARTIAL' | 'DEPLETED'
 }
 
 export type InventoryOption = {

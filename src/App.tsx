@@ -181,8 +181,8 @@ function SidebarCollapsedRail({
   const groups: NavGroupId[] = [
     'catalog',
     'stock',
-    'sales',
     'purchases',
+    'sales',
     'finance',
     'data',
   ]
@@ -566,40 +566,6 @@ export default function App() {
             </div>
 
             <div
-              className={`app-nav-group app-nav-group--sales${navGroupsOpen.sales ? '' : ' app-nav-group--folded'}`}
-            >
-              <button
-                type="button"
-                className="app-nav-group__toggle"
-                aria-expanded={navGroupsOpen.sales}
-                id="nav-head-sales"
-                onClick={() => toggleNavGroup('sales')}
-              >
-                <span className="app-nav-group__toggle-main">
-                  <span className="app-nav-group__title">Ventas</span>
-                  <span className="app-nav-group__hint">Ingresos del día</span>
-                </span>
-                <span className="app-nav-group__chevron" aria-hidden />
-              </button>
-              {navGroupsOpen.sales && (
-                <ul
-                  className="app-nav-list"
-                  aria-labelledby="nav-head-sales"
-                >
-                  <li>
-                    <button
-                      type="button"
-                      className={view === 'sales' ? 'active' : ''}
-                      onClick={() => setView('sales')}
-                    >
-                      Ventas
-                    </button>
-                  </li>
-                </ul>
-              )}
-            </div>
-
-            <div
               className={`app-nav-group app-nav-group--purchases${navGroupsOpen.purchases ? '' : ' app-nav-group--folded'}`}
             >
               <button
@@ -630,6 +596,40 @@ export default function App() {
                       onClick={() => setView('purchases')}
                     >
                       Compras
+                    </button>
+                  </li>
+                </ul>
+              )}
+            </div>
+
+            <div
+              className={`app-nav-group app-nav-group--sales${navGroupsOpen.sales ? '' : ' app-nav-group--folded'}`}
+            >
+              <button
+                type="button"
+                className="app-nav-group__toggle"
+                aria-expanded={navGroupsOpen.sales}
+                id="nav-head-sales"
+                onClick={() => toggleNavGroup('sales')}
+              >
+                <span className="app-nav-group__toggle-main">
+                  <span className="app-nav-group__title">Ventas</span>
+                  <span className="app-nav-group__hint">Ingresos del día</span>
+                </span>
+                <span className="app-nav-group__chevron" aria-hidden />
+              </button>
+              {navGroupsOpen.sales && (
+                <ul
+                  className="app-nav-list"
+                  aria-labelledby="nav-head-sales"
+                >
+                  <li>
+                    <button
+                      type="button"
+                      className={view === 'sales' ? 'active' : ''}
+                      onClick={() => setView('sales')}
+                    >
+                      Ventas
                     </button>
                   </li>
                 </ul>
