@@ -270,7 +270,7 @@ export function PurchaseLotsView({ baseUrl }: { baseUrl: string }) {
   }, [searchDebounced, filterDateFrom, filterDateTo])
 
   useEffect(() => {
-    let cancelled = false
+    const controller = new AbortController()
     setLoading(true)
     setListError(null)
     fetchPurchaseLots(baseUrl, {
@@ -279,21 +279,22 @@ export function PurchaseLotsView({ baseUrl }: { baseUrl: string }) {
       search: searchDebounced.trim() || undefined,
       dateFrom: filterDateFrom || undefined,
       dateTo: filterDateTo || undefined,
+      signal: controller.signal,
     })
       .then((res) => {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setList(res.data)
           setMeta(res.meta)
         }
       })
       .catch((e: Error) => {
-        if (!cancelled) setListError(e.message)
+        if (!controller.signal.aborted) setListError(e.message)
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (!controller.signal.aborted) setLoading(false)
       })
     return () => {
-      cancelled = true
+      controller.abort()
     }
   }, [baseUrl, page, searchDebounced, filterDateFrom, filterDateTo])
 
@@ -362,16 +363,6 @@ export function PurchaseLotsView({ baseUrl }: { baseUrl: string }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [lotItemEdit, lotMetaEditOpen])
 
-  const refreshLotDetail = useCallback(async () => {
-    if (!selectedId) return
-    try {
-      const d = await fetchPurchaseLot(baseUrl, selectedId)
-      setSelectedLotRow(d)
-    } catch {
-      /* el listado principal sigue siendo válido */
-    }
-  }, [baseUrl, selectedId])
-
   useEffect(() => {
     const hashId = getPurchaseLotIdFromHash()
     if (hashId) void openLot(hashId)
@@ -394,29 +385,30 @@ export function PurchaseLotsView({ baseUrl }: { baseUrl: string }) {
       setLotInventoryLoading(false)
       return
     }
-    let cancelled = false
+    const controller = new AbortController()
     setLotInventoryLoading(true)
     setLotInventoryError(null)
     fetchInventoryItems(baseUrl, {
       page: 1,
-      limit: 100,
+      limit: 40,
       lot: code,
       includeStats: false,
+      signal: controller.signal,
     })
       .then((res) => {
-        if (!cancelled) setLotInventory(res.data)
+        if (!controller.signal.aborted) setLotInventory(res.data)
       })
       .catch((e: Error) => {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setLotInventory([])
           setLotInventoryError(e.message)
         }
       })
       .finally(() => {
-        if (!cancelled) setLotInventoryLoading(false)
+        if (!controller.signal.aborted) setLotInventoryLoading(false)
       })
     return () => {
-      cancelled = true
+      controller.abort()
     }
   }, [baseUrl, selectedId, selectedLotRow?.code])
 
@@ -474,7 +466,6 @@ export function PurchaseLotsView({ baseUrl }: { baseUrl: string }) {
       try {
         const updated = await updateInventoryItem(baseUrl, inv.id, payload)
         setLotInventory((prev) => prev.map((x) => (x.id === inv.id ? updated : x)))
-        void refreshLotDetail()
         return true
       } catch (e) {
         setLotItemError((e as Error).message)
@@ -483,7 +474,7 @@ export function PurchaseLotsView({ baseUrl }: { baseUrl: string }) {
         setLotItemSavingId(null)
       }
     },
-    [baseUrl, refreshLotDetail],
+    [baseUrl],
   )
 
   const applyDeductQuantity = useCallback(
@@ -540,14 +531,13 @@ export function PurchaseLotsView({ baseUrl }: { baseUrl: string }) {
         await deleteInventoryItem(baseUrl, inv.id)
         setLotInventory((prev) => prev.filter((x) => x.id !== inv.id))
         setLotItemEdit((cur) => (cur?.invId === inv.id ? null : cur))
-        void refreshLotDetail()
       } catch (e) {
         setLotItemError((e as Error).message)
       } finally {
         setLotItemSavingId(null)
       }
     },
-    [baseUrl, refreshLotDetail],
+    [baseUrl],
   )
 
   const save = useCallback(async () => {
@@ -835,6 +825,7 @@ export function PurchaseLotsView({ baseUrl }: { baseUrl: string }) {
     const qComprado = invoiceLine ? qty(invoiceLine.quantity) : null
     const qConsumido =
       qComprado != null ? Math.max(0, qComprado - qNow) : null
+    const displayUnit = invoiceLine?.unit || rowUnit || 'un'
     return (
       <div className="purchase-lot-item-edit-form">
         <p className="muted small purchase-lot-item-edit-form__intro">
@@ -851,178 +842,182 @@ export function PurchaseLotsView({ baseUrl }: { baseUrl: string }) {
         ) : null}
         {invoiceLine ? (
           <div className="purchase-lot-item-edit-form__metrics" aria-label="Resumen de existencias">
-            <div>
+            <div className="purchase-lot-item-edit-form__metric-card">
+              <span className="purchase-lot-item-edit-form__metric-label">Comprado</span>
+              <span className="mono purchase-lot-item-edit-form__metric-value">
+                {(qComprado ?? 0).toFixed(2)} {displayUnit}
+              </span>
+            </div>
+            <div className="purchase-lot-item-edit-form__metric-card">
               <span className="purchase-lot-item-edit-form__metric-label">Consumido</span>
               <span className="mono purchase-lot-item-edit-form__metric-value">
-                {(qConsumido ?? 0).toFixed(2)} {invoiceLine.unit || ''}
+                {(qConsumido ?? 0).toFixed(2)} {displayUnit}
               </span>
             </div>
-            <div>
-              <span className="purchase-lot-item-edit-form__metric-label">
-                En existencia (por consumir)
-              </span>
+            <div className="purchase-lot-item-edit-form__metric-card">
+              <span className="purchase-lot-item-edit-form__metric-label">Disponible</span>
               <span className="mono purchase-lot-item-edit-form__metric-value">
-                {qNow.toFixed(2)} {rowUnit || '—'}
+                {qNow.toFixed(2)} {displayUnit}
               </span>
             </div>
           </div>
         ) : null}
         {invoiceLine ? (
           <label className="field">
-            <span>¿Ya se gastó todo lo comprado?</span>
-            <select
-              className="inventory-filter__input"
-              value={qNow > 0 ? 'hay' : 'no'}
-              onChange={(e) => {
-                const hay = e.target.value === 'hay'
-                const nextQty = hay ? String(invoiceLine.quantity) : '0'
-                setLotInventory((prev) =>
-                  prev.map((x) =>
-                    x.id === inv.id ? { ...x, quantity: nextQty } : x,
-                  ),
-                )
-                void updateLotItemField(inv, { quantity: nextQty })
-              }}
-              disabled={lotItemSavingId === inv.id}
-            >
-              <option value="hay">No — aún hay existencias</option>
-              <option value="no">Sí — todo consumido (0)</option>
-            </select>
-          </label>
-        ) : null}
-        <label className="field">
-          <span>Unidades en existencia (editar)</span>
-          <div className="purchases-qty-unit-cell purchase-lot-item-edit-form__qty-row">
-            <input
-              className="input-cell purchases-qty-unit-cell__qty"
-              inputMode="decimal"
-              title={`Cantidad en ${rowUnit || 'tu unidad'}`}
-              aria-label={`Cantidad en stock de ${inv.name}`}
-              value={String(inv.quantity)}
-              onChange={(e) =>
-                setLotInventory((prev) =>
-                  prev.map((x) =>
-                    x.id === inv.id ? { ...x, quantity: e.target.value } : x,
-                  ),
-                )
-              }
-              onBlur={() => {
-                void updateLotItemField(inv, {
-                  quantity: String(
-                    lotInventory.find((x) => x.id === inv.id)?.quantity ??
-                      inv.quantity,
-                  ),
-                })
-              }}
-              disabled={lotItemSavingId === inv.id}
-            />
-            <input
-              className="input-cell purchases-qty-unit-cell__unit"
-              list="purchase-lot-unit-list"
-              title="Unidad (kg, porciones, un…)"
-              aria-label={`Unidad de ${inv.name}`}
-              value={String(inv.unit)}
-              onChange={(e) =>
-                setLotInventory((prev) =>
-                  prev.map((x) =>
-                    x.id === inv.id ? { ...x, unit: e.target.value } : x,
-                  ),
-                )
-              }
-              onBlur={() => {
-                void updateLotItemField(inv, {
-                  unit: String(
-                    lotInventory.find((x) => x.id === inv.id)?.unit ?? inv.unit,
-                  ),
-                })
-              }}
-              disabled={lotItemSavingId === inv.id}
-            />
-          </div>
-        </label>
-        <div className="field">
-          <span>Descontar (uso, merma, venta desde stock)</span>
-          <div className="purchases-deduct-stack purchase-lot-item-edit-form__deduct">
-            <div className="purchases-deduct-stack__row">
-              <input
-                className="input-cell input-cell--deduct"
-                inputMode="decimal"
-                placeholder="Ej. 1"
-                title={`Restar en ${rowUnit || 'la unidad del ítem'}`}
-                aria-label={`Descontar cantidad de ${inv.name}`}
-                value={deductDraft[inv.id] ?? ''}
-                onChange={(e) =>
-                  setDeductDraft((d) => ({
-                    ...d,
-                    [inv.id]: e.target.value,
-                  }))
-                }
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault()
-                    void applyDeductQuantity(inv)
-                  }
-                }}
-                disabled={lotItemSavingId === inv.id}
-              />
-              <button
-                type="button"
-                className="btn-secondary btn-compact"
-                onClick={() => void applyDeductQuantity(inv)}
-                disabled={lotItemSavingId === inv.id}
-              >
-                Restar
-              </button>
-            </div>
-            <button
-              type="button"
-              className="purchases-deduct-agotar"
-              onClick={() => void agotarLotItemQuantity(inv)}
-              disabled={
-                lotItemSavingId === inv.id || qty(inv.quantity) <= 0
-              }
-            >
-              Agotar (0)
-            </button>
-          </div>
-        </div>
-        {invoiceLine ? (
-          <div className="field">
-            <span>Precio de compra por unidad (ya pagado, solo lectura)</span>
-            <p
-              className="mono purchase-lot-item-edit-form__readonly-cop"
-              title="No se modifica al ajustar existencias."
-            >
-              {formatCOP(num(invoiceLine.unitCost))}
-            </p>
-          </div>
-        ) : (
-          <label className="field">
-            <span>Precio de compra por unidad (COP)</span>
+            <span>Unidades consumidas (editar)</span>
             <input
               className="input-cell"
               inputMode="decimal"
-              title="Corregir el costo unitario registrado si hace falta."
-              value={String(inv.unitCost)}
-              onChange={(e) =>
+              title={`Consumido en ${displayUnit}`}
+              aria-label={`Cantidad consumida de ${inv.name}`}
+              value={String(
+                (() => {
+                  const comprado = qty(invoiceLine.quantity)
+                  const now = qty(
+                    lotInventory.find((x) => x.id === inv.id)?.quantity ?? inv.quantity,
+                  )
+                  return Math.max(0, comprado - now)
+                })(),
+              )}
+              onChange={(e) => {
+                const consumidoRaw = parseFloat(e.target.value.replace(',', '.'))
+                if (!Number.isFinite(consumidoRaw)) {
+                  setLotInventory((prev) =>
+                    prev.map((x) => (x.id === inv.id ? { ...x, quantity: e.target.value } : x)),
+                  )
+                  return
+                }
+                const comprado = qty(invoiceLine.quantity)
+                const consumido = Math.max(0, Math.min(consumidoRaw, comprado))
+                const nextQty = Math.max(0, comprado - consumido)
                 setLotInventory((prev) =>
                   prev.map((x) =>
-                    x.id === inv.id ? { ...x, unitCost: e.target.value } : x,
+                    x.id === inv.id ? { ...x, quantity: String(nextQty) } : x,
                   ),
                 )
-              }
-              onBlur={() =>
-                void updateLotItemField(inv, {
-                  unitCost: String(
-                    lotInventory.find((x) => x.id === inv.id)?.unitCost ??
-                      inv.unitCost,
-                  ),
-                })
-              }
+              }}
+              onBlur={() => {
+                const currentQty = String(
+                  lotInventory.find((x) => x.id === inv.id)?.quantity ?? inv.quantity,
+                )
+                void updateLotItemField(inv, { quantity: currentQty })
+              }}
               disabled={lotItemSavingId === inv.id}
             />
+            <p className="muted small">
+              Se recalcula automáticamente la existencia: comprado - consumido.
+            </p>
           </label>
-        )}
+        ) : null}
+        {!invoiceLine ? (
+          <>
+            <label className="field">
+              <span>Unidades en existencia (editar)</span>
+              <div className="purchases-qty-unit-cell purchase-lot-item-edit-form__qty-row">
+                <input
+                  className="input-cell purchases-qty-unit-cell__qty"
+                  inputMode="decimal"
+                  title={`Cantidad en ${rowUnit || 'tu unidad'}`}
+                  aria-label={`Cantidad en stock de ${inv.name}`}
+                  value={String(inv.quantity)}
+                  onChange={(e) =>
+                    setLotInventory((prev) =>
+                      prev.map((x) =>
+                        x.id === inv.id ? { ...x, quantity: e.target.value } : x,
+                      ),
+                    )
+                  }
+                  onBlur={() => {
+                    void updateLotItemField(inv, {
+                      quantity: String(
+                        lotInventory.find((x) => x.id === inv.id)?.quantity ??
+                          inv.quantity,
+                      ),
+                    })
+                  }}
+                  disabled={lotItemSavingId === inv.id}
+                />
+                <input
+                  className="input-cell purchases-qty-unit-cell__unit"
+                  list="purchase-lot-unit-list"
+                  title="Unidad (kg, porciones, un…)"
+                  aria-label={`Unidad de ${inv.name}`}
+                  value={String(inv.unit)}
+                  onChange={(e) =>
+                    setLotInventory((prev) =>
+                      prev.map((x) =>
+                        x.id === inv.id ? { ...x, unit: e.target.value } : x,
+                      ),
+                    )
+                  }
+                  onBlur={() => {
+                    void updateLotItemField(inv, {
+                      unit: String(
+                        lotInventory.find((x) => x.id === inv.id)?.unit ?? inv.unit,
+                      ),
+                    })
+                  }}
+                  disabled={lotItemSavingId === inv.id}
+                />
+              </div>
+            </label>
+            <div className="field">
+              <span>Descontar (uso, merma, venta desde stock)</span>
+              <div className="purchases-deduct-stack purchase-lot-item-edit-form__deduct">
+                <div className="purchases-deduct-stack__row">
+                  <input
+                    className="input-cell input-cell--deduct"
+                    inputMode="decimal"
+                    placeholder="Ej. 1"
+                    title={`Restar en ${rowUnit || 'la unidad del ítem'}`}
+                    aria-label={`Descontar cantidad de ${inv.name}`}
+                    value={deductDraft[inv.id] ?? ''}
+                    onChange={(e) =>
+                      setDeductDraft((d) => ({
+                        ...d,
+                        [inv.id]: e.target.value,
+                      }))
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        void applyDeductQuantity(inv)
+                      }
+                    }}
+                    disabled={lotItemSavingId === inv.id}
+                  />
+                  <button
+                    type="button"
+                    className="btn-secondary btn-compact"
+                    onClick={() => void applyDeductQuantity(inv)}
+                    disabled={lotItemSavingId === inv.id}
+                  >
+                    Restar
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  className="purchases-deduct-agotar"
+                  onClick={() => void agotarLotItemQuantity(inv)}
+                  disabled={
+                    lotItemSavingId === inv.id || qty(inv.quantity) <= 0
+                  }
+                >
+                  Agotar (0)
+                </button>
+              </div>
+            </div>
+          </>
+        ) : null}
+        <div className="field">
+          <span>Precio de compra por unidad (solo lectura)</span>
+          <p
+            className="mono purchase-lot-item-edit-form__readonly-cop"
+            title="El costo de compra es histórico y no se modifica al ajustar consumo o existencias."
+          >
+            {formatCOP(num(invoiceLine?.unitCost ?? inv.unitCost))}
+          </p>
+        </div>
         <p className="muted small purchase-lot-item-edit-form__subtotal">
           {invoiceLine ? (
             <>

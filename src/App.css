@@ -3944,7 +3944,7 @@ table.data-table {
 }
 
 .purchase-lot-item-edit-modal {
-  width: min(440px, 100%);
+  width: min(560px, 100%);
   max-height: min(88svh, 720px);
 }
 
@@ -3968,13 +3968,20 @@ table.data-table {
 }
 
 .purchase-lot-item-edit-form__metrics {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem 1.25rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 0.65rem;
   padding: 0.5rem 0.65rem;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: color-mix(in srgb, var(--heading) 4%, var(--surface-elevated));
+}
+
+.purchase-lot-item-edit-form__metric-card {
+  padding: 0.45rem 0.55rem;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--surface) 86%, var(--heading));
+  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
 }
 
 .purchase-lot-item-edit-form__metric-label {

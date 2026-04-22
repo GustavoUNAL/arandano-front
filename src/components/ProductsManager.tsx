@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   createProduct,
   deleteProduct,
@@ -18,8 +18,8 @@ import { ProductSummaryCard } from './ProductSummaryCard'
 import { RecipeEditor } from './RecipeEditor'
 
 const PRODUCT_TYPES = ['bebida', 'comida', 'combo'] as const
-const FETCH_PAGE_SIZE = 100
-const MAX_PRODUCT_PAGES = 100
+const FETCH_PAGE_SIZE = 40
+const MAX_PRODUCT_PAGES = 25
 
 function priceToNumber(p: string | number): number {
   if (typeof p === 'number') return p
@@ -114,6 +114,7 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
   )
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const prefetchedProductIds = useRef<Set<string>>(new Set())
 
   const openRecipePage = useCallback((productId: string) => {
     window.location.hash = `#/recipes/${productId}`
@@ -139,7 +140,7 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
     [searchDebounced, filterActive, filterType, sortBy],
   )
 
-  const loadAllProducts = useCallback(async () => {
+  const loadAllProducts = useCallback(async (signal?: AbortSignal) => {
     setLoading(true)
     setListError(null)
     setCatalogTruncated(false)
@@ -151,6 +152,7 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
         const res = await fetchProducts(baseUrl, {
           page: p,
           limit: FETCH_PAGE_SIZE,
+          signal,
           ...productListQuery,
         })
         acc.push(...res.data)
@@ -161,13 +163,16 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
         }
         p++
       }
-      setAllProducts(acc)
-      setCatalogTruncated(truncated)
+      if (!signal?.aborted) {
+        setAllProducts(acc)
+        setCatalogTruncated(truncated)
+      }
     } catch (e) {
+      if (signal?.aborted) return
       setListError((e as Error).message)
       setAllProducts([])
     } finally {
-      setLoading(false)
+      if (!signal?.aborted) setLoading(false)
     }
   }, [baseUrl, productListQuery])
 
@@ -217,6 +222,13 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
 
   useEffect(() => {
     let cancelled = false
+    // Cargar insumos solo cuando se abre edición de un producto con receta.
+    if (!selectedId) {
+      setInventoryOptions([])
+      return () => {
+        cancelled = true
+      }
+    }
     fetchInventoryOptions(baseUrl)
       .then((inv) => {
         if (!cancelled) setInventoryOptions(inv)
@@ -227,7 +239,7 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
     return () => {
       cancelled = true
     }
-  }, [baseUrl])
+  }, [baseUrl, selectedId])
 
   const refreshCatalogSummary = useCallback(() => {
     setSummaryLoading(true)
@@ -248,8 +260,21 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
   }, [refreshCatalogSummary])
 
   useEffect(() => {
-    void loadAllProducts()
+    const controller = new AbortController()
+    void loadAllProducts(controller.signal)
+    return () => controller.abort()
   }, [loadAllProducts])
+
+  const prefetchProductDetail = useCallback(
+    (id: string) => {
+      if (prefetchedProductIds.current.has(id)) return
+      prefetchedProductIds.current.add(id)
+      fetchProduct(baseUrl, id).catch(() => {
+        prefetchedProductIds.current.delete(id)
+      })
+    },
+    [baseUrl],
+  )
 
   const openCreate = useCallback(() => {
     setCreating(true)
@@ -328,8 +353,9 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
     setSaving(true)
     setSaveError(null)
     try {
+      let savedRow: ProductRow | null = null
       if (creating) {
-        await createProduct(baseUrl, {
+        savedRow = await createProduct(baseUrl, {
           name: draft.name.trim(),
           price,
           categoryId: draft.categoryId,
@@ -340,7 +366,7 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
           active: draft.active,
         })
       } else if (selectedId) {
-        await updateProduct(baseUrl, selectedId, {
+        savedRow = await updateProduct(baseUrl, selectedId, {
           name: draft.name.trim(),
           price,
           categoryId: draft.categoryId,
@@ -351,8 +377,13 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
           active: draft.active,
         })
       }
+      if (savedRow) {
+        setAllProducts((prev) => {
+          if (creating) return [savedRow!, ...prev]
+          return prev.map((p) => (p.id === savedRow!.id ? savedRow! : p))
+        })
+      }
       closePanel()
-      await loadAllProducts()
       refreshCatalogSummary()
     } catch (e) {
       setSaveError((e as Error).message)
@@ -364,7 +395,6 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
     creating,
     closePanel,
     draft,
-    loadAllProducts,
     refreshCatalogSummary,
     selectedId,
   ])
@@ -377,15 +407,15 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
     setSaveError(null)
     try {
       await deleteProduct(baseUrl, selectedId)
+      setAllProducts((prev) => prev.filter((p) => p.id !== selectedId))
       closePanel()
-      await loadAllProducts()
       refreshCatalogSummary()
     } catch (e) {
       setSaveError((e as Error).message)
     } finally {
       setSaving(false)
     }
-  }, [baseUrl, closePanel, loadAllProducts, refreshCatalogSummary, selectedId])
+  }, [baseUrl, closePanel, refreshCatalogSummary, selectedId])
 
   const parsedRecipe = useMemo(
     () => parseProductRecipeFull(detailRecipe),
@@ -554,6 +584,8 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
                             <button
                               type="button"
                               className="table-link"
+                              onMouseEnter={() => prefetchProductDetail(p.id)}
+                              onFocus={() => prefetchProductDetail(p.id)}
                               onClick={() => void openEdit(p.id)}
                             >
                               {p.name}

@@ -84,6 +84,20 @@ export function RecipesView({ baseUrl }: { baseUrl: string }) {
       .catch(() => {
         if (!cancelled) setCategories([])
       })
+    return () => {
+      cancelled = true
+    }
+  }, [baseUrl])
+
+  useEffect(() => {
+    let cancelled = false
+    // Evita cargar inventario completo hasta que realmente se abra el editor.
+    if (!selectedId) {
+      setInventory([])
+      return () => {
+        cancelled = true
+      }
+    }
     fetchInventoryOptions(baseUrl)
       .then((inv) => {
         if (!cancelled) setInventory(inv)
@@ -94,30 +108,27 @@ export function RecipesView({ baseUrl }: { baseUrl: string }) {
     return () => {
       cancelled = true
     }
-  }, [baseUrl])
+  }, [baseUrl, selectedId])
 
   useEffect(() => {
-    let cancelled = false
-    Promise.resolve().then(() => {
-      if (cancelled) return
-      setLoadingList(true)
-      setLoadError(null)
-    })
-    fetchRecipeCatalog(baseUrl)
+    const controller = new AbortController()
+    setLoadingList(true)
+    setLoadError(null)
+    fetchRecipeCatalog(baseUrl, undefined, controller.signal)
       .then((cat) => {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setCatalog(cat)
           setLoadError(null)
         }
       })
       .catch((e: Error) => {
-        if (!cancelled) setLoadError(e.message)
+        if (!controller.signal.aborted) setLoadError(e.message)
       })
       .finally(() => {
-        if (!cancelled) setLoadingList(false)
+        if (!controller.signal.aborted) setLoadingList(false)
       })
     return () => {
-      cancelled = true
+      controller.abort()
     }
   }, [baseUrl])
 
@@ -169,12 +180,13 @@ export function RecipesView({ baseUrl }: { baseUrl: string }) {
   }, [categories, pageRows])
 
   const reloadCatalog = useCallback(async () => {
+    const controller = new AbortController()
     try {
-      const list = await fetchRecipeCatalog(baseUrl)
+      const list = await fetchRecipeCatalog(baseUrl, undefined, controller.signal)
       setCatalog(list)
       setLoadError(null)
     } catch (e) {
-      setLoadError((e as Error).message)
+      if (!controller.signal.aborted) setLoadError((e as Error).message)
     }
   }, [baseUrl])
 

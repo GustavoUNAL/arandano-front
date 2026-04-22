@@ -193,6 +193,7 @@ export async function fetchProducts(
     active?: boolean
     type?: string
     sort?: ProductListSort
+    signal?: AbortSignal
   },
 ): Promise<ProductsListResponse> {
   const q = new URLSearchParams()
@@ -204,7 +205,7 @@ export async function fetchProducts(
   if (opts.active === false) q.set('active', 'false')
   if (opts.type?.trim()) q.set('type', opts.type.trim())
   if (opts.sort && opts.sort !== 'name') q.set('sort', opts.sort)
-  const res = await apiFetch(`${base}/products?${q}`)
+  const res = await apiFetch(`${base}/products?${q}`, { signal: opts.signal })
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<ProductsListResponse>
 }
@@ -265,13 +266,12 @@ export type RecipeCatalogEntry = {
 export async function fetchRecipeCatalog(
   base: string,
   categoryId?: string,
+  signal?: AbortSignal,
 ): Promise<RecipeCatalogEntry[]> {
   const q = new URLSearchParams()
   if (categoryId?.trim()) q.set('categoryId', categoryId.trim())
   const qs = q.toString()
-  const res = await apiFetch(
-    `${base}/recipes${qs ? `?${qs}` : ''}`,
-  )
+  const res = await apiFetch(`${base}/recipes${qs ? `?${qs}` : ''}`, { signal })
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<RecipeCatalogEntry[]>
 }
@@ -655,6 +655,7 @@ export async function fetchInventoryItems(
     belowMinimum?: boolean
     /** Filtro por código de lote (coincidencia según backend). */
     lot?: string
+    signal?: AbortSignal
   },
 ): Promise<InventoryListResponse> {
   const q = new URLSearchParams()
@@ -668,7 +669,7 @@ export async function fetchInventoryItems(
   }
   if (opts.belowMinimum === true) q.set('belowMinimum', 'true')
   if (opts.lot?.trim()) q.set('lot', opts.lot.trim())
-  const res = await apiFetch(`${base}/inventory?${q}`)
+  const res = await apiFetch(`${base}/inventory?${q}`, { signal: opts.signal })
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<InventoryListResponse>
 }
@@ -1302,6 +1303,7 @@ export async function fetchPurchaseLots(
     search?: string
     dateFrom?: string
     dateTo?: string
+    signal?: AbortSignal
   },
 ): Promise<PurchaseLotsListResponse> {
   const q = new URLSearchParams()
@@ -1310,7 +1312,7 @@ export async function fetchPurchaseLots(
   if (opts.search?.trim()) q.set('search', opts.search.trim())
   if (opts.dateFrom?.trim()) q.set('dateFrom', opts.dateFrom.trim())
   if (opts.dateTo?.trim()) q.set('dateTo', opts.dateTo.trim())
-  const res = await apiFetch(`${base}/purchase-lots?${q}`)
+  const res = await apiFetch(`${base}/purchase-lots?${q}`, { signal: opts.signal })
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<PurchaseLotsListResponse>
 }

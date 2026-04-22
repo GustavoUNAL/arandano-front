@@ -183,6 +183,7 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
   const [filterCategoryId, setFilterCategoryId] = useState('')
   const [filterAvailability, setFilterAvailability] =
     useState<AvailabilityFilter>('')
+  const [showStats, setShowStats] = useState(false)
   const [lotFilter, setLotFilter] = useState('')
   const [lotFilterDebounced, setLotFilterDebounced] = useState('')
   const [loading, setLoading] = useState(false)
@@ -205,22 +206,26 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
 
   useEffect(() => {
     let cancelled = false
-    setLotIndexError(null)
-    fetchPurchaseLotsCodeIndex(baseUrl)
-      .then((m) => {
-        if (!cancelled) {
-          setLotByCode(m)
-          setLotIndexError(null)
-        }
-      })
-      .catch((e: Error) => {
-        if (!cancelled) {
-          setLotByCode(null)
-          setLotIndexError(e.message)
-        }
-      })
+    // Diferir el mapa código->lote para priorizar el render inicial de inventario.
+    const timer = window.setTimeout(() => {
+      setLotIndexError(null)
+      fetchPurchaseLotsCodeIndex(baseUrl)
+        .then((m) => {
+          if (!cancelled) {
+            setLotByCode(m)
+            setLotIndexError(null)
+          }
+        })
+        .catch((e: Error) => {
+          if (!cancelled) {
+            setLotByCode(null)
+            setLotIndexError(e.message)
+          }
+        })
+    }, 1200)
     return () => {
       cancelled = true
+      window.clearTimeout(timer)
     }
   }, [baseUrl])
 
@@ -247,13 +252,14 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
   const inventoryListQuery = useMemo(
     () => ({
       categoryId: filterCategoryId || undefined,
+      includeStats: showStats,
       availability:
         filterAvailability === 'available' || filterAvailability === 'depleted'
           ? filterAvailability
           : undefined,
       lot: lotFilterDebounced.trim() || undefined,
     }),
-    [filterCategoryId, filterAvailability, lotFilterDebounced],
+    [filterCategoryId, filterAvailability, lotFilterDebounced, showStats],
   )
 
   useEffect(() => {
@@ -274,29 +280,29 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
   }, [baseUrl])
 
   useEffect(() => {
-    let cancelled = false
+    const controller = new AbortController()
     setLoading(true)
     setListError(null)
     fetchInventoryItems(baseUrl, {
       page,
       limit: LIMIT,
-      includeStats: true,
+      signal: controller.signal,
       ...inventoryListQuery,
     })
       .then((res) => {
-        if (!cancelled) {
+        if (!controller.signal.aborted) {
           setList(res.data)
           setMeta(res.meta)
         }
       })
       .catch((e: Error) => {
-        if (!cancelled) setListError(e.message)
+        if (!controller.signal.aborted) setListError(e.message)
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (!controller.signal.aborted) setLoading(false)
       })
     return () => {
-      cancelled = true
+      controller.abort()
     }
   }, [baseUrl, page, inventoryListQuery])
 
@@ -403,7 +409,6 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
       const res = await fetchInventoryItems(baseUrl, {
         page: 1,
         limit: LIMIT,
-        includeStats: true,
         ...inventoryListQuery,
       })
       setList(res.data)
@@ -440,7 +445,6 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
       const res = await fetchInventoryItems(baseUrl, {
         page,
         limit: LIMIT,
-        includeStats: true,
         ...inventoryListQuery,
       })
       setList(res.data)
@@ -581,6 +585,18 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                 <option value="">Todos</option>
                 <option value="available">Disponible</option>
                 <option value="depleted">Consumido</option>
+              </select>
+            </label>
+            <label className="inventory-filter">
+              <span className="inventory-filter__label">Métricas</span>
+              <select
+                className="inventory-filter__input"
+                value={showStats ? 'on' : 'off'}
+                onChange={(e) => setShowStats(e.target.value === 'on')}
+                aria-label="Cargar estadísticas de movimientos"
+              >
+                <option value="off">Ligero</option>
+                <option value="on">Completo</option>
               </select>
             </label>
           </div>
