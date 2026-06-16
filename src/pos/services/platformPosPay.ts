@@ -24,7 +24,7 @@ export async function registerPlatformSaleFromPosOrder(
       ? `Descuento: ${formatCOP(payload.discountCOP)} — ${payload.discountReason?.trim()}`
       : null,
     order.transferReceiptDataUrl
-      ? 'Comprobante transferencia (foto POS)'
+      ? 'Comprobante transferencia (foto punto de venta)'
       : order.transferReference?.trim()
         ? `Transf. ${order.transferReference.trim()}`
         : null,
@@ -33,7 +33,7 @@ export async function registerPlatformSaleFromPosOrder(
       : null,
     payload.saleComment?.trim() || null,
     payload.tipCOP > 0 ? `Propina: ${formatCOP(payload.tipCOP)}` : null,
-    payload.printReceipt ? 'Recibo POS' : null,
+    payload.printReceipt ? 'Recibo punto de venta' : null,
   ]
     .filter(Boolean)
     .join(' · ')

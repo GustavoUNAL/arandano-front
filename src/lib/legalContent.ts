@@ -41,7 +41,7 @@ export const PRIVACY_PAGE: LegalPageContent = {
     {
       title: '3. Finalidad del tratamiento',
       paragraphs: [
-        'Operar y mantener la plataforma, incluido POS, panel administrativo y asistente IA.',
+        'Operar y mantener la plataforma, incluido punto de venta, panel administrativo y asistente IA.',
         'Gestionar solicitudes de acceso, onboarding y soporte.',
         'Mejorar funciones, seguridad y experiencia de uso.',
         'Cumplir obligaciones legales y resolver incidencias.',

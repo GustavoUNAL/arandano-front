@@ -98,7 +98,7 @@ export function ShopAdminView({ baseUrl, onOpenProducts, onOpenPos }: Props) {
         <h1 className="shop-admin__title">Tienda por empresa</h1>
         <p className="shop-admin__subtitle muted">
           Configurá la URL pública de la tienda de <strong>tu empresa</strong> en {BRAND_NAME}.
-          Los pedidos llegan al POS en <strong>Pedidos web</strong>.
+          Los pedidos llegan al punto de venta en <strong>Pedidos web</strong>.
         </p>
       </header>
 
@@ -137,7 +137,7 @@ export function ShopAdminView({ baseUrl, onOpenProducts, onOpenPos }: Props) {
                 ) : null}
                 {onOpenPos ? (
                   <button type="button" className="btn-secondary btn-compact" onClick={onOpenPos}>
-                    POS · Pedidos web
+                    Punto de venta · Pedidos web
                   </button>
                 ) : null}
                 {settings.shopSlug ? (

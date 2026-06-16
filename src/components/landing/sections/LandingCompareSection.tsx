@@ -24,7 +24,7 @@ export function LandingCompareSection() {
     <LandingSection ariaLabelledBy="compare-title">
       <LandingSectionHeader
         titleId="compare-title"
-        title="Más que un POS"
+        title="Más que un punto de venta"
         subtitle="No somos una caja registradora digital. Somos el sistema operativo de tu negocio."
       />
 
@@ -48,7 +48,7 @@ export function LandingCompareSection() {
           viewport={{ once: true, margin: '-60px' }}
           variants={staggerContainer}
         >
-          <CompareColumn title="POS tradicional" items={POS_ITEMS} variant="pos" />
+          <CompareColumn title="Punto de venta tradicional" items={POS_ITEMS} variant="pos" />
           <CompareColumn title={BRAND_NAME} items={VOS_ITEMS} variant="vos" highlight />
         </motion.div>
       </div>

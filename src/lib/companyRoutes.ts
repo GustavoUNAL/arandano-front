@@ -13,6 +13,7 @@ export type AppView =
   | 'tasks'
   | 'staff'
   | 'analytics'
+  | 'cash-close'
   | 'costs'
   | 'gastos'
   | 'explorer'
@@ -30,6 +31,7 @@ const VIEW_KEYS = new Set<string>([
   'tasks',
   'staff',
   'analytics',
+  'cash-close',
   'costs',
   'gastos',
   'explorer',

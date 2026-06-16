@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="VOS AI">
+  <defs>
+    <linearGradient id="bg" x1="8" y1="6" x2="56" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2b2f3d" />
+      <stop offset="1" stop-color="#242733" />
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="14" fill="url(#bg)" />
+  <path
+    d="M18 18h10.5l5.5 18.5L39.5 18H50L38 46H26L18 18Z"
+    fill="#8be9fd"
+  />
+  <circle cx="47" cy="17" r="4.5" fill="#bd93f9" />
+</svg>

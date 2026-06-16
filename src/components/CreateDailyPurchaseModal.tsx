@@ -4,6 +4,7 @@ import {
   type CreatePurchaseLotPayload,
 } from '../api'
 import { invalidateCalendarNamespace } from '../lib/calendarCache'
+import { formatPurchaseCOP } from '../lib/purchaseLotUi'
 import { PurchaseReceiptCapture } from './PurchaseReceiptCapture'
 
 type LineDraft = {
@@ -12,6 +13,8 @@ type LineDraft = {
   quantity: string
   unit: string
   unitCost: string
+  lineTotal: string
+  lineTotalManual: boolean
 }
 
 function newLineKey(): string {
@@ -24,7 +27,9 @@ function emptyLine(): LineDraft {
     lineName: '',
     quantity: '1',
     unit: 'und',
-    unitCost: '0',
+    unitCost: '',
+    lineTotal: '',
+    lineTotalManual: false,
   }
 }
 
@@ -35,8 +40,19 @@ function todayInputValue(): string {
 }
 
 function parseNum(v: string): number {
-  const n = parseFloat(v.replace(',', '.'))
+  const n = parseFloat(v.replace(',', '.').trim())
   return Number.isFinite(n) ? n : NaN
+}
+
+function lineImporte(row: LineDraft): number {
+  if (row.lineTotalManual) {
+    const manual = parseNum(row.lineTotal)
+    if (Number.isFinite(manual) && manual >= 0) return Math.round(manual)
+  }
+  const q = parseNum(row.quantity)
+  const c = parseNum(row.unitCost)
+  if (!Number.isFinite(q) || !Number.isFinite(c) || q <= 0 || c < 0) return 0
+  return Math.round(q * c)
 }
 
 type Props = {
@@ -59,39 +75,72 @@ export function CreateDailyPurchaseModal({
   const [notes, setNotes] = useState('')
   const [receiptImageDataUrl, setReceiptImageDataUrl] = useState<string | null>(null)
   const [lines, setLines] = useState<LineDraft[]>(() => [emptyLine()])
+  const [totalValue, setTotalValue] = useState('')
+  const [totalManual, setTotalManual] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const lineTotal = useMemo(() => {
-    return lines.reduce((acc, row) => {
-      const q = parseNum(row.quantity)
-      const c = parseNum(row.unitCost)
-      if (!Number.isFinite(q) || !Number.isFinite(c) || q <= 0) return acc
-      return acc + Math.round(q * c)
-    }, 0)
-  }, [lines])
+  const linesSubtotal = useMemo(
+    () => lines.reduce((acc, row) => acc + lineImporte(row), 0),
+    [lines],
+  )
+
+  const displayTotal = useMemo(() => {
+    if (totalManual) {
+      const manual = parseNum(totalValue)
+      if (Number.isFinite(manual) && manual >= 0) return Math.round(manual)
+    }
+    return linesSubtotal
+  }, [linesSubtotal, totalManual, totalValue])
+
+  const updateLine = useCallback(
+    (key: string, patch: Partial<LineDraft>) => {
+      setLines((prev) =>
+        prev.map((row) => (row.key === key ? { ...row, ...patch } : row)),
+      )
+    },
+    [],
+  )
 
   const submit = useCallback(async () => {
     setError(null)
     const validLines: NonNullable<CreatePurchaseLotPayload['lines']> = []
+
     for (const row of lines) {
       const lineName = row.lineName.trim()
       const quantityPurchased = parseNum(row.quantity)
-      const purchaseUnitCostCOP = Math.round(parseNum(row.unitCost))
       const unit = row.unit.trim() || 'und'
+      const importe = lineImporte(row)
+
       if (!lineName) continue
       if (!Number.isFinite(quantityPurchased) || quantityPurchased <= 0) continue
-      if (!Number.isFinite(purchaseUnitCostCOP) || purchaseUnitCostCOP < 0) continue
-      validLines.push({
+      if (importe <= 0) continue
+
+      const purchaseUnitCostCOP = Math.round(
+        parseNum(row.unitCost) >= 0
+          ? parseNum(row.unitCost)
+          : Math.round(importe / quantityPurchased),
+      )
+
+      const payload: NonNullable<CreatePurchaseLotPayload['lines']>[number] = {
         lineName,
         quantityPurchased,
         unit,
         purchaseUnitCostCOP,
-      })
+      }
+      if (row.lineTotalManual || importe !== Math.round(quantityPurchased * purchaseUnitCostCOP)) {
+        payload.lineTotalCOP = importe
+      }
+      validLines.push(payload)
     }
 
     if (validLines.length === 0) {
-      setError('Agregá al menos una línea con nombre, cantidad y costo.')
+      setError('Agregá al menos una línea con nombre, cantidad y valor de compra.')
+      return
+    }
+
+    if (displayTotal <= 0) {
+      setError('Indicá el valor total de la compra (por línea o en el total).')
       return
     }
 
@@ -102,7 +151,7 @@ export function CreateDailyPurchaseModal({
         supplier: supplier.trim() || undefined,
         notes: notes.trim() || undefined,
         lines: validLines,
-        totalValue: lineTotal > 0 ? lineTotal : undefined,
+        totalValue: displayTotal,
         receiptImageDataUrl: receiptImageDataUrl?.trim() || undefined,
       })
       invalidateCalendarNamespace('purchases')
@@ -113,7 +162,17 @@ export function CreateDailyPurchaseModal({
     } finally {
       setSaving(false)
     }
-  }, [baseUrl, lineTotal, lines, notes, onClose, onCreated, purchaseDate, receiptImageDataUrl, supplier])
+  }, [
+    baseUrl,
+    displayTotal,
+    lines,
+    notes,
+    onClose,
+    onCreated,
+    purchaseDate,
+    receiptImageDataUrl,
+    supplier,
+  ])
 
   return (
     <div
@@ -133,7 +192,7 @@ export function CreateDailyPurchaseModal({
           <div className="modal-head-title product-submodal-head__copy">
             <h2 id="daily-purchase-title">Registrar compra del día</h2>
             <p className="product-submodal-head__product muted small">
-              Comprobante con proveedor, fecha y líneas de producto.
+              Comprobante con proveedor, fecha, líneas y valor pagado.
             </p>
           </div>
           <button
@@ -186,7 +245,7 @@ export function CreateDailyPurchaseModal({
 
             <div className="daily-purchase-lines">
               <div className="daily-purchase-lines__head">
-                <h3 className="daily-purchase-lines__title">Líneas</h3>
+                <h3 className="daily-purchase-lines__title">Líneas de compra</h3>
                 <button
                   type="button"
                   className="btn-secondary btn-compact"
@@ -195,20 +254,20 @@ export function CreateDailyPurchaseModal({
                   + Línea
                 </button>
               </div>
+              <div className="daily-purchase-line daily-purchase-line--head" aria-hidden>
+                <span>Producto</span>
+                <span>Cant.</span>
+                <span>Unidad</span>
+                <span>Costo u.</span>
+                <span>Importe</span>
+                <span />
+              </div>
               {lines.map((row) => (
                 <div key={row.key} className="daily-purchase-line">
                   <input
                     className="input-cell"
                     value={row.lineName}
-                    onChange={(e) =>
-                      setLines((prev) =>
-                        prev.map((r) =>
-                          r.key === row.key
-                            ? { ...r, lineName: e.target.value }
-                            : r,
-                        ),
-                      )
-                    }
+                    onChange={(e) => updateLine(row.key, { lineName: e.target.value })}
                     placeholder="Producto / concepto"
                     aria-label="Nombre de línea"
                   />
@@ -216,28 +275,25 @@ export function CreateDailyPurchaseModal({
                     className="input-cell mono"
                     inputMode="decimal"
                     value={row.quantity}
-                    onChange={(e) =>
-                      setLines((prev) =>
-                        prev.map((r) =>
-                          r.key === row.key
-                            ? { ...r, quantity: e.target.value }
-                            : r,
-                        ),
-                      )
-                    }
+                    onChange={(e) => {
+                      const quantity = e.target.value
+                      const patch: Partial<LineDraft> = { quantity }
+                      if (!row.lineTotalManual) {
+                        const q = parseNum(quantity)
+                        const c = parseNum(row.unitCost)
+                        if (Number.isFinite(q) && Number.isFinite(c) && q > 0 && c >= 0) {
+                          patch.lineTotal = String(Math.round(q * c))
+                        }
+                      }
+                      updateLine(row.key, patch)
+                    }}
                     placeholder="Cant."
                     aria-label="Cantidad"
                   />
                   <input
                     className="input-cell"
                     value={row.unit}
-                    onChange={(e) =>
-                      setLines((prev) =>
-                        prev.map((r) =>
-                          r.key === row.key ? { ...r, unit: e.target.value } : r,
-                        ),
-                      )
-                    }
+                    onChange={(e) => updateLine(row.key, { unit: e.target.value })}
                     placeholder="und"
                     aria-label="Unidad"
                   />
@@ -245,17 +301,33 @@ export function CreateDailyPurchaseModal({
                     className="input-cell mono"
                     inputMode="decimal"
                     value={row.unitCost}
-                    onChange={(e) =>
-                      setLines((prev) =>
-                        prev.map((r) =>
-                          r.key === row.key
-                            ? { ...r, unitCost: e.target.value }
-                            : r,
-                        ),
-                      )
-                    }
-                    placeholder="Costo u."
+                    onChange={(e) => {
+                      const unitCost = e.target.value
+                      const patch: Partial<LineDraft> = { unitCost }
+                      if (!row.lineTotalManual) {
+                        const q = parseNum(row.quantity)
+                        const c = parseNum(unitCost)
+                        if (Number.isFinite(q) && Number.isFinite(c) && q > 0 && c >= 0) {
+                          patch.lineTotal = String(Math.round(q * c))
+                        }
+                      }
+                      updateLine(row.key, patch)
+                    }}
+                    placeholder="COP"
                     aria-label="Costo unitario COP"
+                  />
+                  <input
+                    className="input-cell mono"
+                    inputMode="decimal"
+                    value={row.lineTotal}
+                    onChange={(e) =>
+                      updateLine(row.key, {
+                        lineTotal: e.target.value,
+                        lineTotalManual: true,
+                      })
+                    }
+                    placeholder={String(lineImporte({ ...row, lineTotalManual: false }))}
+                    aria-label="Importe de línea COP"
                   />
                   {lines.length > 1 ? (
                     <button
@@ -268,21 +340,42 @@ export function CreateDailyPurchaseModal({
                     >
                       ×
                     </button>
-                  ) : null}
+                  ) : (
+                    <span className="daily-purchase-line__remove-spacer" aria-hidden />
+                  )}
                 </div>
               ))}
             </div>
 
-            <p className="daily-purchase-total muted small">
-              Total estimado:{' '}
-              <strong className="mono">
-                {new Intl.NumberFormat('es-CO', {
-                  style: 'currency',
-                  currency: 'COP',
-                  maximumFractionDigits: 0,
-                }).format(lineTotal)}
-              </strong>
-            </p>
+            <div className="daily-purchase-total-block">
+              <div className="daily-purchase-total-block__row">
+                <span className="muted small">Subtotal líneas</span>
+                <strong className="mono">{formatPurchaseCOP(linesSubtotal)}</strong>
+              </div>
+              <label className="daily-purchase-total-block__field">
+                <span className="inventory-filter__label">Valor total de la compra (COP)</span>
+                <input
+                  className="input-cell mono daily-purchase-total-block__input"
+                  inputMode="decimal"
+                  value={totalManual ? totalValue : String(displayTotal)}
+                  onChange={(e) => {
+                    setTotalManual(true)
+                    setTotalValue(e.target.value)
+                  }}
+                  onFocus={() => {
+                    if (!totalManual) {
+                      setTotalManual(true)
+                      setTotalValue(String(displayTotal))
+                    }
+                  }}
+                  aria-label="Valor total de la compra"
+                />
+              </label>
+              <p className="muted small daily-purchase-total-block__hint">
+                Podés ajustar el total si el comprobante no coincide exactamente con la suma de
+                líneas.
+              </p>
+            </div>
 
             {error ? (
               <p className="error" role="alert">

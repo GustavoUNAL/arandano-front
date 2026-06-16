@@ -279,7 +279,7 @@ export function HistoryView({ baseUrl }: Props) {
       ) : rows.length === 0 ? (
         <PosEmpty
           title="Sin ventas en este rango"
-          hint="Probá ampliar las fechas o registrá una venta desde el POS"
+          hint="Probá ampliar las fechas o registrá una venta desde el punto de venta"
         />
       ) : (
         <div className="pos-sales-table-wrap">

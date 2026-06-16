@@ -12,6 +12,136 @@
     max-width: none;
   }
 
+  .app-sidebar {
+    width: 17rem;
+  }
+
+  .app-sidebar--collapsed {
+    width: 3.75rem;
+    min-width: 3.75rem;
+  }
+
+  .app-sidebar__brand {
+    padding: 0.95rem 1rem 0.8rem;
+    align-items: center;
+  }
+
+  .app-nav {
+    padding: 0.55rem 0.65rem 0.85rem;
+    gap: 0.15rem;
+  }
+
+  .app-nav-group {
+    gap: 0.12rem;
+    padding: 0.35rem 0.4rem 0.45rem;
+    border-radius: 11px;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  }
+
+  .app-nav-group:last-child {
+    border-bottom: none;
+  }
+
+  .app-nav-group::before {
+    display: none;
+  }
+
+  .app-nav-group--active {
+    background: color-mix(in srgb, var(--nav-accent, var(--accent)) 8%, transparent);
+    border-bottom-color: color-mix(in srgb, var(--nav-accent, var(--border)) 22%, var(--border));
+  }
+
+  .app-nav-group__title {
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+  }
+
+  .app-nav-group__hint {
+    display: none;
+  }
+
+  .app-nav-group:hover .app-nav-group__hint,
+  .app-nav-group--active .app-nav-group__hint {
+    display: block;
+    font-size: 0.64rem;
+    margin-top: 0.05rem;
+  }
+
+  .app-nav-group .app-nav-list {
+    padding-left: 0.15rem;
+  }
+
+  .app-nav-list button {
+    padding: 0.44rem 0.55rem;
+    font-size: 0.83rem;
+    border-radius: 8px;
+  }
+
+  .app-nav-list button:hover {
+    transform: translateX(-1px);
+  }
+
+  .app-nav-list button.active {
+    background: color-mix(in srgb, var(--nav-accent, var(--accent)) 14%, var(--accent-soft));
+    border-color: color-mix(in srgb, var(--nav-accent, var(--accent-border)) 45%, var(--accent-border));
+  }
+
+  .app-nav-home {
+    margin-bottom: 0.15rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+  }
+
+  .app-sidebar__footer {
+    padding: 0.85rem 1rem 1.05rem;
+    gap: 0.65rem;
+  }
+
+  .app-sidebar__footer .header-auth--profile {
+    gap: 0.45rem;
+  }
+
+  .app-sidebar__footer .btn-compact {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .app-nav-group__toggle {
+    cursor: pointer;
+    pointer-events: auto;
+  }
+
+  .app-nav-group:not(.app-nav-group--open) .app-nav-group__hint {
+    display: none;
+  }
+
+  .app-nav-group--open .app-nav-group__hint,
+  .app-nav-group__toggle:hover .app-nav-group__hint {
+    display: block;
+  }
+
+  .app-launcher__grid {
+    grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+    gap: 1rem 0.75rem;
+  }
+
+  .app-launcher-tile {
+    min-height: 6.25rem;
+  }
+
+  .app-launcher-tile__icon {
+    width: 4.25rem;
+    height: 4.25rem;
+  }
+
+  .app-launcher-tile__glyph {
+    width: 2rem;
+    height: 2rem;
+  }
+
   .mobile-view {
     display: flex;
     flex-direction: column;

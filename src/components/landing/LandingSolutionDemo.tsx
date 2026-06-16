@@ -14,10 +14,10 @@ export const SOLUTION_CONVERSATION: LandingChatTurn[] = [
     who: BRAND_NAME,
     role: 'ai',
     badge: 'Ventas · hoy',
-    text: 'Sumé POS, tienda web y pedidos del día con desglose por canal.',
+    text: 'Sumé punto de venta, tienda web y pedidos del día con desglose por canal.',
     metrics: [
       { label: 'Total', value: '$1.250.000', hint: '+14% vs ayer', trend: 'up' },
-      { label: 'POS', value: '$775.000' },
+      { label: 'Punto de venta', value: '$775.000' },
       { label: 'Web', value: '$475.000' },
       { label: 'Tickets', value: '44' },
     ],

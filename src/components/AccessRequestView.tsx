@@ -76,7 +76,7 @@ export function AccessRequestView({ baseUrl }: Props) {
         className="public-auth__theme"
       />
 
-      <PublicAuthMobileIntro chips={['Sin costo inicial', 'POS incluido', 'Tienda web', 'Datos aislados']} />
+      <PublicAuthMobileIntro chips={['Sin costo inicial', 'Punto de venta incluido', 'Tienda web', 'Datos aislados']} />
 
       <div className="public-auth__layout">
         <aside className="public-auth__visual">
@@ -91,7 +91,7 @@ export function AccessRequestView({ baseUrl }: Props) {
           <ul className="public-auth__bullets">
             <li>Activación guiada en pocos días</li>
             <li>URL y datos aislados por empresa</li>
-            <li>POS, tienda web y panel incluidos</li>
+            <li>Punto de venta, tienda web y panel incluidos</li>
             <li>Soporte durante el onboarding</li>
           </ul>
         </aside>

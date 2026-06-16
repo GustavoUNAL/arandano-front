@@ -253,7 +253,7 @@
   }
 
   .vos-mobile-header--dock .vos-mobile-header__bar {
-    grid-template-columns: 2.65rem 1fr 2.65rem;
+    grid-template-columns: 2.65rem 1fr auto;
     gap: 0.35rem;
     min-height: 3.05rem;
     padding: 0.42rem max(0.85rem, env(safe-area-inset-left, 0px)) 0.48rem
@@ -379,9 +379,9 @@
     flex-shrink: 0;
     align-items: center;
     justify-content: center;
-    width: 1.75rem;
-    height: 1.75rem;
-    border-radius: 10px;
+    width: 2.15rem;
+    height: 2.15rem;
+    border-radius: 12px;
     color: var(--accent);
     background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface-elevated));
   }
@@ -502,13 +502,56 @@
   }
 
   .user-profile-card {
-    @apply flex gap-3 rounded-2xl border p-3;
+    @apply flex flex-col gap-3 rounded-2xl border p-3;
     border-color: color-mix(in srgb, var(--border) 78%, transparent);
     background: color-mix(in srgb, var(--surface-elevated) 88%, var(--surface));
   }
 
+  .user-profile-card__main {
+    @apply flex min-w-0 gap-3;
+  }
+
   .user-profile-card--compact {
     @apply gap-2 rounded-xl p-2;
+  }
+
+  .user-profile-card--compact .user-profile-card__main {
+    @apply gap-2;
+  }
+
+  .user-profile-card--menu {
+    @apply gap-0 p-0;
+    border: none;
+    background: transparent;
+  }
+
+  .user-profile-card--menu .user-profile-card__main {
+    @apply px-0 pb-3;
+  }
+
+  .user-profile-card__footer {
+    @apply m-0 border-t p-0;
+    border-color: color-mix(in srgb, var(--border) 70%, transparent);
+  }
+
+  .user-profile-card__logout {
+    @apply flex w-full items-center gap-2 rounded-b-[10px] border-0 bg-transparent px-3 py-2.5 text-left text-sm font-semibold;
+    color: #c94a3d;
+    cursor: pointer;
+    transition: background 0.14s ease;
+  }
+
+  .user-profile-card__logout:hover {
+    background: color-mix(in srgb, #c94a3d 10%, var(--surface));
+  }
+
+  .user-profile-card__logout:focus-visible {
+    outline: 2px solid color-mix(in srgb, #c94a3d 45%, transparent);
+    outline-offset: -2px;
+  }
+
+  .user-profile-card__logout-icon {
+    @apply h-4 w-4 shrink-0;
   }
 
   .user-profile-card__avatar {
@@ -1042,4 +1085,256 @@
   align-items: center;
   gap: 0.45rem;
   flex-wrap: wrap;
+}
+
+.cash-close-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.25rem 0 1.5rem;
+}
+
+.cash-close-manager__title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--heading);
+}
+
+.cash-close-manager__lead {
+  margin: 0.35rem 0 0;
+  font-size: 0.9rem;
+}
+
+.cash-close-manager__layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.cash-close-manager__calendar-meta {
+  margin: 0.35rem 0 0;
+  padding-inline: 0.15rem;
+}
+
+.cash-close-panel__status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.cash-close-panel__status--closed {
+  background: color-mix(in srgb, #3d8b5d 18%, transparent);
+  color: #2f6f49;
+}
+
+.cash-close-panel__status--draft {
+  background: color-mix(in srgb, #d4a017 18%, transparent);
+  color: #8a6914;
+}
+
+.cash-close-arqueo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  background: color-mix(in srgb, var(--surface-elevated) 90%, var(--surface));
+}
+
+.cash-close-arqueo__grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.cash-close-arqueo__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--heading);
+}
+
+.cash-close-arqueo__field--notes {
+  grid-column: 1 / -1;
+}
+
+.cash-close-arqueo__readonly {
+  background: color-mix(in srgb, var(--surface) 88%, var(--border));
+}
+
+.cash-close-arqueo__variance {
+  color: #c94a3d;
+  font-weight: 700;
+}
+
+.cash-close-arqueo__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.cash-close-manager__calendars {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.cash-close-manager__calendar-block .month-calendar {
+  margin: 0;
+}
+
+.cash-close-manager__pos-alert {
+  padding: 1rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, #d4a017 35%, var(--border));
+  background: color-mix(in srgb, #d4a017 8%, var(--surface));
+}
+
+.cash-close-manager__pos-alert-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.cash-close-manager__pos-alert-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 650;
+}
+
+.cash-close-manager__open-tables {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cash-close-manager__open-table {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.65rem 0.75rem;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+.cash-close-manager__open-table-name {
+  display: block;
+  font-weight: 650;
+}
+
+.cash-close-manager__open-table-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cash-close-panel__product-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.cash-close-panel__product-item,
+.cash-close-panel__purchase-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+}
+
+.cash-close-panel__product-item:last-child,
+.cash-close-panel__purchase-item:last-child {
+  border-bottom: none;
+}
+
+@media (min-width: 960px) {
+  .cash-close-manager__layout {
+    grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-shell--mobile-dock .app-main .cash-close-manager {
+    padding-inline: max(0.65rem, env(safe-area-inset-left, 0px))
+      max(0.65rem, env(safe-area-inset-right, 0px));
+  }
+
+  .cash-close-manager {
+    padding: 0;
+    gap: 0.75rem;
+  }
+
+  .cash-close-manager__title {
+    font-size: 1.12rem;
+  }
+
+  .cash-close-manager__lead {
+    font-size: 0.82rem;
+  }
+
+  .cash-close-manager__pos-alert {
+    padding: 0.75rem;
+  }
+
+  .cash-close-manager__open-table {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cash-close-manager__open-table-actions {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .cash-close-panel__toolbar {
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .cash-close-panel__toolbar-date {
+    font-size: 0.92rem;
+  }
+
+  .cash-close-panel__summary {
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .cash-close-arqueo__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cash-close-arqueo__actions {
+    flex-direction: column;
+  }
+
+  .cash-close-arqueo__actions .btn-primary,
+  .cash-close-arqueo__actions .btn-secondary {
+    width: 100%;
+    justify-content: center;
+  }
 }

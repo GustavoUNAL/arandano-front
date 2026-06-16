@@ -29,7 +29,7 @@ type Tab = 'overview' | 'companies' | 'users' | 'requests'
 
 const EXTRA_MODULE_VIEWS: Array<{ view: AppView; label: string }> = [
   { view: 'home', label: 'Inicio' },
-  { view: 'pos', label: 'POS' },
+  { view: 'pos', label: 'Punto de venta' },
   { view: 'shop', label: 'Tienda online' },
 ]
 

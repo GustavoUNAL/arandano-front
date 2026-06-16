@@ -1272,6 +1272,7 @@ export type PurchaseLotRow = {
     inventoryItemId?: string | null
     quantityPurchased?: string | number | null
     linePurchaseTotalCOP?: string | number | null
+    lineTotalCOP?: string | number | null
     purchaseUnitCostCOP?: string | number | null
     inventoryBehavior?: 'CONSUMABLE' | 'CAPITAL_ASSET'
   }> | null
@@ -2432,6 +2433,7 @@ export type DailyCashClose = {
     netCOP: number
     laborTotalCOP: number
     shiftCount: number
+    expectedCashCOP?: number
   }
   paymentsByMethod: { method: string; totalCOP: number }[]
   sales: {
@@ -2472,6 +2474,36 @@ export type DailyCashClose = {
     totalPayCOP: number | null
     notes: string | null
   }[]
+  record?: CashCloseRecord | null
+}
+
+export type CashCloseRecord = {
+  id: string
+  closeDate: string
+  status: 'DRAFT' | 'CLOSED'
+  salesTotalCOP: number
+  purchasesTotalCOP: number
+  laborTotalCOP: number | null
+  expectedCashCOP: number | null
+  openingFloatCOP: number | null
+  countedCashCOP: number | null
+  varianceCOP: number | null
+  notes: string | null
+  closedAt: string | null
+}
+
+export type CashCloseCalendarDay = {
+  date: string
+  count: number
+  totalCOP: string
+  closeStatus?: 'DRAFT' | 'CLOSED' | null
+}
+
+export type CashCloseCalendarResponse = {
+  year: number
+  month: number
+  days: CashCloseCalendarDay[]
+  totals: { count: number; totalCOP: string; closedDays: number }
 }
 
 export async function fetchDailyCashClose(
@@ -2480,6 +2512,50 @@ export async function fetchDailyCashClose(
 ): Promise<DailyCashClose> {
   const q = new URLSearchParams({ date })
   const res = await apiFetch(`${base}/cash-close/daily?${q}`)
+  if (!res.ok) throw new Error(await parseJsonError(res))
+  return res.json() as Promise<DailyCashClose>
+}
+
+export async function fetchCashCloseCalendar(
+  base: string,
+  year: number,
+  month: number,
+): Promise<CashCloseCalendarResponse> {
+  const q = new URLSearchParams({
+    year: String(year),
+    month: String(month),
+  })
+  const res = await apiFetch(`${base}/cash-close/calendar?${q}`)
+  if (!res.ok) throw new Error(await parseJsonError(res))
+  return res.json() as Promise<CashCloseCalendarResponse>
+}
+
+export async function upsertCashCloseRecord(
+  base: string,
+  date: string,
+  payload: {
+    openingFloatCOP?: number
+    countedCashCOP?: number
+    notes?: string | null
+  },
+): Promise<DailyCashClose> {
+  const res = await apiFetch(`${base}/cash-close/${encodeURIComponent(date)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!res.ok) throw new Error(await parseJsonError(res))
+  return res.json() as Promise<DailyCashClose>
+}
+
+export async function finalizeCashClose(
+  base: string,
+  date: string,
+): Promise<DailyCashClose> {
+  const res = await apiFetch(
+    `${base}/cash-close/${encodeURIComponent(date)}/finalize`,
+    { method: 'POST' },
+  )
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<DailyCashClose>
 }

@@ -62,7 +62,7 @@ export function LoginView({ baseUrl, onLogin, initialMessage }: Props) {
         className="public-auth__theme"
       />
 
-      <PublicAuthMobileIntro chips={['Ventas', 'POS', 'Inventario', 'IA 24/7']} />
+      <PublicAuthMobileIntro chips={['Ventas', 'Punto de venta', 'Inventario', 'IA 24/7']} />
 
       <div className="public-auth__layout">
         <aside className="public-auth__visual">
@@ -76,7 +76,7 @@ export function LoginView({ baseUrl, onLogin, initialMessage }: Props) {
           </div>
           <ul className="public-auth__bullets">
             <li>Ventas, inventario y compras</li>
-            <li>POS y pedidos web</li>
+            <li>Punto de venta y pedidos web</li>
             <li>Asistente IA con datos de tu operación</li>
             <li>Ruta #/e/tu-empresa/…</li>
           </ul>

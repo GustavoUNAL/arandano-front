@@ -22,6 +22,7 @@ import {
   type SaleListRow,
 } from '../api'
 import { canDeleteSales } from '../lib/permissions'
+import { displaySaleSource } from '../lib/displayLabels'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import { useEntityActionAnimation } from '../hooks/useEntityActionAnimation'
 import {
@@ -1172,7 +1173,7 @@ export function SalesManager({
                 <option value="">Todos</option>
                 {SALE_SOURCES.map((s) => (
                   <option key={s} value={s}>
-                    {s}
+                    {displaySaleSource(s)}
                   </option>
                 ))}
               </select>
@@ -1450,7 +1451,7 @@ export function SalesManager({
                                   <span
                                     className={`sales-source-pill sales-source-pill--${row.source.toLowerCase()}`}
                                   >
-                                    {row.source}
+                                    {displaySaleSource(row.source)}
                                   </span>
                                 </>
                               ) : null}
@@ -1745,7 +1746,7 @@ export function SalesManager({
                           ) : null}
                           <li className="sales-invoice__chip">
                             <span className="sales-invoice__chip-label">Origen</span>
-                            <span>{header.source}</span>
+                            <span>{displaySaleSource(header.source)}</span>
                           </li>
                           {detail?.code ? (
                             <li className="sales-invoice__chip">
@@ -2270,7 +2271,7 @@ export function SalesManager({
                         >
                           {SALE_SOURCES.map((s) => (
                             <option key={s} value={s}>
-                              {s}
+                              {displaySaleSource(s)}
                             </option>
                           ))}
                         </select>

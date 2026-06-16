@@ -1,5 +1,5 @@
-import { Home, Menu, Moon, Sun, User, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { Home, Menu, X } from 'lucide-react'
+import { useEffect, useMemo } from 'react'
 import type { AuthUser } from '../api'
 import { PLATFORM_MODE, SALES_FLOOR_ONLY } from '../appScope'
 import { canViewFinance, canViewTasks } from '../lib/permissions'
@@ -10,9 +10,8 @@ import {
   MobileModuleIcon,
   type MobileModuleIconId,
 } from './mobile/mobileModuleIcons'
-import { ThemeSwitch } from './ThemeSwitch'
+import { HeaderSystray } from './HeaderSystray'
 import { Button } from './ui/button'
-import { UserProfileCard } from './UserProfileCard'
 
 export type MobileChromeView =
   | 'home'
@@ -21,6 +20,7 @@ export type MobileChromeView =
   | 'recipes'
   | 'inventory'
   | 'sales'
+  | 'cash-close'
   | 'pos'
   | 'shop'
   | 'purchases'
@@ -38,7 +38,8 @@ const SCREEN_TITLE: Record<MobileChromeView, string> = {
   recipes: 'Recetas',
   inventory: 'Inventario',
   sales: 'Ventas',
-  pos: 'POS',
+  'cash-close': 'Cierre del día',
+  pos: 'Punto de venta',
   shop: 'Tienda',
   purchases: 'Compras',
   staff: 'Personal',
@@ -58,8 +59,9 @@ type SheetLink = {
 const PLATFORM_SHEET_LINKS: SheetLink[] = [
   { view: 'home', label: 'Inicio', icon: 'home' },
   { view: 'products', label: 'Productos a la venta', icon: 'products' },
-  { view: 'pos', label: 'POS · Mesas', icon: 'pos' },
+  { view: 'pos', label: 'Punto de venta · Mesas', icon: 'pos' },
   { view: 'sales', label: 'Ventas', icon: 'sales' },
+  { view: 'cash-close', label: 'Cierre del día', icon: 'cash-close' },
   { view: 'purchases', label: 'Compras', icon: 'purchases' },
   { view: 'tasks', label: 'Tareas', icon: 'tasks' },
   { view: 'inventory', label: 'Inventario', icon: 'inventory' },
@@ -72,8 +74,9 @@ const PLATFORM_SHEET_LINKS: SheetLink[] = [
 const FULL_SHEET_LINKS: SheetLink[] = [
   { view: 'menu', label: 'Inicio', icon: 'menu' },
   { view: 'products', label: 'Productos a la venta', icon: 'products' },
-  { view: 'pos', label: 'POS · Mesas', icon: 'pos' },
+  { view: 'pos', label: 'Punto de venta · Mesas', icon: 'pos' },
   { view: 'sales', label: 'Ventas', icon: 'sales' },
+  { view: 'cash-close', label: 'Cierre del día', icon: 'cash-close' },
   { view: 'purchases', label: 'Compras', icon: 'purchases' },
   { view: 'recipes', label: 'Recetas', icon: 'recipes' },
   { view: 'inventory', label: 'Inventario', icon: 'inventory' },
@@ -97,7 +100,7 @@ type DockTab = {
 const DOCK_TABS_PLATFORM: DockTab[] = [
   { id: 'home', label: 'Inicio', view: 'home', icon: 'home' },
   { id: 'tasks', label: 'Tareas', view: 'tasks', icon: 'tasks' },
-  { id: 'pos', label: 'POS', view: 'pos', icon: 'pos' },
+  { id: 'pos', label: 'Punto de venta', view: 'pos', icon: 'pos' },
   { id: 'sales', label: 'Ventas', view: 'sales', icon: 'sales' },
   { id: 'assistant', label: 'VOS AI', action: 'assistant', icon: 'assistant' },
 ]
@@ -125,6 +128,8 @@ export function MobileAppChrome({
   onSheetOpenChange,
   assistantOpen = false,
   onAssistantOpenChange,
+  backendDown = false,
+  onRetryApi,
 }: {
   view: MobileChromeView
   onNavigate: (v: MobileChromeView) => void
@@ -137,9 +142,9 @@ export function MobileAppChrome({
   onSheetOpenChange: (open: boolean) => void
   assistantOpen?: boolean
   onAssistantOpenChange?: (open: boolean) => void
+  backendDown?: boolean
+  onRetryApi?: () => void
 }) {
-  const [profileOpen, setProfileOpen] = useState(false)
-  const compactChrome = PLATFORM_MODE || SALES_FLOOR_ONLY
   const dockTabs = useMemo(() => {
     const base = PLATFORM_MODE
       ? DOCK_TABS_PLATFORM
@@ -170,17 +175,13 @@ export function MobileAppChrome({
   }, [user])
 
   const companyLabel = displayCompanyName(user?.companyName)
-  const showMenuButton = sheetLinks.length > 0 || Boolean(user)
+  const showMenuButton = sheetLinks.length > 0
   const homeView: MobileChromeView = PLATFORM_MODE ? 'home' : 'menu'
   const isHomeScreen = view === homeView
   const brandLine = companyLabel
     ? `${BRAND_NAME} · ${companyLabel}`
     : BRAND_NAME
   const headerTitle = isHomeScreen ? brandLine : SCREEN_TITLE[view]
-
-  useEffect(() => {
-    if (!sheetOpen) setProfileOpen(false)
-  }, [sheetOpen])
 
   useEffect(() => {
     if (!sheetOpen) return
@@ -210,9 +211,6 @@ export function MobileAppChrome({
     onNavigate(link.view)
   }
 
-  const themeLabel = theme === 'light' ? 'Oscuro' : 'Claro'
-  const ThemeIcon = theme === 'light' ? Moon : Sun
-
   return (
     <>
       <header
@@ -239,7 +237,7 @@ export function MobileAppChrome({
                   else onNavigate(homeView)
                 }}
               >
-                <Home className="h-[1.1rem] w-[1.1rem]" strokeWidth={2} aria-hidden />
+                <Home className="h-[1.35rem] w-[1.35rem]" strokeWidth={2} aria-hidden />
               </Button>
             )}
           </div>
@@ -256,51 +254,35 @@ export function MobileAppChrome({
           </div>
 
           <div className="vos-mobile-header__trailing">
-            {!showDock ? (
-              <>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  className="vos-mobile-header__theme"
-                  aria-label={`Cambiar a tema ${themeLabel.toLowerCase()}`}
-                  onClick={onToggleTheme}
-                >
-                  <ThemeIcon className="h-[1.1rem] w-[1.1rem]" strokeWidth={2} aria-hidden />
-                </Button>
-                {user ? (
-                  <Button
-                    type="button"
-                    variant={profileOpen ? 'accent' : 'ghost'}
-                    size="icon-sm"
-                    className="vos-mobile-header__profile"
-                    aria-expanded={sheetOpen && profileOpen}
-                    aria-label="Mi perfil"
-                    onClick={() => {
-                      setProfileOpen(true)
-                      onSheetOpenChange(true)
-                    }}
-                  >
-                    <User className="h-[1.1rem] w-[1.1rem]" strokeWidth={2} aria-hidden />
-                  </Button>
-                ) : null}
-              </>
+            {user ? (
+              <HeaderSystray
+                user={user}
+                theme={theme}
+                onToggleTheme={onToggleTheme}
+                onLogout={onLogout}
+                onOpenAssistant={
+                  PLATFORM_MODE && !showDock
+                    ? () => onAssistantOpenChange?.(!assistantOpen)
+                    : undefined
+                }
+                assistantOpen={assistantOpen}
+                backendDown={backendDown}
+                onRetryApi={onRetryApi}
+                variant="mobile"
+              />
             ) : null}
             {showMenuButton ? (
               <Button
                 type="button"
-                variant={sheetOpen && !profileOpen ? 'accent' : 'ghost'}
+                variant={sheetOpen ? 'accent' : 'ghost'}
                 size="icon"
                 className="vos-mobile-header__menu"
-                aria-expanded={sheetOpen && !profileOpen}
+                aria-expanded={sheetOpen}
                 aria-haspopup="dialog"
                 aria-label="Menú de módulos"
-                onClick={() => {
-                  setProfileOpen(false)
-                  onSheetOpenChange(!sheetOpen || profileOpen)
-                }}
+                onClick={() => onSheetOpenChange(!sheetOpen)}
               >
-                <Menu className="h-[1.25rem] w-[1.25rem]" strokeWidth={2.25} aria-hidden />
+                <Menu className="h-[1.35rem] w-[1.35rem]" strokeWidth={2.25} aria-hidden />
               </Button>
             ) : (
               <span className="vos-mobile-header__spacer" aria-hidden />
@@ -380,7 +362,7 @@ export function MobileAppChrome({
           >
             <header className="vos-sheet__head">
               <h2 id="mobile-sheet-title" className="vos-sheet__title">
-                {profileOpen ? 'Mi perfil' : companyLabel || 'Menú'}
+                {companyLabel || 'Menú'}
               </h2>
               <Button
                 type="button"
@@ -389,26 +371,11 @@ export function MobileAppChrome({
                 onClick={() => onSheetOpenChange(false)}
                 aria-label="Cerrar"
               >
-                <X className="h-[1.1rem] w-[1.1rem]" strokeWidth={2} aria-hidden />
+                <X className="h-[1.35rem] w-[1.35rem]" strokeWidth={2} aria-hidden />
               </Button>
             </header>
             <div className="vos-sheet__body">
-              {profileOpen && user ? (
-                <div className="flex flex-col gap-3">
-                  <UserProfileCard user={user} />
-                  <button
-                    type="button"
-                    className="vos-sheet__footer-logout vos-sheet__footer-logout--solo"
-                    onClick={() => {
-                      onSheetOpenChange(false)
-                      onLogout()
-                    }}
-                  >
-                    Salir de la cuenta
-                  </button>
-                </div>
-              ) : null}
-              {!profileOpen && sheetLinks.length > 0 ? (
+              {sheetLinks.length > 0 ? (
                 <ul className="vos-sheet__nav-grid m-0 list-none p-0">
                   {sheetLinks.map((link) => (
                     <li key={link.view}>
@@ -423,7 +390,7 @@ export function MobileAppChrome({
                         onClick={() => pickSheetLink(link)}
                       >
                         <span className="vos-sheet__nav-tile-icon" aria-hidden>
-                          <MobileModuleIcon id={link.icon} className="h-[1.2rem] w-[1.2rem]" />
+                          <MobileModuleIcon id={link.icon} className="h-[1.35rem] w-[1.35rem]" />
                         </span>
                         <span className="vos-sheet__nav-tile-label">{link.label}</span>
                       </button>
@@ -432,38 +399,6 @@ export function MobileAppChrome({
                 </ul>
               ) : null}
             </div>
-            {!profileOpen && user ? (
-              <footer className="vos-sheet__footer">
-                <button
-                  type="button"
-                  className="vos-sheet__footer-profile"
-                  onClick={() => setProfileOpen(true)}
-                >
-                  <User className="vos-sheet__footer-profile-icon" strokeWidth={2} aria-hidden />
-                  <span className="vos-sheet__footer-profile-text">
-                    {user.name}
-                    {companyLabel ? (
-                      <span className="vos-sheet__footer-profile-sub">{companyLabel}</span>
-                    ) : null}
-                  </span>
-                </button>
-                {showDock || !compactChrome ? (
-                  <div className="vos-sheet__footer-theme">
-                    <ThemeSwitch theme={theme} onToggle={onToggleTheme} compact />
-                  </div>
-                ) : null}
-                <button
-                  type="button"
-                  className="vos-sheet__footer-logout"
-                  onClick={() => {
-                    onSheetOpenChange(false)
-                    onLogout()
-                  }}
-                >
-                  Salir
-                </button>
-              </footer>
-            ) : null}
           </section>
         </div>
       ) : null}

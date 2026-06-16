@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   fetchDailyCashClose,
+  finalizeCashClose,
+  upsertCashCloseRecord,
   type DailyCashClose,
 } from '../api'
 import { DayComandasList } from './DayComandasList'
@@ -26,6 +28,11 @@ function formatLongDate(dateKey: string): string {
   }).format(dt)
 }
 
+function parseNum(v: string): number {
+  const n = parseFloat(v.replace(',', '.').trim())
+  return Number.isFinite(n) ? n : NaN
+}
+
 type Props = {
   baseUrl: string
   date: string
@@ -33,9 +40,10 @@ type Props = {
   onOpenSales?: (date: string) => void
   onOpenPurchases?: (date: string) => void
   companyName?: string | null
+  showArqueo?: boolean
+  onSaved?: () => void
 }
 
-/** Resumen del día + comandas (solo Inicio / detalle del día). */
 export function CashClosePanel({
   baseUrl,
   date,
@@ -43,16 +51,35 @@ export function CashClosePanel({
   onOpenSales,
   onOpenPurchases,
   companyName,
+  showArqueo = false,
+  onSaved,
 }: Props) {
   const [data, setData] = useState<DailyCashClose | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [openingFloat, setOpeningFloat] = useState('')
+  const [countedCash, setCountedCash] = useState('')
+  const [notes, setNotes] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      setData(await fetchDailyCashClose(baseUrl, date))
+      const res = await fetchDailyCashClose(baseUrl, date)
+      setData(res)
+      setOpeningFloat(
+        res.record?.openingFloatCOP != null
+          ? String(res.record.openingFloatCOP)
+          : '',
+      )
+      setCountedCash(
+        res.record?.countedCashCOP != null
+          ? String(res.record.countedCashCOP)
+          : '',
+      )
+      setNotes(res.record?.notes ?? '')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudo cargar el detalle del día')
       setData(null)
@@ -65,11 +92,100 @@ export function CashClosePanel({
     void load()
   }, [load, refreshKey])
 
+  const isClosed = data?.record?.status === 'CLOSED'
+  const expectedCash =
+    (data?.summary.expectedCashCOP ?? 0) +
+    (parseNum(openingFloat) >= 0 ? Math.round(parseNum(openingFloat)) : 0)
+  const countedParsed = parseNum(countedCash)
+  const variance =
+    Number.isFinite(countedParsed) && countedParsed >= 0
+      ? countedParsed - expectedCash
+      : null
+
+  const topProducts = useMemo(() => {
+    if (!data?.sales.length) return []
+    const map = new Map<string, { name: string; quantity: number; revenue: number }>()
+    for (const sale of data.sales) {
+      for (const line of sale.lines) {
+        const key = line.productName.trim() || 'Sin nombre'
+        const prev = map.get(key) ?? { name: key, quantity: 0, revenue: 0 }
+        prev.quantity += line.quantity
+        prev.revenue += line.lineTotal
+        map.set(key, prev)
+      }
+    }
+    return [...map.values()].sort((a, b) => b.revenue - a.revenue)
+  }, [data?.sales])
+
+  const avgTicket =
+    data && data.summary.saleCount > 0
+      ? data.summary.salesTotalCOP / data.summary.saleCount
+      : 0
+
+  const saveArqueo = async () => {
+    setActionError(null)
+    if (!Number.isFinite(countedParsed) || countedParsed < 0) {
+      setActionError('Indicá el efectivo contado en caja.')
+      return
+    }
+    setSaving(true)
+    try {
+      const opening = parseNum(openingFloat)
+      const res = await upsertCashCloseRecord(baseUrl, date, {
+        openingFloatCOP: Number.isFinite(opening) && opening >= 0 ? Math.round(opening) : undefined,
+        countedCashCOP: Math.round(countedParsed),
+        notes: notes.trim() || null,
+      })
+      setData(res)
+      onSaved?.()
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'No se pudo guardar el arqueo')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const closeDay = async () => {
+    setActionError(null)
+    if (!Number.isFinite(countedParsed) || countedParsed < 0) {
+      setActionError('Indicá el efectivo contado antes de cerrar la caja.')
+      return
+    }
+    setSaving(true)
+    try {
+      const opening = parseNum(openingFloat)
+      await upsertCashCloseRecord(baseUrl, date, {
+        openingFloatCOP:
+          Number.isFinite(opening) && opening >= 0 ? Math.round(opening) : undefined,
+        countedCashCOP: Math.round(countedParsed),
+        notes: notes.trim() || null,
+      })
+      const res = await finalizeCashClose(baseUrl, date)
+      setData(res)
+      onSaved?.()
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'No se pudo cerrar la caja')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <section className="cash-close-panel" aria-labelledby="cash-close-title">
-      <p id="cash-close-title" className="cash-close-panel__toolbar-date muted">
-        {formatLongDate(date)}
-      </p>
+      <div className="cash-close-panel__toolbar">
+        <p id="cash-close-title" className="cash-close-panel__toolbar-date">
+          {formatLongDate(date)}
+        </p>
+        {isClosed ? (
+          <span className="cash-close-panel__status cash-close-panel__status--closed">
+            Caja cerrada
+          </span>
+        ) : data?.record?.status === 'DRAFT' ? (
+          <span className="cash-close-panel__status cash-close-panel__status--draft">
+            Borrador
+          </span>
+        ) : null}
+      </div>
 
       {loading ? <p className="muted">Cargando detalle del día…</p> : null}
       {error ? (
@@ -90,6 +206,9 @@ export function CashClosePanel({
                 <span className="muted small">
                   {data.summary.saleCount} comanda
                   {data.summary.saleCount !== 1 ? 's' : ''}
+                  {data.summary.saleCount > 0
+                    ? ` · ticket ${formatCOP(avgTicket)}`
+                    : ''}
                 </span>
               </div>
               <div className="cash-close-kpi">
@@ -110,6 +229,14 @@ export function CashClosePanel({
                     Ver en Compras
                   </Button>
                 ) : null}
+              </div>
+              <div className="cash-close-kpi">
+                <span className="cash-close-kpi__label">Nómina del día</span>
+                <strong>{formatCOP(data.summary.laborTotalCOP)}</strong>
+                <span className="muted small">
+                  {data.summary.shiftCount} turno
+                  {data.summary.shiftCount !== 1 ? 's' : ''}
+                </span>
               </div>
               <div className="cash-close-kpi cash-close-kpi--accent">
                 <span className="cash-close-kpi__label">Neto del día</span>
@@ -151,6 +278,102 @@ export function CashClosePanel({
             ) : null}
           </div>
 
+          {showArqueo ? (
+            <div className="cash-close-arqueo">
+              <h2 className="cash-close-panel__section-label">Arqueo de caja</h2>
+              <p className="muted small cash-close-arqueo__lead">
+                Efectivo esperado según ventas:{' '}
+                <strong className="mono">
+                  {formatCOP(data.summary.expectedCashCOP ?? 0)}
+                </strong>
+              </p>
+              <div className="cash-close-arqueo__grid">
+                <label className="cash-close-arqueo__field">
+                  <span>Fondo inicial (COP)</span>
+                  <input
+                    className="input-cell mono"
+                    inputMode="decimal"
+                    value={openingFloat}
+                    onChange={(e) => setOpeningFloat(e.target.value)}
+                    disabled={isClosed || saving}
+                    placeholder="0"
+                  />
+                </label>
+                <label className="cash-close-arqueo__field">
+                  <span>Efectivo esperado (COP)</span>
+                  <input
+                    className="input-cell mono cash-close-arqueo__readonly"
+                    value={String(Math.round(expectedCash))}
+                    readOnly
+                  />
+                </label>
+                <label className="cash-close-arqueo__field">
+                  <span>Efectivo contado (COP)</span>
+                  <input
+                    className="input-cell mono"
+                    inputMode="decimal"
+                    value={countedCash}
+                    onChange={(e) => setCountedCash(e.target.value)}
+                    disabled={isClosed || saving}
+                    placeholder="Contá el dinero en caja"
+                  />
+                </label>
+                <label className="cash-close-arqueo__field">
+                  <span>Diferencia (COP)</span>
+                  <input
+                    className={`input-cell mono cash-close-arqueo__readonly${variance != null && variance !== 0 ? ' cash-close-arqueo__variance' : ''}`}
+                    value={variance != null ? String(Math.round(variance)) : ''}
+                    readOnly
+                  />
+                </label>
+              </div>
+              <label className="cash-close-arqueo__field cash-close-arqueo__field--notes">
+                <span>Notas del cierre</span>
+                <textarea
+                  className="input-cell"
+                  rows={2}
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  disabled={isClosed || saving}
+                  placeholder="Observaciones, faltantes, justificación…"
+                />
+              </label>
+              {actionError ? (
+                <p className="error" role="alert">
+                  {actionError}
+                </p>
+              ) : null}
+              {!isClosed ? (
+                <div className="cash-close-arqueo__actions">
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    disabled={saving}
+                    onClick={() => void saveArqueo()}
+                  >
+                    {saving ? 'Guardando…' : 'Guardar arqueo'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={saving}
+                    onClick={() => void closeDay()}
+                  >
+                    {saving ? 'Cerrando…' : 'Cerrar el día'}
+                  </button>
+                </div>
+              ) : data.record?.closedAt ? (
+                <p className="muted small cash-close-arqueo__closed-at">
+                  Cerrado el{' '}
+                  {new Intl.DateTimeFormat('es-CO', {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  }).format(new Date(data.record.closedAt))}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="cash-close-panel__sales-zone">
             <div className="cash-close-panel__sales-zone-head">
               <h2 className="cash-close-panel__section-label">Comandas</h2>
@@ -178,6 +401,63 @@ export function CashClosePanel({
               emptyMessage="No hay comandas este día."
             />
           </div>
+
+          <div className="cash-close-panel__sales-zone">
+            <h2 className="cash-close-panel__section-label">Productos vendidos</h2>
+            {topProducts.length > 0 ? (
+              <ul className="cash-close-panel__product-list">
+                {topProducts.map((p) => (
+                  <li key={p.name} className="cash-close-panel__product-item">
+                    <span>
+                      {p.name}
+                      <span className="muted small">
+                        {' '}
+                        · {p.quantity} uds.
+                      </span>
+                    </span>
+                    <span className="mono">{formatCOP(p.revenue)}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="muted small cash-close-panel__empty">
+                Sin productos vendidos este día.
+              </p>
+            )}
+          </div>
+
+          {data.purchases.length > 0 ? (
+            <div className="cash-close-panel__sales-zone">
+              <div className="cash-close-panel__sales-zone-head">
+                <h2 className="cash-close-panel__section-label">Compras del día</h2>
+                {onOpenPurchases ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onOpenPurchases(date)}
+                  >
+                    Ir a Compras
+                  </Button>
+                ) : null}
+              </div>
+              <ul className="cash-close-panel__sales">
+                {data.purchases.map((lot) => (
+                  <li key={lot.id} className="cash-close-panel__purchase-item">
+                    <span>
+                      {lot.name || lot.code}
+                      <span className="muted small">
+                        {' '}
+                        · {lot.lineCount} línea
+                        {lot.lineCount !== 1 ? 's' : ''}
+                      </span>
+                    </span>
+                    <span className="mono">{formatCOP(lot.total)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </>
       ) : null}
     </section>

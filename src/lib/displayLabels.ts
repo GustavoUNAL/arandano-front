@@ -9,6 +9,15 @@ export function displayCompanyName(name: string | null | undefined): string {
     .trim()
 }
 
+export function displaySaleSource(source: string | null | undefined): string {
+  if (!source?.trim()) return ''
+  if (source === 'POS') return 'Punto de venta'
+  if (source === 'MANUAL') return 'Manual'
+  if (source === 'SHOP') return 'Tienda'
+  if (source === 'IMPORT') return 'Importado'
+  return source
+}
+
 export function displayUserRole(role: string | null | undefined): string {
   if (!role?.trim()) return ''
   const normalized = role.replace(/\bdemo\b/gi, '').trim()

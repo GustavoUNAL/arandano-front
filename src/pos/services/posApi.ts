@@ -22,7 +22,7 @@ export function enablePosLocalFallback(): void {
 
 class PosApiUnavailableError extends Error {
   constructor() {
-    super('POS API no disponible')
+    super('API de punto de venta no disponible')
     this.name = 'PosApiUnavailableError'
   }
 }

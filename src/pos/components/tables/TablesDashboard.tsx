@@ -248,7 +248,7 @@ export function TablesDashboard({ baseUrl }: Props) {
 
       <ViewBootSplash
         ready={!loading || tables.length > 0}
-        label="Cargando POS…"
+        label="Cargando punto de venta…"
       />
 
       {shopOrderToast ? (
