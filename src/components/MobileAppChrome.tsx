@@ -104,7 +104,7 @@ const DOCK_TABS_PLATFORM: DockTab[] = [
   { id: 'tasks', label: 'Tareas', view: 'tasks', icon: 'tasks' },
   { id: 'pos', label: 'Punto de venta', view: 'pos', icon: 'pos' },
   { id: 'sales', label: 'Ventas', view: 'sales', icon: 'sales' },
-  { id: 'assistant', label: 'VOS AI', action: 'assistant', icon: 'assistant' },
+  { id: 'purchases', label: 'Compras', view: 'purchases', icon: 'purchases' },
 ]
 
 const DOCK_TABS_SALES: DockTab[] = [
