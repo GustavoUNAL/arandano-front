@@ -1,6 +1,8 @@
 import { LogOut } from 'lucide-react'
 import type { AuthUser } from '../api'
 import { displayCompanyName, displayUserRole } from '../lib/displayLabels'
+import { userNeedsCompanyPicker } from '../lib/companySelect'
+import { CompanySwitcher } from './CompanySwitcher'
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -13,10 +15,19 @@ type Props = {
   user: AuthUser
   compact?: boolean
   className?: string
+  baseUrl?: string
+  onSwitchCompany?: (user: AuthUser) => void
   onLogout?: () => void
 }
 
-export function UserProfileCard({ user, compact = false, className = '', onLogout }: Props) {
+export function UserProfileCard({
+  user,
+  compact = false,
+  className = '',
+  baseUrl,
+  onSwitchCompany,
+  onLogout,
+}: Props) {
   const company = displayCompanyName(user.companyName)
   const role = displayUserRole(user.role)
 
@@ -62,6 +73,14 @@ export function UserProfileCard({ user, compact = false, className = '', onLogou
           )}
         </div>
       </div>
+      {!compact && baseUrl && onSwitchCompany && userNeedsCompanyPicker(user) ? (
+        <CompanySwitcher
+          baseUrl={baseUrl}
+          user={user}
+          onSwitch={onSwitchCompany}
+          variant="menu"
+        />
+      ) : null}
       {onLogout ? (
         <footer className="user-profile-card__footer">
           <button type="button" className="user-profile-card__logout" onClick={onLogout}>

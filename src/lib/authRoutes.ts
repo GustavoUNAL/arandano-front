@@ -13,6 +13,7 @@ export const ACCESS_REQUEST_HASH = '#/solicitar-acceso'
 export const PRIVACY_HASH = '#/privacidad'
 export const TERMS_HASH = '#/terminos'
 export const PLATFORM_HASH = '#/platform'
+export const SELECT_COMPANY_HASH = '#/elegir-empresa'
 /** @deprecated usar ACCESS_REQUEST_HASH */
 export const REGISTER_HASH = ACCESS_REQUEST_HASH
 
@@ -51,6 +52,10 @@ export function isPlatformHash(): boolean {
   return getPublicHashPath() === 'platform'
 }
 
+export function isSelectCompanyHash(): boolean {
+  return getPublicHashPath() === 'elegir-empresa'
+}
+
 /** @deprecated */
 export function isRegisterHash(): boolean {
   return isAccessRequestHash()
@@ -78,6 +83,10 @@ export function navigateToTerms(replace = true): void {
 
 export function navigateToPlatform(replace = true): void {
   setHash(PLATFORM_HASH, replace)
+}
+
+export function navigateToSelectCompany(replace = true): void {
+  setHash(SELECT_COMPANY_HASH, replace)
 }
 
 export function navigateToRegister(replace = true): void {

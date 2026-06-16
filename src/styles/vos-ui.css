@@ -334,6 +334,45 @@
     font-size: 0.78rem;
   }
 
+  .vos-mobile-header__company-switch {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.1rem;
+    max-width: 100%;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    text-align: right;
+  }
+
+  .vos-mobile-header__company-switch-hint {
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--berry-light);
+  }
+
+  .vos-sheet__company-switch {
+    display: flex;
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+    margin-bottom: 0.75rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--surface-elevated) 92%, var(--surface));
+    text-align: left;
+    font-size: 0.9rem;
+    font-weight: 650;
+    color: var(--heading);
+    cursor: pointer;
+  }
+
   .vos-sheet__nav-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -594,6 +633,93 @@
 
   .user-profile-card__hint {
     @apply mt-1;
+  }
+
+  .company-switcher {
+    @apply flex flex-col gap-2 border-t pt-3;
+    border-color: color-mix(in srgb, var(--border) 70%, transparent);
+  }
+
+  .company-switcher__head {
+    @apply flex items-center gap-1.5;
+  }
+
+  .company-switcher__head-icon {
+    @apply h-3.5 w-3.5;
+    color: var(--berry-light);
+  }
+
+  .company-switcher__head-label {
+    @apply text-[0.62rem] font-semibold uppercase tracking-wide;
+    color: var(--muted);
+  }
+
+  .company-switcher__error {
+    @apply m-0 text-xs;
+    color: #c94a3d;
+  }
+
+  .company-switcher__list {
+    @apply m-0 flex list-none flex-col gap-1.5 p-0;
+  }
+
+  .company-switcher__item {
+    @apply flex w-full items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left;
+    border-color: color-mix(in srgb, var(--border) 75%, transparent);
+    background: color-mix(in srgb, var(--surface-elevated) 90%, var(--surface));
+    cursor: pointer;
+    transition:
+      border-color 0.14s ease,
+      background 0.14s ease;
+  }
+
+  .company-switcher__item:hover:not(:disabled) {
+    border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+    background: color-mix(in srgb, var(--accent) 6%, var(--surface-elevated));
+  }
+
+  .company-switcher__item--active {
+    border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+    background: color-mix(in srgb, var(--accent) 10%, var(--surface-elevated));
+    cursor: default;
+  }
+
+  .company-switcher__item:disabled {
+    opacity: 0.85;
+  }
+
+  .company-switcher__avatar {
+    @apply flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white;
+    background: linear-gradient(145deg, var(--berry-light), var(--berry-dark));
+  }
+
+  .company-switcher__copy {
+    @apply flex min-w-0 flex-1 flex-col gap-0.5;
+  }
+
+  .company-switcher__copy strong {
+    @apply text-xs font-semibold;
+    color: var(--heading);
+  }
+
+  .company-switcher__copy span,
+  .company-switcher__copy small {
+    @apply text-[0.68rem] leading-tight;
+    color: var(--muted);
+  }
+
+  .company-switcher__status {
+    @apply shrink-0 text-[0.68rem] font-semibold;
+    color: var(--accent);
+  }
+
+  .company-switcher__check {
+    @apply h-4 w-4;
+    color: var(--accent);
+  }
+
+  .company-switcher__busy {
+    @apply inline-block w-4 text-center;
   }
 
   .header-auth--profile {

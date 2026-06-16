@@ -93,6 +93,49 @@
   outline-offset: 2px;
 }
 
+.odoo-navbar__company-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: min(14rem, 28vw);
+  margin-left: 0.15rem;
+  padding: 0.28rem 0.55rem;
+  border: 1px solid color-mix(in srgb, #fff 16%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, #fff 8%, transparent);
+  color: #f4f5f8;
+  cursor: pointer;
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease;
+}
+
+.odoo-navbar__company-switch:hover {
+  background: color-mix(in srgb, #fff 14%, transparent);
+  border-color: color-mix(in srgb, #fff 24%, transparent);
+}
+
+.odoo-navbar__company-switch:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--berry) 70%, #fff);
+  outline-offset: 2px;
+}
+
+.odoo-navbar__company-switch-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.odoo-navbar__company-switch-icon {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+
 .odoo-navbar__app-title {
   display: inline-flex;
   align-items: center;
@@ -447,6 +490,10 @@
 
 .header-systray__panel .user-profile-card--menu {
   gap: 0;
+}
+
+.header-systray__panel .company-switcher {
+  padding-bottom: 0.75rem;
 }
 
 .header-systray--mobile .header-systray__btn {

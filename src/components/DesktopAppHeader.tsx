@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { PLATFORM_MODE } from '../appScope'
 import type { AuthUser } from '../api'
 import { buildDesktopNavGroups } from '../lib/desktopNav'
+import { navigateToSelectCompany } from '../lib/authRoutes'
+import { userNeedsCompanyPicker } from '../lib/companySelect'
 import {
   findNavContext,
   isOdooHomeView,
@@ -21,12 +24,14 @@ type DesktopAppHeaderProps = {
   onToggleTheme: () => void
   onNavigate: (view: string) => void
   onLogout: () => void
+  onSwitchCompany?: (user: AuthUser) => void
   onOpenAssistant?: () => void
   assistantOpen?: boolean
   canViewFinance?: boolean
   canViewTasks?: boolean
   backendDown?: boolean
   onRetryApi?: () => void
+  baseUrl?: string
 }
 
 function groupIconView(
@@ -59,12 +64,14 @@ export function DesktopAppHeader({
   onToggleTheme,
   onNavigate,
   onLogout,
+  onSwitchCompany,
   onOpenAssistant,
   assistantOpen = false,
   canViewFinance = false,
   canViewTasks = false,
   backendDown = false,
   onRetryApi,
+  baseUrl,
 }: DesktopAppHeaderProps) {
   const groups = useMemo(
     () => buildDesktopNavGroups({ canViewFinance, canViewTasks }),
@@ -137,6 +144,19 @@ export function DesktopAppHeader({
               )}
             </button>
 
+            {userNeedsCompanyPicker(user) ? (
+              <button
+                type="button"
+                className="odoo-navbar__company-switch"
+                title="Cambiar de empresa"
+                aria-label="Cambiar de empresa"
+                onClick={() => navigateToSelectCompany(false)}
+              >
+                <span className="odoo-navbar__company-switch-name">{user.companyName}</span>
+                <ChevronDown className="odoo-navbar__company-switch-icon" strokeWidth={2} aria-hidden />
+              </button>
+            ) : null}
+
             {!homeScreen && navContext ? (
               <div className="odoo-navbar__app-title">
                 <span className="odoo-navbar__app-title-icon" aria-hidden>
@@ -184,6 +204,8 @@ export function DesktopAppHeader({
               theme={theme}
               onToggleTheme={onToggleTheme}
               onLogout={onLogout}
+              onSwitchCompany={onSwitchCompany}
+              baseUrl={baseUrl}
               onOpenAssistant={onOpenAssistant}
               assistantOpen={assistantOpen}
               backendDown={backendDown}

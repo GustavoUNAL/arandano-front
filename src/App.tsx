@@ -37,6 +37,7 @@ import {
 import { useNavigation } from './NavigationContext'
 import { NavigationHub, type HubTargetView } from './components/NavigationHub'
 import { LoginView } from './components/LoginView'
+import { CompanySelectView } from './components/CompanySelectView'
 import { LandingView } from './components/LandingView'
 import { LegalPageView } from './components/LegalPageView'
 import { BrandMark } from './components/BrandMark'
@@ -64,7 +65,10 @@ import {
   navigateToLanding,
   navigateToLogin,
   navigateToPlatform,
+  navigateToSelectCompany,
+  isSelectCompanyHash,
 } from './lib/authRoutes'
+import { userNeedsCompanyPicker } from './lib/companySelect'
 import { isOdooHomeView } from './lib/odooNav'
 import {
   buildCompanyViewHash,
@@ -113,6 +117,7 @@ export default function App() {
 
   const [user, setUser] = useState<AuthUser | null>(null)
   const [authError, setAuthError] = useState<string | null>(null)
+  const [companyPickFromLogin, setCompanyPickFromLogin] = useState(false)
   const [authInitializing, setAuthInitializing] = useState<boolean>(() =>
     Boolean(getAccessToken()),
   )
@@ -237,6 +242,7 @@ export default function App() {
   useEffect(() => {
     if (!user) return
     if (user.isPlatformAdmin && user.platformView) return
+    if (isSelectCompanyHash()) return
     const parsed = parseCompanyAppHash()
     const slug = getCompanySlugFromUser(user)
     if (parsed.companySlug !== slug) {
@@ -266,6 +272,7 @@ export default function App() {
   useEffect(() => {
     if (!user) return
     if (user.isPlatformAdmin && user.platformView) return
+    if (isSelectCompanyHash()) return
     const desired = companyViewHash(user, view)
     const current = window.location.hash ?? ''
     const slug = getCompanySlugFromUser(user)
@@ -310,6 +317,11 @@ export default function App() {
           onLogin={(u) => {
             setUser(u)
             setAuthError(null)
+            if (userNeedsCompanyPicker(u)) {
+              setCompanyPickFromLogin(true)
+              navigateToSelectCompany(true)
+              return
+            }
             setView('home')
             navigateAfterLogin(u)
           }}
@@ -348,6 +360,28 @@ export default function App() {
     )
   }
 
+  if (userNeedsCompanyPicker(user) && isSelectCompanyHash()) {
+    return (
+      <CompanySelectView
+        baseUrl={baseUrl}
+        user={user}
+        onSelect={handleSwitchCompany}
+        onCancel={
+          !companyPickFromLogin && user.companyId?.trim()
+            ? () => handleSwitchCompany(user)
+            : undefined
+        }
+        onLogout={() => {
+          setAccessToken(null)
+          setCompanyId(null)
+          setUser(null)
+          setAuthError(null)
+          navigateToLogin()
+        }}
+      />
+    )
+  }
+
   async function returnToPlatformPanel() {
     try {
       const res = await exitToPlatformAdmin(baseUrl)
@@ -357,6 +391,14 @@ export default function App() {
     } catch (err) {
       setAuthError(err instanceof Error ? err.message : 'No se pudo volver al panel admin')
     }
+  }
+
+  function handleSwitchCompany(nextUser: AuthUser) {
+    setCompanyPickFromLogin(false)
+    setUser(nextUser)
+    setAuthError(null)
+    setView('home')
+    navigateAfterLogin(nextUser)
   }
 
   return (
@@ -401,6 +443,8 @@ export default function App() {
             setAuthError(null)
             navigateToLogin()
           }}
+          onSwitchCompany={handleSwitchCompany}
+          baseUrl={baseUrl}
           onOpenAssistant={PLATFORM_MODE ? () => setAssistantOpen(true) : undefined}
           assistantOpen={assistantOpen}
           canViewFinance={canViewFinance(user)}
@@ -428,6 +472,8 @@ export default function App() {
                 setAuthError(null)
                 navigateToLogin()
               }}
+              onSwitchCompany={handleSwitchCompany}
+              baseUrl={baseUrl}
               sheetOpen={mobileSheetOpen}
               onSheetOpenChange={setMobileSheetOpen}
               assistantOpen={assistantOpen}

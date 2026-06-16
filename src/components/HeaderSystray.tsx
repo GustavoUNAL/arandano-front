@@ -56,6 +56,8 @@ export function HeaderSystray({
   assistantOpen = false,
   backendDown = false,
   onRetryApi,
+  baseUrl,
+  onSwitchCompany,
   variant = 'navbar',
 }: {
   user: AuthUser
@@ -66,6 +68,8 @@ export function HeaderSystray({
   assistantOpen?: boolean
   backendDown?: boolean
   onRetryApi?: () => void
+  baseUrl?: string
+  onSwitchCompany?: (user: AuthUser) => void
   variant?: 'navbar' | 'mobile'
 }) {
   const [openPanel, setOpenPanel] = useState<SystrayPanelId | null>(null)
@@ -222,6 +226,8 @@ export function HeaderSystray({
           <SystrayPanel id="header-systray-profile" title="Mi cuenta">
             <UserProfileCard
               user={user}
+              baseUrl={baseUrl}
+              onSwitchCompany={onSwitchCompany}
               onLogout={() => {
                 closePanel()
                 onLogout()

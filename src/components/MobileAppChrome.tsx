@@ -5,6 +5,8 @@ import { PLATFORM_MODE, SALES_FLOOR_ONLY } from '../appScope'
 import { canViewFinance, canViewTasks } from '../lib/permissions'
 import { BRAND_NAME } from '../lib/brand'
 import { displayCompanyName } from '../lib/displayLabels'
+import { navigateToSelectCompany } from '../lib/authRoutes'
+import { userNeedsCompanyPicker } from '../lib/companySelect'
 import { cn } from '../lib/utils'
 import {
   MobileModuleIcon,
@@ -124,12 +126,14 @@ export function MobileAppChrome({
   onToggleTheme,
   user,
   onLogout,
+  onSwitchCompany,
   sheetOpen,
   onSheetOpenChange,
   assistantOpen = false,
   onAssistantOpenChange,
   backendDown = false,
   onRetryApi,
+  baseUrl,
 }: {
   view: MobileChromeView
   onNavigate: (v: MobileChromeView) => void
@@ -138,12 +142,14 @@ export function MobileAppChrome({
   onToggleTheme: () => void
   user: AuthUser | null
   onLogout: () => void
+  onSwitchCompany?: (user: AuthUser) => void
   sheetOpen: boolean
   onSheetOpenChange: (open: boolean) => void
   assistantOpen?: boolean
   onAssistantOpenChange?: (open: boolean) => void
   backendDown?: boolean
   onRetryApi?: () => void
+  baseUrl?: string
 }) {
   const dockTabs = useMemo(() => {
     const base = PLATFORM_MODE
@@ -243,14 +249,27 @@ export function MobileAppChrome({
           </div>
 
           <div className="vos-mobile-header__center">
-            <h1
-              className={cn(
-                'vos-mobile-header__title',
-                isHomeScreen && 'vos-mobile-header__title--brand',
-              )}
-            >
-              {headerTitle}
-            </h1>
+            {user && userNeedsCompanyPicker(user) && isHomeScreen ? (
+              <button
+                type="button"
+                className="vos-mobile-header__company-switch"
+                onClick={() => navigateToSelectCompany(false)}
+              >
+                <h1 className="vos-mobile-header__title vos-mobile-header__title--brand">
+                  {brandLine}
+                </h1>
+                <span className="vos-mobile-header__company-switch-hint">Cambiar empresa</span>
+              </button>
+            ) : (
+              <h1
+                className={cn(
+                  'vos-mobile-header__title',
+                  isHomeScreen && 'vos-mobile-header__title--brand',
+                )}
+              >
+                {headerTitle}
+              </h1>
+            )}
           </div>
 
           <div className="vos-mobile-header__trailing">
@@ -260,6 +279,8 @@ export function MobileAppChrome({
                 theme={theme}
                 onToggleTheme={onToggleTheme}
                 onLogout={onLogout}
+                onSwitchCompany={onSwitchCompany}
+                baseUrl={baseUrl}
                 onOpenAssistant={
                   PLATFORM_MODE && !showDock
                     ? () => onAssistantOpenChange?.(!assistantOpen)
@@ -375,6 +396,19 @@ export function MobileAppChrome({
               </Button>
             </header>
             <div className="vos-sheet__body">
+              {user && userNeedsCompanyPicker(user) ? (
+                <button
+                  type="button"
+                  className="vos-sheet__company-switch"
+                  onClick={() => {
+                    onSheetOpenChange(false)
+                    navigateToSelectCompany(false)
+                  }}
+                >
+                  Cambiar de empresa
+                  <span className="muted small">{companyLabel}</span>
+                </button>
+              ) : null}
               {sheetLinks.length > 0 ? (
                 <ul className="vos-sheet__nav-grid m-0 list-none p-0">
                   {sheetLinks.map((link) => (
