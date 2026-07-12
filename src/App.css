@@ -14019,6 +14019,78 @@ html.app--chat-sheet-open body {
     margin-inline: -0.35rem;
     overflow-x: auto;
   }
+
+  .finance-analytics__mobile-cards {
+    display: grid;
+  }
+
+  .finance-analytics__table-wrap {
+    display: none;
+  }
+
+  .finance-analytics__kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .cash-close-panel__channels {
+    grid-template-columns: 1fr;
+  }
+
+  .cash-close-panel__summary {
+    grid-template-columns: 1fr 1fr !important;
+  }
+}
+
+.finance-analytics__presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0 0 0.85rem;
+}
+
+.finance-analytics__kpi--nequi {
+  border-color: color-mix(in srgb, #6b3fa0 30%, var(--border));
+}
+
+.finance-analytics__kpi--cash {
+  border-color: color-mix(in srgb, #3d8b5d 30%, var(--border));
+}
+
+.finance-analytics__mobile-cards {
+  display: none;
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  gap: 0.55rem;
+}
+
+.finance-analytics__mobile-card {
+  padding: 0.85rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  background: color-mix(in srgb, var(--surface-elevated) 92%, var(--surface));
+}
+
+.finance-analytics__mobile-card strong {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.92rem;
+}
+
+.finance-analytics__mobile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem 0.65rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.finance-analytics__mobile-grid em {
+  display: block;
+  font-style: normal;
+  font-weight: 700;
+  color: var(--heading);
+  margin-top: 0.1rem;
 }
 
 .shop-admin {

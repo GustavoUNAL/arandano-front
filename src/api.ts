@@ -2434,6 +2434,9 @@ export type DailyCashClose = {
     laborTotalCOP: number
     shiftCount: number
     expectedCashCOP?: number
+    cashCOP?: number
+    nequiCOP?: number
+    otherPayCOP?: number
   }
   paymentsByMethod: { method: string; totalCOP: number }[]
   sales: {
@@ -2475,6 +2478,11 @@ export type DailyCashClose = {
     notes: string | null
   }[]
   record?: CashCloseRecord | null
+  meta?: {
+    autoCloseAt: string
+    timezone: string
+    isEditable: boolean
+  }
 }
 
 export type CashCloseRecord = {
@@ -2558,6 +2566,21 @@ export async function finalizeCashClose(
   )
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<DailyCashClose>
+}
+
+export async function downloadCashClosePdf(base: string, date: string): Promise<void> {
+  const res = await apiFetch(`${base}/cash-close/${encodeURIComponent(date)}/report.pdf`)
+  if (!res.ok) throw new Error(await parseJsonError(res))
+  const blob = await res.blob()
+  const disposition = res.headers.get('Content-Disposition') ?? ''
+  const match = disposition.match(/filename="([^"]+)"/)
+  const filename = match?.[1] ?? `cierre-caja-${date}.pdf`
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
 }
 
 export type SalesCalendarDay = {
@@ -3234,6 +3257,9 @@ export type FinancialAnalyticsCombinedRow = {
   grossProfitCOP: number
   purchasesCount: number
   purchasesCOP: number
+  cashCOP: number
+  nequiCOP: number
+  otherPayCOP: number
   staffShifts: number
   staffHours: number
   staffPayCOP: number
@@ -3246,7 +3272,14 @@ export type FinancialAnalyticsOverview = {
   dateTo: string
   sales: {
     series: FinancialAnalyticsSeriesPoint[]
-    totals: { count: number; totalCOP: number; profitCOP: number }
+    totals: {
+      count: number
+      totalCOP: number
+      profitCOP: number
+      cashCOP: number
+      nequiCOP: number
+      otherPayCOP: number
+    }
   }
   purchases: {
     series: FinancialAnalyticsSeriesPoint[]
@@ -3262,6 +3295,9 @@ export type FinancialAnalyticsOverview = {
     salesProfitCOP: number
     grossProfitCOP: number
     purchasesCOP: number
+    cashCOP: number
+    nequiCOP: number
+    otherPayCOP: number
     staffPayCOP: number
     netCOP: number
   }

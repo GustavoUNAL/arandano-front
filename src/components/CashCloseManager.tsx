@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import {
-  fetchPurchaseLotsCalendar,
-  fetchSalesCalendar,
-} from '../api'
-import { useMatchMedia } from '../hooks/useMatchMedia'
-import { MOBILE_FILTER_BREAKPOINT } from './MobileAwareFilterBar'
+import { fetchCashCloseCalendar } from '../api'
 import { CashClosePanel } from './CashClosePanel'
 import { MonthCalendar } from './MonthCalendar'
 import { ViewBootSplash } from './DataLoadingSplash'
@@ -50,16 +45,12 @@ export function CashCloseManager({
   onOpenPurchases,
   onOpenPos,
 }: Props) {
-  const isMobile = useMatchMedia(MOBILE_FILTER_BREAKPOINT)
   const now = new Date()
   const [calendarYear, setCalendarYear] = useState(now.getFullYear())
   const [calendarMonth, setCalendarMonth] = useState(now.getMonth() + 1)
   const [selectedDate, setSelectedDate] = useState(localDateKey())
-  const [salesCalendar, setSalesCalendar] = useState<
-    Awaited<ReturnType<typeof fetchSalesCalendar>> | null
-  >(null)
-  const [purchasesCalendar, setPurchasesCalendar] = useState<
-    Awaited<ReturnType<typeof fetchPurchaseLotsCalendar>> | null
+  const [cashCloseCalendar, setCashCloseCalendar] = useState<
+    Awaited<ReturnType<typeof fetchCashCloseCalendar>> | null
   >(null)
   const [calendarLoading, setCalendarLoading] = useState(true)
   const [calendarError, setCalendarError] = useState<string | null>(null)
@@ -92,24 +83,15 @@ export function CashCloseManager({
     let cancelled = false
     setCalendarLoading(true)
     setCalendarError(null)
-    const purchasesPromise = isMobile
-      ? Promise.resolve(null)
-      : fetchPurchaseLotsCalendar(baseUrl, calendarYear, calendarMonth)
 
-    void Promise.all([
-      fetchSalesCalendar(baseUrl, calendarYear, calendarMonth),
-      purchasesPromise,
-    ])
-      .then(([sales, purchases]) => {
-        if (cancelled) return
-        setSalesCalendar(sales)
-        setPurchasesCalendar(purchases)
+    void fetchCashCloseCalendar(baseUrl, calendarYear, calendarMonth)
+      .then((calendar) => {
+        if (!cancelled) setCashCloseCalendar(calendar)
       })
       .catch((e: Error) => {
         if (!cancelled) {
           setCalendarError(e.message)
-          setSalesCalendar(null)
-          setPurchasesCalendar(null)
+          setCashCloseCalendar(null)
         }
       })
       .finally(() => {
@@ -119,7 +101,7 @@ export function CashCloseManager({
     return () => {
       cancelled = true
     }
-  }, [baseUrl, calendarYear, calendarMonth, isMobile, panelRefreshKey])
+  }, [baseUrl, calendarYear, calendarMonth, panelRefreshKey])
 
   const handleSaved = useCallback(() => {
     setPanelRefreshKey((k) => k + 1)
@@ -131,7 +113,8 @@ export function CashCloseManager({
         <div>
           <h1 className="cash-close-manager__title">Cierre del día</h1>
           <p className="cash-close-manager__lead muted">
-            Resumen de ventas y actividad del día
+            Elegí un día en el calendario, registrá el arqueo y cerrá manualmente o
+            automáticamente a las 11:59 p. m.
           </p>
         </div>
       </header>
@@ -182,13 +165,13 @@ export function CashCloseManager({
       ) : null}
 
       <div className="cash-close-manager__layout">
-        <aside className="cash-close-manager__calendars" aria-label="Calendarios del mes">
-          <div className="cash-close-manager__calendar-block">
+        <aside className="cash-close-manager__calendars" aria-label="Calendario del mes">
+          <div className="cash-close-manager__calendar-card">
             <MonthCalendar
               year={calendarYear}
               month={calendarMonth}
-              days={salesCalendar?.days ?? []}
-              loading={calendarLoading && !salesCalendar}
+              days={cashCloseCalendar?.days ?? []}
+              loading={calendarLoading && !cashCloseCalendar}
               error={calendarError}
               countLabel="venta"
               showZeroForPastDays
@@ -198,32 +181,33 @@ export function CashCloseManager({
               onPrevMonth={() => shiftMonth(-1)}
               onNextMonth={() => shiftMonth(1)}
               onToday={goToday}
-              hideNav={isMobile}
             />
+            <ul className="cash-close-manager__legend" aria-label="Estado del cierre">
+              <li>
+                <span className="cash-close-manager__legend-dot cash-close-manager__legend-dot--closed" />
+                Cerrado
+              </li>
+              <li>
+                <span className="cash-close-manager__legend-dot cash-close-manager__legend-dot--draft" />
+                Borrador
+              </li>
+              <li>
+                <span className="cash-close-manager__legend-dot cash-close-manager__legend-dot--open" />
+                Abierto
+              </li>
+            </ul>
+            {cashCloseCalendar ? (
+              <p className="cash-close-manager__calendar-meta muted small">
+                {cashCloseCalendar.totals.closedDays} día
+                {cashCloseCalendar.totals.closedDays !== 1 ? 's' : ''} cerrado
+                {cashCloseCalendar.totals.closedDays !== 1 ? 's' : ''} este mes
+              </p>
+            ) : null}
           </div>
-          {!isMobile ? (
-            <div className="cash-close-manager__calendar-block">
-              <MonthCalendar
-                year={calendarYear}
-                month={calendarMonth}
-                days={purchasesCalendar?.days ?? []}
-                loading={calendarLoading && !purchasesCalendar}
-                error={null}
-                countLabel="compra"
-                showZeroForPastDays
-                selectedDate={selectedDate}
-                inaugurationDate={inaugurationDate}
-                onDayClick={setSelectedDate}
-                onPrevMonth={() => shiftMonth(-1)}
-                onNextMonth={() => shiftMonth(1)}
-                onToday={goToday}
-              />
-            </div>
-          ) : null}
         </aside>
 
         <div className="cash-close-manager__detail">
-          {calendarLoading && !salesCalendar ? (
+          {calendarLoading && !cashCloseCalendar ? (
             <ViewBootSplash ready={false} label="Cargando cierre del día…" />
           ) : (
             <CashClosePanel

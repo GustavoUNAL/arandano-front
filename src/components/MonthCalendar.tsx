@@ -11,6 +11,7 @@ export type MonthCalendarDay = {
   totalCOP?: string
   pendingCount?: number
   completedCount?: number
+  closeStatus?: 'DRAFT' | 'CLOSED' | null
 }
 
 type MonthCalendarProps = {
@@ -223,6 +224,7 @@ export function MonthCalendar({
           const isPastOrToday = cell.date <= todayKey
           const showZero =
             showZeroForPastDays && isPastOrToday && !hasData
+          const closeStatus = cell.data?.closeStatus ?? null
           return (
             <button
               key={cell.date}
@@ -233,6 +235,13 @@ export function MonthCalendar({
                 showZero ? 'month-calendar__day--no-sales' : '',
                 isToday ? 'month-calendar__day--today' : '',
                 isSelected ? 'month-calendar__day--selected' : '',
+                closeStatus === 'CLOSED'
+                  ? 'month-calendar__day--close-closed'
+                  : closeStatus === 'DRAFT'
+                    ? 'month-calendar__day--close-draft'
+                    : isPastOrToday && !closeStatus
+                      ? 'month-calendar__day--close-open'
+                      : '',
               ]
                 .filter(Boolean)
                 .join(' ')}
@@ -252,6 +261,12 @@ export function MonthCalendar({
               <span className="month-calendar__day-num">
                 {parseInt(cell.date.slice(8), 10)}
               </span>
+              {closeStatus ? (
+                <span
+                  className={`month-calendar__day-close month-calendar__day-close--${closeStatus.toLowerCase()}`}
+                  aria-hidden
+                />
+              ) : null}
               {hasData ? (
                 <>
                   <span className="month-calendar__day-count">{count}</span>

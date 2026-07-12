@@ -3,8 +3,14 @@ import {
   fetchDailyCashClose,
   finalizeCashClose,
   upsertCashCloseRecord,
+  downloadCashClosePdf,
   type DailyCashClose,
 } from '../api'
+import { downloadCashCloseReport } from '../lib/cashCloseDownload'
+import {
+  isCashCloseEditable,
+  msUntilAutoClose,
+} from '../lib/cashCloseTime'
 import { DayComandasList } from './DayComandasList'
 import { Button } from './ui/button'
 
@@ -92,7 +98,20 @@ export function CashClosePanel({
     void load()
   }, [load, refreshKey])
 
-  const isClosed = data?.record?.status === 'CLOSED'
+  useEffect(() => {
+    const waitMs = msUntilAutoClose(date)
+    if (waitMs == null) return
+    const timer = window.setTimeout(() => {
+      void load()
+      onSaved?.()
+    }, waitMs + 500)
+    return () => window.clearTimeout(timer)
+  }, [date, load, onSaved])
+
+  const isEditable =
+    data?.meta?.isEditable ??
+    isCashCloseEditable(date, data?.record?.status ?? null)
+  const isClosed = Boolean(data) && !isEditable
   const expectedCash =
     (data?.summary.expectedCashCOP ?? 0) +
     (parseNum(openingFloat) >= 0 ? Math.round(parseNum(openingFloat)) : 0)
@@ -145,7 +164,7 @@ export function CashClosePanel({
     }
   }
 
-  const closeDay = async () => {
+  const closeDayAndDownload = async () => {
     setActionError(null)
     if (!Number.isFinite(countedParsed) || countedParsed < 0) {
       setActionError('Indicá el efectivo contado antes de cerrar la caja.')
@@ -163,10 +182,20 @@ export function CashClosePanel({
       const res = await finalizeCashClose(baseUrl, date)
       setData(res)
       onSaved?.()
+      await downloadCashClosePdf(baseUrl, date)
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'No se pudo cerrar la caja')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const downloadPdf = async () => {
+    setActionError(null)
+    try {
+      await downloadCashClosePdf(baseUrl, date)
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'No se pudo descargar el PDF')
     }
   }
 
@@ -176,15 +205,37 @@ export function CashClosePanel({
         <p id="cash-close-title" className="cash-close-panel__toolbar-date">
           {formatLongDate(date)}
         </p>
-        {isClosed ? (
-          <span className="cash-close-panel__status cash-close-panel__status--closed">
-            Caja cerrada
-          </span>
-        ) : data?.record?.status === 'DRAFT' ? (
-          <span className="cash-close-panel__status cash-close-panel__status--draft">
-            Borrador
-          </span>
-        ) : null}
+        <div className="cash-close-panel__toolbar-actions">
+          {data ? (
+            <>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => void downloadPdf()}
+              >
+                Descargar PDF
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => downloadCashCloseReport(data)}
+              >
+                CSV
+              </Button>
+            </>
+          ) : null}
+          {isClosed ? (
+            <span className="cash-close-panel__status cash-close-panel__status--closed">
+              Caja cerrada
+            </span>
+          ) : isEditable ? (
+            <span className="cash-close-panel__status cash-close-panel__status--draft">
+              Abierto · cierre 11:59 p. m.
+            </span>
+          ) : null}
+        </div>
       </div>
 
       {loading ? <p className="muted">Cargando detalle del día…</p> : null}
@@ -244,6 +295,23 @@ export function CashClosePanel({
               </div>
             </div>
 
+            <div className="cash-close-panel__channels" aria-label="Cobros del día">
+              <div className="cash-close-channel cash-close-channel--nequi">
+                <span>Nequi</span>
+                <strong className="mono">{formatCOP(data.summary.nequiCOP ?? 0)}</strong>
+              </div>
+              <div className="cash-close-channel cash-close-channel--cash">
+                <span>Caja / efectivo</span>
+                <strong className="mono">{formatCOP(data.summary.cashCOP ?? 0)}</strong>
+              </div>
+              {(data.summary.otherPayCOP ?? 0) > 0 ? (
+                <div className="cash-close-channel">
+                  <span>Otros medios</span>
+                  <strong className="mono">{formatCOP(data.summary.otherPayCOP ?? 0)}</strong>
+                </div>
+              ) : null}
+            </div>
+
             {data.paymentsByMethod.length > 0 ? (
               <div className="cash-close-panel__overview-block">
                 <h3 className="cash-close-panel__subtitle">Cobros por método</h3>
@@ -295,7 +363,7 @@ export function CashClosePanel({
                     inputMode="decimal"
                     value={openingFloat}
                     onChange={(e) => setOpeningFloat(e.target.value)}
-                    disabled={isClosed || saving}
+                    disabled={!isEditable || saving}
                     placeholder="0"
                   />
                 </label>
@@ -314,7 +382,7 @@ export function CashClosePanel({
                     inputMode="decimal"
                     value={countedCash}
                     onChange={(e) => setCountedCash(e.target.value)}
-                    disabled={isClosed || saving}
+                    disabled={!isEditable || saving}
                     placeholder="Contá el dinero en caja"
                   />
                 </label>
@@ -334,7 +402,7 @@ export function CashClosePanel({
                   rows={2}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  disabled={isClosed || saving}
+                  disabled={!isEditable || saving}
                   placeholder="Observaciones, faltantes, justificación…"
                 />
               </label>
@@ -343,7 +411,21 @@ export function CashClosePanel({
                   {actionError}
                 </p>
               ) : null}
-              {!isClosed ? (
+              {!isEditable ? (
+                data.record?.closedAt ? (
+                  <p className="muted small cash-close-arqueo__closed-at">
+                    Cerrado el{' '}
+                    {new Intl.DateTimeFormat('es-CO', {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                    }).format(new Date(data.record.closedAt))}
+                  </p>
+                ) : (
+                  <p className="muted small cash-close-arqueo__closed-at">
+                    Cierre automático a las 11:59 p. m.
+                  </p>
+                )
+              ) : (
                 <div className="cash-close-arqueo__actions">
                   <button
                     type="button"
@@ -357,20 +439,12 @@ export function CashClosePanel({
                     type="button"
                     className="btn-primary"
                     disabled={saving}
-                    onClick={() => void closeDay()}
+                    onClick={() => void closeDayAndDownload()}
                   >
-                    {saving ? 'Cerrando…' : 'Cerrar el día'}
+                    {saving ? 'Cerrando…' : 'Cerrar el día y descargar PDF'}
                   </button>
                 </div>
-              ) : data.record?.closedAt ? (
-                <p className="muted small cash-close-arqueo__closed-at">
-                  Cerrado el{' '}
-                  {new Intl.DateTimeFormat('es-CO', {
-                    dateStyle: 'medium',
-                    timeStyle: 'short',
-                  }).format(new Date(data.record.closedAt))}
-                </p>
-              ) : null}
+              )}
             </div>
           ) : null}
 

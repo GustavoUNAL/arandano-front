@@ -802,6 +802,14 @@
   text-transform: capitalize;
 }
 
+.cash-close-panel__toolbar-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
 .cash-close-panel__overview {
   padding: 0.85rem 0.9rem 0.95rem;
   border-radius: 14px;
@@ -1258,9 +1266,44 @@
   color: #2f6f49;
 }
 
-.cash-close-panel__status--draft {
-  background: color-mix(in srgb, #d4a017 18%, transparent);
-  color: #8a6914;
+.cash-close-panel__channels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-top: 0.85rem;
+}
+
+.cash-close-channel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 75%, transparent);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+
+.cash-close-channel span {
+  font-size: 0.72rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+
+.cash-close-channel strong {
+  font-size: 1.05rem;
+  color: var(--heading);
+}
+
+.cash-close-channel--nequi {
+  border-color: color-mix(in srgb, #6b3fa0 35%, var(--border));
+  background: color-mix(in srgb, #6b3fa0 8%, var(--surface));
+}
+
+.cash-close-channel--cash {
+  border-color: color-mix(in srgb, #3d8b5d 35%, var(--border));
+  background: color-mix(in srgb, #3d8b5d 8%, var(--surface));
 }
 
 .cash-close-arqueo {
@@ -1312,6 +1355,120 @@
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.cash-close-manager__calendar-card {
+  padding: 1rem;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  background: color-mix(in srgb, var(--surface-elevated) 96%, var(--surface));
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--shadow-soft) 42%, transparent);
+}
+
+.cash-close-manager__calendar-card .month-calendar {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.cash-close-manager__calendar-card .month-calendar__head {
+  margin-bottom: 0.65rem;
+}
+
+.cash-close-manager__calendar-card .month-calendar__title {
+  font-size: 1rem;
+}
+
+.cash-close-manager__calendar-card .month-calendar__grid {
+  gap: 0.22rem;
+}
+
+.cash-close-manager__calendar-card .month-calendar__day {
+  min-height: 3.55rem;
+  padding: 0.28rem 0.3rem 0.32rem;
+  border-radius: 9px;
+}
+
+.cash-close-manager__calendar-card .month-calendar__day-num {
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.cash-close-manager__calendar-card .month-calendar__day-count,
+.cash-close-manager__calendar-card .month-calendar__day-total {
+  font-size: 0.62rem;
+  line-height: 1.15;
+}
+
+.month-calendar__day-close {
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: 999px;
+  margin-top: 0.05rem;
+}
+
+.month-calendar__day-close--closed {
+  background: #3d8b5d;
+  box-shadow: 0 0 0 1px color-mix(in srgb, #3d8b5d 35%, transparent);
+}
+
+.month-calendar__day-close--draft {
+  background: #d4a017;
+}
+
+.month-calendar__day--close-closed {
+  border-color: color-mix(in srgb, #3d8b5d 35%, var(--border));
+}
+
+.month-calendar__day--close-draft {
+  border-color: color-mix(in srgb, #d4a017 35%, var(--border));
+}
+
+.month-calendar__day--close-open {
+  border-style: dashed;
+}
+
+.cash-close-manager__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem 0.85rem;
+  margin: 0.85rem 0 0;
+  padding: 0.65rem 0 0;
+  list-style: none;
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.cash-close-manager__legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.cash-close-manager__legend-dot {
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 999px;
+}
+
+.cash-close-manager__legend-dot--closed {
+  background: #3d8b5d;
+}
+
+.cash-close-manager__legend-dot--draft {
+  background: #d4a017;
+}
+
+.cash-close-manager__legend-dot--open {
+  background: transparent;
+  border: 1.5px dashed color-mix(in srgb, var(--muted) 55%, var(--border));
+}
+
+.cash-close-manager__calendar-meta {
+  margin: 0.55rem 0 0;
 }
 
 .cash-close-manager__calendar-block .month-calendar {
@@ -1398,8 +1555,14 @@
 
 @media (min-width: 960px) {
   .cash-close-manager__layout {
-    grid-template-columns: minmax(18rem, 22rem) minmax(0, 1fr);
+    grid-template-columns: minmax(17rem, 20rem) minmax(0, 1fr);
     align-items: start;
+    gap: 1.25rem;
+  }
+
+  .cash-close-manager__calendars {
+    position: sticky;
+    top: 4.5rem;
   }
 }
 
@@ -1412,6 +1575,20 @@
   .cash-close-manager {
     padding: 0;
     gap: 0.75rem;
+  }
+
+  .cash-close-manager__calendar-card {
+    padding: 0.75rem;
+    border-radius: 14px;
+  }
+
+  .cash-close-manager__calendar-card .month-calendar__day {
+    min-height: 3.15rem;
+  }
+
+  .cash-close-manager__legend {
+    gap: 0.45rem 0.65rem;
+    font-size: 0.68rem;
   }
 
   .cash-close-manager__title {
