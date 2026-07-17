@@ -1,8 +1,23 @@
 import type { AuthUser, CompanySummary } from '../api'
 
-export function userNeedsCompanyPicker(user: AuthUser): boolean {
+/** Empresas donde el usuario es propietario (owner). */
+export function ownedCompanies(user: AuthUser | null | undefined): CompanySummary[] {
+  if (!user?.companies?.length) return []
+  return user.companies.filter((c) => c.role === 'owner')
+}
+
+/**
+ * Selector / cambio de empresa: solo owners con 2+ empresas.
+ * No aplica a platform admin ni a staff/manager de una sola empresa.
+ */
+export function userNeedsCompanyPicker(user: AuthUser | null | undefined): boolean {
+  if (!user) return false
   if (user.isPlatformAdmin) return false
-  return (user.companies?.length ?? 0) > 1
+  return ownedCompanies(user).length > 1
+}
+
+export function canSwitchCompany(user: AuthUser | null | undefined): boolean {
+  return userNeedsCompanyPicker(user)
 }
 
 export function roleLabel(role: string): string {
@@ -28,16 +43,20 @@ export function companyInitial(name: string): string {
 
 export function companyHint(company: CompanySummary): string {
   const slug = company.slug.toLowerCase()
-  if (slug.includes('electric') || company.name.toLowerCase().includes('electric')) {
+  const name = company.name.toLowerCase()
+  if (slug.includes('electric') || name.includes('electric')) {
     return 'Servicios eléctricos'
   }
   if (
     slug.includes('arandano') ||
     slug.includes('cafe') ||
-    company.name.toLowerCase().includes('café') ||
-    company.name.toLowerCase().includes('cafe')
+    name.includes('café') ||
+    name.includes('cafe')
   ) {
     return 'Café y bar'
+  }
+  if (slug === 'main' || name === 'main') {
+    return 'Holding / operación general'
   }
   if (company.modules.includes('shop')) {
     return 'Retail y tienda online'

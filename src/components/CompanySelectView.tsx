@@ -5,6 +5,7 @@ import {
   companyHint,
   companyInitial,
   roleLabel,
+  ownedCompanies,
 } from '../lib/companySelect'
 import { BrandMark } from './BrandMark'
 import { PublicThemeSwitch } from './PublicThemeSwitch'
@@ -42,7 +43,7 @@ export function CompanySelectView({ baseUrl, user, onSelect, onLogout, onCancel 
     }
   }
 
-  const companies = user.companies ?? []
+  const companies = ownedCompanies(user)
 
   return (
     <div className="public-shell public-auth public-company-select">

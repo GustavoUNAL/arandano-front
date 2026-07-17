@@ -3263,6 +3263,8 @@ export type FinancialAnalyticsCombinedRow = {
   staffShifts: number
   staffHours: number
   staffPayCOP: number
+  utilitiesCOP: number
+  outflowsCOP: number
   netCOP: number
 }
 
@@ -3270,6 +3272,7 @@ export type FinancialAnalyticsOverview = {
   granularity: AnalyticsGranularity
   dateFrom: string
   dateTo: string
+  dataBounds?: { dateFrom: string; dateTo: string }
   sales: {
     series: FinancialAnalyticsSeriesPoint[]
     totals: {
@@ -3289,6 +3292,17 @@ export type FinancialAnalyticsOverview = {
     series: FinancialAnalyticsSeriesPoint[]
     totals: { shiftCount: number; hours: number; totalPayCOP: number }
   }
+  utilities?: {
+    series: FinancialAnalyticsSeriesPoint[]
+    totals: {
+      count: number
+      totalCOP: number
+      aguaCOP: number
+      energiaCOP: number
+      internetCOP: number
+      otherCOP: number
+    }
+  }
   combined: FinancialAnalyticsCombinedRow[]
   summary: {
     salesCOP: number
@@ -3299,6 +3313,12 @@ export type FinancialAnalyticsOverview = {
     nequiCOP: number
     otherPayCOP: number
     staffPayCOP: number
+    utilitiesCOP?: number
+    aguaCOP?: number
+    energiaCOP?: number
+    internetCOP?: number
+    inflowsCOP?: number
+    outflowsCOP?: number
     netCOP: number
   }
 }
@@ -3319,4 +3339,42 @@ export async function fetchFinancialAnalytics(
   const res = await apiFetch(`${base}/analytics/financial${qs ? `?${qs}` : ''}`)
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<FinancialAnalyticsOverview>
+}
+
+export type MonthUtilitiesSnapshot = {
+  expenseMonth: string
+  aguaCOP: number
+  energiaCOP: number
+  internetCOP: number
+  otherCOP: number
+  totalCOP: number
+}
+
+export async function fetchMonthUtilities(
+  base: string,
+  expenseMonth: string,
+): Promise<MonthUtilitiesSnapshot> {
+  const q = new URLSearchParams({ expenseMonth })
+  const res = await apiFetch(`${base}/operating-expenses/month?${q}`)
+  if (!res.ok) throw new Error(await parseJsonError(res))
+  return res.json() as Promise<MonthUtilitiesSnapshot>
+}
+
+export async function upsertMonthUtilities(
+  base: string,
+  body: {
+    expenseMonth: string
+    aguaCOP: number
+    energiaCOP: number
+    internetCOP: number
+    notes?: string
+  },
+): Promise<MonthUtilitiesSnapshot> {
+  const res = await apiFetch(`${base}/operating-expenses/utilities`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await parseJsonError(res))
+  return res.json() as Promise<MonthUtilitiesSnapshot>
 }

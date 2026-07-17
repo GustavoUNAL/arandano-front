@@ -665,6 +665,7 @@
 
   .company-switcher__item {
     @apply flex w-full items-center gap-2.5 rounded-xl border px-2.5 py-2 text-left;
+    min-height: 2.75rem;
     border-color: color-mix(in srgb, var(--border) 75%, transparent);
     background: color-mix(in srgb, var(--surface-elevated) 90%, var(--surface));
     cursor: pointer;

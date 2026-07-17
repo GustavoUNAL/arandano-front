@@ -5,7 +5,8 @@ import {
   companyHint,
   companyInitial,
   roleLabel,
-  userNeedsCompanyPicker,
+  canSwitchCompany,
+  ownedCompanies,
 } from '../lib/companySelect'
 
 type Props = {
@@ -24,9 +25,9 @@ export function CompanySwitcher({
   const [switchingId, setSwitchingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  if (!userNeedsCompanyPicker(user)) return null
+  if (!canSwitchCompany(user)) return null
 
-  const companies = user.companies ?? []
+  const companies = ownedCompanies(user)
 
   async function handleSelect(companyId: string) {
     if (companyId === user.companyId || switchingId) return

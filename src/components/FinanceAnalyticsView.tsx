@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   fetchFinancialAnalytics,
+  fetchMonthUtilities,
+  upsertMonthUtilities,
   type AnalyticsGranularity,
   type FinancialAnalyticsOverview,
 } from '../api'
@@ -13,13 +15,40 @@ function bogotaToday(): string {
   }).format(new Date())
 }
 
-function monthRange(): { from: string; to: string } {
-  const today = bogotaToday()
-  const [y, m] = today.split('-').map(Number)
+function monthRange(ref = bogotaToday()): { from: string; to: string } {
+  const [y, m] = ref.split('-').map(Number)
   const from = `${y}-${String(m).padStart(2, '0')}-01`
   const last = new Date(Date.UTC(y, m, 0)).getUTCDate()
   const to = `${y}-${String(m).padStart(2, '0')}-${String(last).padStart(2, '0')}`
   return { from, to }
+}
+
+function shiftMonth(ref: string, delta: number): string {
+  const [y, m] = ref.split('-').map(Number)
+  const d = new Date(Date.UTC(y, m - 1 + delta, 1))
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-01`
+}
+
+function mondayOf(ref: string): string {
+  const [y, m, d] = ref.split('-').map(Number)
+  const noon = new Date(`${ref}T12:00:00-05:00`)
+  const dow = noon.getUTCDay()
+  const mondayOffset = dow === 0 ? -6 : 1 - dow
+  return new Date(Date.UTC(y, m - 1, d + mondayOffset)).toISOString().slice(0, 10)
+}
+
+function addDays(iso: string, days: number): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10)
+}
+
+function toMonthInput(isoDate: string): string {
+  return isoDate.slice(0, 7)
+}
+
+function parseMoneyInput(raw: string): number {
+  const n = Number(String(raw).replace(/[^\d.-]/g, ''))
+  return Number.isFinite(n) && n >= 0 ? Math.round(n) : 0
 }
 
 const GRANULARITY_LABEL: Record<AnalyticsGranularity, string> = {
@@ -29,13 +58,21 @@ const GRANULARITY_LABEL: Record<AnalyticsGranularity, string> = {
 }
 
 export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
-  const defaultRange = useMemo(() => monthRange(), [])
-  const [dateFrom, setDateFrom] = useState(defaultRange.from)
-  const [dateTo, setDateTo] = useState(defaultRange.to)
-  const [granularity, setGranularity] = useState<AnalyticsGranularity>('day')
+  const today = bogotaToday()
+  const [dateFrom, setDateFrom] = useState('2025-01-01')
+  const [dateTo, setDateTo] = useState(() => bogotaToday())
+  const [granularity, setGranularity] = useState<AnalyticsGranularity>('month')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<FinancialAnalyticsOverview | null>(null)
+  const [initialized, setInitialized] = useState(false)
+
+  const [utilMonth, setUtilMonth] = useState(() => toMonthInput(today))
+  const [agua, setAgua] = useState('')
+  const [energia, setEnergia] = useState('')
+  const [internet, setInternet] = useState('')
+  const [utilSaving, setUtilSaving] = useState(false)
+  const [utilMsg, setUtilMsg] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -47,32 +84,73 @@ export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
         granularity,
       })
       setData(res)
+      if (!initialized && res.dataBounds) {
+        setInitialized(true)
+        if (
+          res.dataBounds.dateFrom !== dateFrom ||
+          res.dataBounds.dateTo !== dateTo
+        ) {
+          setDateFrom(res.dataBounds.dateFrom)
+          setDateTo(res.dataBounds.dateTo)
+        }
+      } else if (!initialized) {
+        setInitialized(true)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al cargar análisis')
       setData(null)
+      setInitialized(true)
     } finally {
       setLoading(false)
     }
-  }, [baseUrl, dateFrom, dateTo, granularity])
+  }, [baseUrl, dateFrom, dateTo, granularity, initialized])
 
   useEffect(() => {
     void load()
   }, [load])
+
+  const loadUtilities = useCallback(async () => {
+    try {
+      const snap = await fetchMonthUtilities(baseUrl, utilMonth)
+      setAgua(snap.aguaCOP ? String(snap.aguaCOP) : '')
+      setEnergia(snap.energiaCOP ? String(snap.energiaCOP) : '')
+      setInternet(snap.internetCOP ? String(snap.internetCOP) : '')
+    } catch {
+      /* empty form if none */
+    }
+  }, [baseUrl, utilMonth])
+
+  useEffect(() => {
+    void loadUtilities()
+  }, [loadUtilities])
 
   const chartMax = useMemo(() => {
     if (!data?.combined.length) return 1
     return Math.max(
       1,
       ...data.combined.map((r) =>
-        Math.max(r.salesCOP, r.purchasesCOP, r.staffPayCOP, Math.abs(r.netCOP)),
+        Math.max(
+          r.salesCOP,
+          r.purchasesCOP,
+          r.staffPayCOP,
+          r.utilitiesCOP ?? 0,
+          Math.abs(r.netCOP),
+        ),
       ),
     )
   }, [data])
 
   const summary = data?.summary
+  const utilitiesTotal = summary?.utilitiesCOP ?? 0
+  const outflows =
+    summary?.outflowsCOP ??
+    (summary?.purchasesCOP ?? 0) + (summary?.staffPayCOP ?? 0) + utilitiesTotal
+  const inflows = summary?.inflowsCOP ?? summary?.salesCOP ?? 0
 
-  const setPreset = (kind: 'today' | 'week' | 'month') => {
-    const today = bogotaToday()
+  const setPreset = (
+    kind: 'today' | 'week' | 'lastWeek' | 'month' | 'prevMonth' | 'all',
+  ) => {
+    setInitialized(true)
     if (kind === 'today') {
       setDateFrom(today)
       setDateTo(today)
@@ -80,21 +158,60 @@ export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
       return
     }
     if (kind === 'week') {
-      const [y, m, d] = today.split('-').map(Number)
-      const noon = new Date(`${today}T12:00:00-05:00`)
-      const dow = noon.getUTCDay()
-      const mondayOffset = dow === 0 ? -6 : 1 - dow
-      const monday = new Date(Date.UTC(y, m - 1, d + mondayOffset))
-      const from = monday.toISOString().slice(0, 10)
-      setDateFrom(from)
-      setDateTo(today)
+      const monday = mondayOf(today)
+      setDateFrom(monday)
+      setDateTo(addDays(monday, 6))
       setGranularity('day')
       return
     }
-    const range = monthRange()
+    if (kind === 'lastWeek') {
+      const monday = addDays(mondayOf(today), -7)
+      setDateFrom(monday)
+      setDateTo(addDays(monday, 6))
+      setGranularity('day')
+      return
+    }
+    if (kind === 'prevMonth') {
+      const range = monthRange(shiftMonth(today, -1))
+      setDateFrom(range.from)
+      setDateTo(range.to)
+      setGranularity('week')
+      return
+    }
+    if (kind === 'all') {
+      if (data?.dataBounds) {
+        setDateFrom(data.dataBounds.dateFrom)
+        setDateTo(data.dataBounds.dateTo)
+      } else {
+        setDateFrom('2025-01-01')
+        setDateTo(today)
+      }
+      setGranularity('month')
+      return
+    }
+    const range = monthRange(today)
     setDateFrom(range.from)
     setDateTo(range.to)
-    setGranularity('day')
+    setGranularity('week')
+  }
+
+  const saveUtilities = async () => {
+    setUtilSaving(true)
+    setUtilMsg(null)
+    try {
+      await upsertMonthUtilities(baseUrl, {
+        expenseMonth: utilMonth,
+        aguaCOP: parseMoneyInput(agua),
+        energiaCOP: parseMoneyInput(energia),
+        internetCOP: parseMoneyInput(internet),
+      })
+      setUtilMsg('Servicios guardados')
+      await load()
+    } catch (e) {
+      setUtilMsg(e instanceof Error ? e.message : 'No se pudo guardar')
+    } finally {
+      setUtilSaving(false)
+    }
   }
 
   return (
@@ -103,7 +220,8 @@ export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
         <div>
           <h1 className="finance-analytics__title">Análisis financiero</h1>
           <p className="muted finance-analytics__lead">
-            Ventas, compras, Nequi y caja por día, semana o mes.
+            Entradas, salidas y utilidad estimada por día, semana o mes — desde los
+            primeros datos.
           </p>
         </div>
         <div className="view-toggle finance-analytics__granularity" role="group" aria-label="Agrupación">
@@ -112,7 +230,10 @@ export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
               key={g}
               type="button"
               className={granularity === g ? 'active' : ''}
-              onClick={() => setGranularity(g)}
+              onClick={() => {
+                setGranularity(g)
+                setInitialized(true)
+              }}
             >
               {GRANULARITY_LABEL[g]}
             </button>
@@ -121,25 +242,40 @@ export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
       </header>
 
       <div className="finance-analytics__presets" role="group" aria-label="Rangos rápidos">
-        <button type="button" className="btn-secondary btn-compact" onClick={() => setPreset('today')}>
-          Hoy
+        <button type="button" className="btn-secondary btn-compact" onClick={() => setPreset('all')}>
+          Todo el historial
+        </button>
+        <button type="button" className="btn-secondary btn-compact" onClick={() => setPreset('month')}>
+          Este mes
+        </button>
+        <button type="button" className="btn-secondary btn-compact" onClick={() => setPreset('prevMonth')}>
+          Mes pasado
         </button>
         <button type="button" className="btn-secondary btn-compact" onClick={() => setPreset('week')}>
           Esta semana
         </button>
-        <button type="button" className="btn-secondary btn-compact" onClick={() => setPreset('month')}>
-          Este mes
+        <button type="button" className="btn-secondary btn-compact" onClick={() => setPreset('lastWeek')}>
+          Semana pasada
+        </button>
+        <button type="button" className="btn-secondary btn-compact" onClick={() => setPreset('today')}>
+          Hoy
         </button>
       </div>
 
       <div className="finance-analytics__filters">
         <label className="field-stack">
           <span>Desde</span>
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} />
+          <input type="date" value={dateFrom} onChange={(e) => {
+            setDateFrom(e.target.value)
+            setInitialized(true)
+          }} />
         </label>
         <label className="field-stack">
           <span>Hasta</span>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} />
+          <input type="date" value={dateTo} onChange={(e) => {
+            setDateTo(e.target.value)
+            setInitialized(true)
+          }} />
         </label>
         <button type="button" className="btn-secondary" onClick={() => void load()} disabled={loading}>
           Actualizar
@@ -152,30 +288,57 @@ export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
         </p>
       ) : null}
 
-      <section className="finance-analytics__kpi-grid" aria-label="Resumen del periodo">
+      <section className="finance-analytics__flow" aria-label="Entradas y salidas">
+        <article className="finance-analytics__flow-card finance-analytics__flow-card--in">
+          <span className="finance-analytics__kpi-label">Entradas (ventas)</span>
+          <strong>{loading ? '…' : formatCOP(inflows)}</strong>
+          <ul className="finance-analytics__flow-list">
+            <li>
+              Nequi <em>{formatCOP(summary?.nequiCOP ?? 0)}</em>
+            </li>
+            <li>
+              Caja <em>{formatCOP(summary?.cashCOP ?? 0)}</em>
+            </li>
+            <li>
+              Otros <em>{formatCOP(summary?.otherPayCOP ?? 0)}</em>
+            </li>
+          </ul>
+        </article>
+        <article className="finance-analytics__flow-card finance-analytics__flow-card--out">
+          <span className="finance-analytics__kpi-label">Salidas</span>
+          <strong>{loading ? '…' : formatCOP(outflows)}</strong>
+          <ul className="finance-analytics__flow-list">
+            <li>
+              Compras <em>{formatCOP(summary?.purchasesCOP ?? 0)}</em>
+            </li>
+            <li>
+              Nómina <em>{formatCOP(summary?.staffPayCOP ?? 0)}</em>
+            </li>
+            <li>
+              Servicios <em>{formatCOP(utilitiesTotal)}</em>
+            </li>
+          </ul>
+        </article>
+        <article
+          className={`finance-analytics__flow-card finance-analytics__flow-card--net${(summary?.netCOP ?? 0) < 0 ? ' finance-analytics__flow-card--negative' : ''}`}
+        >
+          <span className="finance-analytics__kpi-label">Utilidad estimada</span>
+          <strong>{loading ? '…' : formatCOP(summary?.netCOP ?? 0)}</strong>
+          <p className="muted small">Entradas − compras − nómina − servicios</p>
+        </article>
+      </section>
+
+      <section className="finance-analytics__kpi-grid" aria-label="Detalle del resumen">
         <article className="finance-analytics__kpi finance-analytics__kpi--sales">
           <span className="finance-analytics__kpi-label">Ventas</span>
           <strong>{loading ? '…' : formatCOP(summary?.salesCOP ?? 0)}</strong>
           <span className="muted small">
-            {loading ? '' : `${data?.sales.totals.count ?? 0} operaciones`}
+            {loading ? '' : `${data?.sales.totals.count ?? 0} ops`}
           </span>
-        </article>
-        <article className="finance-analytics__kpi finance-analytics__kpi--nequi">
-          <span className="finance-analytics__kpi-label">Nequi</span>
-          <strong>{loading ? '…' : formatCOP(summary?.nequiCOP ?? 0)}</strong>
-          <span className="muted small">Transferencias</span>
-        </article>
-        <article className="finance-analytics__kpi finance-analytics__kpi--cash">
-          <span className="finance-analytics__kpi-label">Caja / efectivo</span>
-          <strong>{loading ? '…' : formatCOP(summary?.cashCOP ?? 0)}</strong>
-          <span className="muted small">Efectivo recibido</span>
         </article>
         <article className="finance-analytics__kpi finance-analytics__kpi--purchases">
           <span className="finance-analytics__kpi-label">Compras</span>
           <strong>{loading ? '…' : formatCOP(summary?.purchasesCOP ?? 0)}</strong>
-          <span className="muted small">
-            {loading ? '' : `${data?.purchases.totals.count ?? 0} lotes`}
-          </span>
         </article>
         <article className="finance-analytics__kpi finance-analytics__kpi--staff">
           <span className="finance-analytics__kpi-label">Nómina</span>
@@ -184,13 +347,72 @@ export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
             {loading ? '' : `${data?.staff.totals.shiftCount ?? 0} turnos`}
           </span>
         </article>
-        <article
-          className={`finance-analytics__kpi finance-analytics__kpi--net${(summary?.netCOP ?? 0) < 0 ? ' finance-analytics__kpi--negative' : ''}`}
-        >
-          <span className="finance-analytics__kpi-label">Neto</span>
-          <strong>{loading ? '…' : formatCOP(summary?.netCOP ?? 0)}</strong>
-          <span className="muted small">Ventas − compras − nómina</span>
+        <article className="finance-analytics__kpi finance-analytics__kpi--utilities">
+          <span className="finance-analytics__kpi-label">Servicios</span>
+          <strong>{loading ? '…' : formatCOP(utilitiesTotal)}</strong>
+          <span className="muted small">
+            Agua {formatCOP(summary?.aguaCOP ?? 0)} · Energía{' '}
+            {formatCOP(summary?.energiaCOP ?? 0)} · Internet{' '}
+            {formatCOP(summary?.internetCOP ?? 0)}
+          </span>
         </article>
+      </section>
+
+      <section className="finance-analytics__panel finance-analytics__utilities" aria-label="Registrar servicios">
+        <div className="finance-analytics__panel-head">
+          <h2>Servicios del mes</h2>
+          <p className="muted small">Agua, energía e internet entran al cálculo de utilidad.</p>
+        </div>
+        <div className="finance-analytics__util-form">
+          <label className="field-stack">
+            <span>Mes</span>
+            <input
+              type="month"
+              value={utilMonth}
+              onChange={(e) => setUtilMonth(e.target.value)}
+            />
+          </label>
+          <label className="field-stack">
+            <span>Agua</span>
+            <input
+              inputMode="numeric"
+              placeholder="0"
+              value={agua}
+              onChange={(e) => setAgua(e.target.value)}
+            />
+          </label>
+          <label className="field-stack">
+            <span>Energía</span>
+            <input
+              inputMode="numeric"
+              placeholder="0"
+              value={energia}
+              onChange={(e) => setEnergia(e.target.value)}
+            />
+          </label>
+          <label className="field-stack">
+            <span>Internet</span>
+            <input
+              inputMode="numeric"
+              placeholder="0"
+              value={internet}
+              onChange={(e) => setInternet(e.target.value)}
+            />
+          </label>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={utilSaving}
+            onClick={() => void saveUtilities()}
+          >
+            {utilSaving ? 'Guardando…' : 'Guardar servicios'}
+          </button>
+        </div>
+        {utilMsg ? (
+          <p className="muted small finance-analytics__util-msg" role="status">
+            {utilMsg}
+          </p>
+        ) : null}
       </section>
 
       {!loading && data && data.combined.length > 0 ? (
@@ -206,6 +428,9 @@ export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
               </span>
               <span className="finance-analytics__legend-item finance-analytics__legend-item--staff">
                 Nómina
+              </span>
+              <span className="finance-analytics__legend-item finance-analytics__legend-item--utilities">
+                Servicios
               </span>
             </div>
           </div>
@@ -229,6 +454,11 @@ export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
                     style={{ width: `${(row.staffPayCOP / chartMax) * 100}%` }}
                     title={`Nómina: ${formatCOP(row.staffPayCOP)}`}
                   />
+                  <span
+                    className="finance-analytics__bar finance-analytics__bar--utilities"
+                    style={{ width: `${((row.utilitiesCOP ?? 0) / chartMax) * 100}%` }}
+                    title={`Servicios: ${formatCOP(row.utilitiesCOP ?? 0)}`}
+                  />
                 </div>
                 <span
                   className={`finance-analytics__chart-net mono${row.netCOP < 0 ? ' finance-analytics__chart-net--negative' : ''}`}
@@ -250,11 +480,11 @@ export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
             <thead>
               <tr>
                 <th>Periodo</th>
-                <th className="num">Ventas</th>
-                <th className="num">Nequi</th>
-                <th className="num">Caja</th>
+                <th className="num">Entradas</th>
                 <th className="num">Compras</th>
-                <th className="num">Neto</th>
+                <th className="num">Nómina</th>
+                <th className="num">Servicios</th>
+                <th className="num">Utilidad</th>
               </tr>
             </thead>
             <tbody>
@@ -276,14 +506,14 @@ export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
                     <td>{row.label}</td>
                     <td className="num mono">
                       {formatCOP(row.salesCOP)}
-                      <span className="muted small"> · {row.salesCount}</span>
+                      <span className="muted small">
+                        {' '}
+                        · N {formatCOP(row.nequiCOP)} · C {formatCOP(row.cashCOP)}
+                      </span>
                     </td>
-                    <td className="num mono">{formatCOP(row.nequiCOP)}</td>
-                    <td className="num mono">{formatCOP(row.cashCOP)}</td>
-                    <td className="num mono">
-                      {formatCOP(row.purchasesCOP)}
-                      <span className="muted small"> · {row.purchasesCount}</span>
-                    </td>
+                    <td className="num mono">{formatCOP(row.purchasesCOP)}</td>
+                    <td className="num mono">{formatCOP(row.staffPayCOP)}</td>
+                    <td className="num mono">{formatCOP(row.utilitiesCOP ?? 0)}</td>
                     <td
                       className={`num mono${row.netCOP < 0 ? ' finance-analytics__net--negative' : ''}`}
                     >
@@ -303,7 +533,16 @@ export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
                 <strong>{row.label}</strong>
                 <div className="finance-analytics__mobile-grid">
                   <span>
-                    Ventas <em className="mono">{formatCOP(row.salesCOP)}</em>
+                    Entradas <em className="mono">{formatCOP(row.salesCOP)}</em>
+                  </span>
+                  <span>
+                    Compras <em className="mono">{formatCOP(row.purchasesCOP)}</em>
+                  </span>
+                  <span>
+                    Nómina <em className="mono">{formatCOP(row.staffPayCOP)}</em>
+                  </span>
+                  <span>
+                    Servicios <em className="mono">{formatCOP(row.utilitiesCOP ?? 0)}</em>
                   </span>
                   <span>
                     Nequi <em className="mono">{formatCOP(row.nequiCOP)}</em>
@@ -311,11 +550,10 @@ export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
                   <span>
                     Caja <em className="mono">{formatCOP(row.cashCOP)}</em>
                   </span>
-                  <span>
-                    Compras <em className="mono">{formatCOP(row.purchasesCOP)}</em>
-                  </span>
-                  <span className={row.netCOP < 0 ? 'finance-analytics__net--negative' : ''}>
-                    Neto <em className="mono">{formatCOP(row.netCOP)}</em>
+                  <span
+                    className={`finance-analytics__mobile-net${row.netCOP < 0 ? ' finance-analytics__net--negative' : ''}`}
+                  >
+                    Utilidad <em className="mono">{formatCOP(row.netCOP)}</em>
                   </span>
                 </div>
               </li>

@@ -3064,6 +3064,7 @@ html[data-shell='public'] #root {
     align-items: center;
     text-align: left;
     padding: 1rem 1.1rem;
+    min-height: 4.25rem;
   }
 
   .public-company-select__body {
@@ -3074,5 +3075,16 @@ html[data-shell='public'] #root {
   .public-company-select__action {
     margin-top: 0;
     padding-top: 0;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+
+  .public-company-select__wrap {
+    padding-inline: 1rem;
+    width: min(100%, 28rem);
+  }
+
+  .public-company-select__head h1 {
+    font-size: 1.35rem;
   }
 }
