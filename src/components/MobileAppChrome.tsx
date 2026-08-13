@@ -2,7 +2,7 @@ import { Home, Menu, X } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
 import type { AuthUser } from '../api'
 import { PLATFORM_MODE, SALES_FLOOR_ONLY } from '../appScope'
-import { canAccessView, canViewFinance, canViewTasks } from '../lib/permissions'
+import { canAccessView } from '../lib/permissions'
 import { BRAND_NAME } from '../lib/brand'
 import { displayCompanyName } from '../lib/displayLabels'
 import { navigateToSelectCompany } from '../lib/authRoutes'
@@ -50,6 +50,10 @@ const SCREEN_TITLE: Record<MobileChromeView, string> = {
   costs: 'Costos',
   gastos: 'Gastos',
   explorer: 'Datos',
+}
+
+export function isMobileChromeView(view: string): view is MobileChromeView {
+  return Object.prototype.hasOwnProperty.call(SCREEN_TITLE, view)
 }
 
 type SheetLink = {
@@ -158,6 +162,7 @@ export function MobileAppChrome({
         ? DOCK_TABS_SALES
         : DOCK_TABS_FULL
     let tabs = base.filter((tab) => {
+      if (!tab.view) return false
       if (tab.view === 'home' || tab.view === 'menu') return true
       if (!user) return false
       return canAccessView(user, tab.view)

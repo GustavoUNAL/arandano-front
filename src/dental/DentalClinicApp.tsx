@@ -180,10 +180,10 @@ export function DentalClinicApp({
   const [q, setQ] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [modal, setModal] = useState<string | null>(null)
-  const [agendaDate, setAgendaDate] = useState(() =>
+  const [agendaDate] = useState(() =>
     new Date().toISOString().slice(0, 10),
   )
-  const [appointments, setAppointments] = useState<
+  const [, setAppointments] = useState<
     Awaited<ReturnType<typeof dentalApi.appointments>>
   >([])
   const [incomes, setIncomes] = useState<Awaited<ReturnType<typeof dentalApi.incomes>>>([])

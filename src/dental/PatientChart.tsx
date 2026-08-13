@@ -506,7 +506,7 @@ export function PatientChart({
       setTab('citas')
       return
     }
-    if ((HC_SECTIONS as readonly [string, string][]).some(([k]) => k === section)) {
+    if (HC_SECTIONS.some((item) => item[0] === section)) {
       setTab('hc')
       openHcSection(section as HcKey, false)
     }

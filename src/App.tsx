@@ -44,6 +44,7 @@ import { LandingView } from './components/LandingView'
 import { LegalPageView } from './components/LegalPageView'
 import { BrandMark } from './components/BrandMark'
 import {
+  isMobileChromeView,
   MobileAppChrome,
   type MobileChromeView,
 } from './components/MobileAppChrome'
@@ -544,7 +545,13 @@ export default function App() {
         <main className="app-main" id="main-content" tabIndex={-1}>
           {isMobileNav ? (
             <MobileAppChrome
-              view={view}
+              view={
+                isMobileChromeView(view)
+                  ? view
+                  : PLATFORM_MODE
+                    ? 'home'
+                    : 'menu'
+              }
               onNavigate={handleMobileNavigate}
               onHome={() => setView(PLATFORM_MODE ? 'home' : 'menu')}
               theme={theme}
