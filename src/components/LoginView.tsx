@@ -1,7 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { login, type AuthUser } from '../api'
-import { BRAND_LOGIN_TITLE, BRAND_NAME } from '../lib/brand'
-import { getAccessRequestUrl, getLandingUrl } from '../lib/authRoutes'
+import { getAccessRequestUrl, getHealthLoginUrl, getLandingUrl } from '../lib/authRoutes'
 import { BrandMark } from './BrandMark'
 import { PublicAuthMobileIntro } from './PublicAuthMobileIntro'
 import { LandingSalesChat } from './landing/LandingSalesChat'
@@ -21,12 +20,13 @@ type Props = {
 export function LoginView({ baseUrl, onLogin, initialMessage }: Props) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { theme, toggleTheme } = usePublicTheme()
 
   useEffect(() => {
-    document.title = BRAND_LOGIN_TITLE
+    document.title = 'Iniciar sesión · VOS AI'
     try {
       window.sessionStorage.removeItem('vos_portal')
     } catch {
@@ -67,36 +67,50 @@ export function LoginView({ baseUrl, onLogin, initialMessage }: Props) {
         className="public-auth__theme"
       />
 
-      <PublicAuthMobileIntro chips={['Ventas', 'Punto de venta', 'Inventario', 'IA 24/7']} />
+      <PublicAuthMobileIntro chips={['Ventas', 'Inventario', 'IA 24/7', 'Reportes']} />
 
       <div className="public-auth__layout">
         <aside className="public-auth__visual">
           <BrandMark size="md" showTagline />
           <div>
-            <h2>Tu panel empresarial</h2>
+            <h2>Tu negocio, en un solo lugar</h2>
             <p>
-              Ingresá con las credenciales de tu empresa para ver ventas, stock y el
-              asistente IA con tus datos.
+              Entrá con las credenciales de tu empresa para ver ventas, stock y el
+              asistente IA con datos reales.
             </p>
           </div>
           <ul className="public-auth__bullets">
             <li>Ventas, inventario y compras</li>
             <li>Punto de venta y pedidos web</li>
-            <li>Asistente IA con datos de tu operación</li>
-            <li>Ruta #/e/tu-empresa/…</li>
+            <li>Asistente IA con tu operación</li>
+            <li>Reportes claros, día a día</li>
           </ul>
+          <div className="public-auth__visual-stats" aria-hidden>
+            <div>
+              <strong>+14%</strong>
+              <span>ventas hoy</span>
+            </div>
+            <div>
+              <strong>24/7</strong>
+              <span>asistente</span>
+            </div>
+            <div>
+              <strong>1</strong>
+              <span>plataforma</span>
+            </div>
+          </div>
           <p className="public-auth__aside-note muted">
-            ¿Todavía no tenés acceso?{' '}
-            <a href={getAccessRequestUrl()}>Quiero VOS AI en mi negocio</a>
+            ¿Clínica o consultorio?{' '}
+            <a href={getHealthLoginUrl()}>Entrar a VOS IA HEALTH</a>
           </p>
         </aside>
 
         <div className="public-auth__form-wrap">
-          <form className="public-auth__form vos-card" onSubmit={handleSubmit}>
+          <form className="public-auth__form" onSubmit={handleSubmit}>
             <header className="public-auth__head">
               <h1 className="public-auth__title">Iniciar sesión</h1>
               <p className="public-auth__subtitle">
-                Email y contraseña de tu empresa en {BRAND_NAME}.
+                Acceso al panel de tu negocio en VOS AI.
               </p>
             </header>
 
@@ -122,14 +136,25 @@ export function LoginView({ baseUrl, onLogin, initialMessage }: Props) {
 
             <Label>
               <span>Contraseña</span>
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-                required
-                disabled={submitting}
-              />
+              <div className="public-auth__password">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  required
+                  disabled={submitting}
+                  placeholder="••••••••"
+                />
+                <button
+                  type="button"
+                  className="public-auth__password-toggle"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                >
+                  {showPassword ? 'Ocultar' : 'Ver'}
+                </button>
+              </div>
             </Label>
 
             {error ? (
@@ -146,11 +171,10 @@ export function LoginView({ baseUrl, onLogin, initialMessage }: Props) {
               {submitting ? 'Ingresando…' : 'Entrar a mi negocio'}
             </Button>
 
-            <div className="public-auth__alt-action">
-              <a className="public-btn public-btn--ghost" href={getAccessRequestUrl()}>
-                Quiero VOS AI en mi negocio
-              </a>
-            </div>
+            <p className="public-auth__footer-link">
+              ¿Todavía no tenés acceso?{' '}
+              <a href={getAccessRequestUrl()}>Quiero VOS AI en mi negocio</a>
+            </p>
           </form>
         </div>
       </div>

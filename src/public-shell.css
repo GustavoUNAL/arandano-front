@@ -797,6 +797,67 @@ html[data-shell='public'] #root {
   box-shadow: 0 0 8px var(--accent-soft);
 }
 
+.public-auth__visual-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.public-auth__visual-stats > div {
+  border-radius: 12px;
+  padding: 0.55rem 0.45rem;
+  text-align: center;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: color-mix(in srgb, var(--surface-elevated) 55%, transparent);
+}
+
+.public-auth__visual-stats strong {
+  display: block;
+  font-size: 0.95rem;
+  color: var(--heading);
+  letter-spacing: -0.02em;
+}
+
+.public-auth__visual-stats span {
+  display: block;
+  margin-top: 0.12rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.public-auth__password {
+  position: relative;
+}
+
+.public-auth__password input {
+  padding-right: 4.2rem;
+}
+
+.public-auth__password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.45rem;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+}
+
+.public-auth__password-toggle:hover {
+  color: var(--heading);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
 .public-auth__form-wrap {
   padding: 1.75rem 1.5rem;
   display: flex;
