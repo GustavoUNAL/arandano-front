@@ -197,6 +197,76 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
                   <span>Solicitudes pendientes</span>
                 </article>
               </div>
+
+              {overview.companyStats && overview.companyStats.length > 0 ? (
+                <>
+                  <h2>Actividad por empresa</h2>
+                  <div className="platform-admin__table-wrap">
+                    <table className="platform-admin__table">
+                      <thead>
+                        <tr>
+                          <th>Empresa</th>
+                          <th>Usuarios</th>
+                          <th>Productos</th>
+                          <th>Ventas</th>
+                          <th>Inventario</th>
+                          <th>Módulos</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {overview.companyStats.map((c) => (
+                          <tr key={c.id}>
+                            <td>{c.name}</td>
+                            <td>{c.membersCount}</td>
+                            <td>{c.productsCount}</td>
+                            <td>{c.salesCount}</td>
+                            <td>{c.inventoryCount}</td>
+                            <td>{c.modules.join(', ') || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : null}
+
+              {overview.recentUsers && overview.recentUsers.length > 0 ? (
+                <>
+                  <h2>Usuarios recientes</h2>
+                  <div className="platform-admin__table-wrap">
+                    <table className="platform-admin__table">
+                      <thead>
+                        <tr>
+                          <th>Nombre</th>
+                          <th>Email</th>
+                          <th>Empresas</th>
+                          <th>Alta</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {overview.recentUsers.map((u) => (
+                          <tr key={u.id}>
+                            <td>
+                              {u.name}
+                              {u.isPlatformAdmin ? ' · Admin' : ''}
+                            </td>
+                            <td>{u.email}</td>
+                            <td>
+                              {u.companies.length > 0
+                                ? u.companies
+                                    .map((c) => `${c.name} (${c.role})`)
+                                    .join(', ')
+                                : '—'}
+                            </td>
+                            <td>{new Date(u.createdAt).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : null}
+
               {overview.recentRequests.length > 0 ? (
                 <>
                   <h2>Solicitudes recientes</h2>

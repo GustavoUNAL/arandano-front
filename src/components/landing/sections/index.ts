@@ -1,5 +1,6 @@
 export { LandingCompareSection } from './LandingCompareSection'
 export { LandingAutomationsSection } from './LandingAutomationsSection'
+export { LandingProductsSection } from './LandingProductsSection'
 export { LandingIndustriesSection } from './LandingIndustriesSection'
 export { LandingResultsSection } from './LandingResultsSection'
 export { LandingFinalCtaSection } from './LandingFinalCtaSection'

@@ -426,7 +426,7 @@ export function formatApiErrorFromBody(
   return msg
 }
 
-async function parseJsonError(res: Response): Promise<string> {
+export async function parseJsonError(res: Response): Promise<string> {
   const fallback = `${res.status} ${res.statusText}`
   try {
     const body = await res.json().catch(() => ({}))
@@ -436,7 +436,7 @@ async function parseJsonError(res: Response): Promise<string> {
   }
 }
 
-async function apiFetch(
+export async function apiFetch(
   url: string,
   init?: RequestInit & { auth?: boolean },
 ): Promise<Response> {
@@ -669,6 +669,23 @@ export type PlatformOverview = {
     message: string | null
     status: string
     createdAt: string
+  }>
+  recentUsers?: Array<{
+    id: string
+    email: string
+    name: string
+    isPlatformAdmin: boolean
+    createdAt: string
+    companies: Array<{ id: string; name: string; role: string }>
+  }>
+  companyStats?: Array<{
+    id: string
+    name: string
+    membersCount: number
+    productsCount: number
+    salesCount: number
+    inventoryCount: number
+    modules: string[]
   }>
 }
 

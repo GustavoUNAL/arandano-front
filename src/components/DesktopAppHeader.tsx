@@ -74,8 +74,8 @@ export function DesktopAppHeader({
   baseUrl,
 }: DesktopAppHeaderProps) {
   const groups = useMemo(
-    () => buildDesktopNavGroups({ canViewFinance, canViewTasks }),
-    [canViewFinance, canViewTasks],
+    () => buildDesktopNavGroups({ user, canViewFinance, canViewTasks }),
+    [user, canViewFinance, canViewTasks],
   )
   const homeScreen = isOdooHomeView(view)
   const navContext = findNavContext(view, groups)
@@ -219,6 +219,7 @@ export function DesktopAppHeader({
         open={appMenuOpen}
         onClose={closeAppMenu}
         onOpenApp={go}
+        user={user}
         canViewFinance={canViewFinance}
         canViewTasks={canViewTasks}
       />

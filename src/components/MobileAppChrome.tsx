@@ -2,7 +2,7 @@ import { Home, Menu, X } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
 import type { AuthUser } from '../api'
 import { PLATFORM_MODE, SALES_FLOOR_ONLY } from '../appScope'
-import { canViewFinance, canViewTasks } from '../lib/permissions'
+import { canAccessView, canViewFinance, canViewTasks } from '../lib/permissions'
 import { BRAND_NAME } from '../lib/brand'
 import { displayCompanyName } from '../lib/displayLabels'
 import { navigateToSelectCompany } from '../lib/authRoutes'
@@ -157,10 +157,33 @@ export function MobileAppChrome({
       : SALES_FLOOR_ONLY
         ? DOCK_TABS_SALES
         : DOCK_TABS_FULL
-    return base.filter((tab) => {
-      if (tab.view === 'tasks') return canViewTasks(user)
-      return true
+    let tabs = base.filter((tab) => {
+      if (tab.view === 'home' || tab.view === 'menu') return true
+      if (!user) return false
+      return canAccessView(user, tab.view)
     })
+    // Clientes con pocos módulos: dock con Inventario + Finanzas.
+    if (PLATFORM_MODE && user && tabs.length <= 1) {
+      const extras: DockTab[] = []
+      if (canAccessView(user, 'inventory')) {
+        extras.push({
+          id: 'inventory',
+          label: 'Inventario',
+          view: 'inventory',
+          icon: 'inventory',
+        })
+      }
+      if (canAccessView(user, 'analytics')) {
+        extras.push({
+          id: 'analytics',
+          label: 'Finanzas',
+          view: 'analytics',
+          icon: 'analytics',
+        })
+      }
+      tabs = [...tabs, ...extras]
+    }
+    return tabs
   }, [user])
   const showDock = dockTabs.length > 0
 
@@ -174,9 +197,11 @@ export function MobileAppChrome({
           ]
         : FULL_SHEET_LINKS
     return base.filter((link) => {
-      if (link.view === 'analytics') return canViewFinance(user)
-      if (link.view === 'tasks') return canViewTasks(user)
-      return true
+      if (link.view === 'assistant' || link.view === 'home' || link.view === 'menu') {
+        return true
+      }
+      if (!user) return false
+      return canAccessView(user, link.view)
     })
   }, [user])
 

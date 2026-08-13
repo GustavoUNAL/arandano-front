@@ -17,6 +17,7 @@ import {
   LandingCompareSection,
   LandingFinalCtaSection,
   LandingIndustriesSection,
+  LandingProductsSection,
   LandingResultsSection,
 } from './landing/sections'
 import './landing/sections/landing-premium.css'
@@ -103,9 +104,14 @@ const HERO_DEMOS: LandingChatTurn[][] = [
 type Props = {
   onLoginClick?: () => void
   onAccessRequestClick?: () => void
+  onHealthLoginClick?: () => void
 }
 
-export function LandingView({ onLoginClick, onAccessRequestClick }: Props) {
+export function LandingView({
+  onLoginClick,
+  onAccessRequestClick,
+  onHealthLoginClick,
+}: Props) {
   const loginUrl = getLoginUrl()
   const accessUrl = getAccessRequestUrl()
   const { theme, toggleTheme } = usePublicTheme()
@@ -288,6 +294,10 @@ export function LandingView({ onLoginClick, onAccessRequestClick }: Props) {
 
         <LandingCompareSection />
         <LandingAutomationsSection />
+        <LandingProductsSection
+          onBusinessLogin={onLoginClick}
+          onHealthLogin={onHealthLoginClick}
+        />
         <LandingIndustriesSection />
         <LandingResultsSection />
         <LandingFinalCtaSection

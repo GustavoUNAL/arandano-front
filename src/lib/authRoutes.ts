@@ -9,6 +9,7 @@ import type { AuthUser } from '../api'
 
 export const LANDING_HASH = '#/'
 export const LOGIN_HASH = '#/login'
+export const HEALTH_LOGIN_HASH = '#/health/login'
 export const ACCESS_REQUEST_HASH = '#/solicitar-acceso'
 export const PRIVACY_HASH = '#/privacidad'
 export const TERMS_HASH = '#/terminos'
@@ -29,6 +30,12 @@ export function isLandingHash(): boolean {
 
 export function isLoginHash(): boolean {
   return getPublicHashPath() === 'login'
+}
+
+export function isHealthLoginHash(): boolean {
+  const raw = (window.location.hash ?? '').replace(/^#/, '')
+  const parts = raw.split('/').filter(Boolean)
+  return parts[0] === 'health' && (parts[1] === 'login' || parts.length === 1)
 }
 
 export function isAccessRequestHash(): boolean {
@@ -67,6 +74,10 @@ export function navigateToLanding(replace = true): void {
 
 export function navigateToLogin(replace = true): void {
   setHash(LOGIN_HASH, replace)
+}
+
+export function navigateToHealthLogin(replace = true): void {
+  setHash(HEALTH_LOGIN_HASH, replace)
 }
 
 export function navigateToAccessRequest(replace = true): void {
@@ -128,6 +139,10 @@ function appBaseUrl(appBase?: string): string {
 
 export function getLoginUrl(appBase?: string): string {
   return `${appBaseUrl(appBase)}${LOGIN_HASH}`
+}
+
+export function getHealthLoginUrl(appBase?: string): string {
+  return `${appBaseUrl(appBase)}${HEALTH_LOGIN_HASH}`
 }
 
 export function getAccessRequestUrl(appBase?: string): string {

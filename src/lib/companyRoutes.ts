@@ -17,6 +17,15 @@ export type AppView =
   | 'costs'
   | 'gastos'
   | 'explorer'
+  | 'patients'
+  | 'agenda'
+  | 'ingresos'
+  | 'financiamiento'
+  | 'reportes'
+  | 'bio-temp'
+  | 'bio-sterilization'
+  | 'bio-waste'
+  | 'dental-config'
 
 const VIEW_KEYS = new Set<string>([
   'home',
@@ -35,6 +44,15 @@ const VIEW_KEYS = new Set<string>([
   'costs',
   'gastos',
   'explorer',
+  'patients',
+  'agenda',
+  'ingresos',
+  'financiamiento',
+  'reportes',
+  'bio-temp',
+  'bio-sterilization',
+  'bio-waste',
+  'dental-config',
 ])
 
 export function slugifyLabel(raw: string): string {

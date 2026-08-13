@@ -6,16 +6,18 @@ export function AppMenuOverlay({
   open,
   onClose,
   onOpenApp,
+  user = null,
   canViewFinance = false,
   canViewTasks = false,
 }: {
   open: boolean
   onClose: () => void
   onOpenApp: (view: string) => void
+  user?: import('../api').AuthUser | null
   canViewFinance?: boolean
   canViewTasks?: boolean
 }) {
-  const apps = buildLauncherApps({ canViewFinance, canViewTasks })
+  const apps = buildLauncherApps({ user, canViewFinance, canViewTasks })
 
   useEffect(() => {
     if (!open) return

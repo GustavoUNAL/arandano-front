@@ -7,16 +7,18 @@ import { type CSSProperties } from 'react'
 
 export function OdooHomeScreen({
   onOpenApp,
+  user = null,
   canViewFinance = false,
   canViewTasks = false,
   companyName,
 }: {
   onOpenApp: (view: string) => void
+  user?: import('../api').AuthUser | null
   canViewFinance?: boolean
   canViewTasks?: boolean
   companyName?: string | null
 }) {
-  const apps = buildLauncherApps({ canViewFinance, canViewTasks })
+  const apps = buildLauncherApps({ user, canViewFinance, canViewTasks })
 
   return (
     <div className={mobileViewClass('home', 'odoo-home')}>

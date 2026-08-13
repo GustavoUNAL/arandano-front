@@ -14561,3 +14561,10 @@ html.app--chat-sheet-open body {
   padding-top: 0.65rem;
   border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
 }
+
+/* Dental clinic: evita fondos blancos/translucidos del tema dark al superponer paneles */
+html.dental-theme-active,
+html.dental-theme-active body {
+  background: #f3f4f6 !important;
+  color-scheme: light !important;
+}

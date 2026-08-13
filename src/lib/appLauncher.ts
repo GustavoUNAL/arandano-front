@@ -1,6 +1,8 @@
 import { PLATFORM_MODE, SALES_FLOOR_ONLY } from '../appScope'
+import type { AuthUser } from '../api'
 import type { LauncherIconView } from '../components/AppLauncherIcon'
 import type { NavGroupId } from '../navTypes'
+import { canAccessView, canViewFinance, canViewTasks } from './permissions'
 
 export type LauncherApp = {
   view: LauncherIconView
@@ -9,6 +11,7 @@ export type LauncherApp = {
 }
 
 export function buildLauncherApps(options?: {
+  user?: AuthUser | null
   canViewTasks?: boolean
   canViewFinance?: boolean
 }): LauncherApp[] {
@@ -20,6 +23,7 @@ export function buildLauncherApps(options?: {
   }
 
   if (PLATFORM_MODE) {
+    const user = options?.user ?? null
     const apps: LauncherApp[] = [
       { view: 'products', label: 'Catálogo', group: 'catalog' },
       { view: 'inventory', label: 'Stock', group: 'stock' },
@@ -30,11 +34,14 @@ export function buildLauncherApps(options?: {
       { view: 'purchases', label: 'Compras', group: 'purchases' },
       { view: 'staff', label: 'Personal', group: 'staff' },
     ]
-    if (options?.canViewTasks) {
+    if (options?.canViewTasks ?? canViewTasks(user)) {
       apps.push({ view: 'tasks', label: 'Tareas', group: 'tasks' })
     }
-    if (options?.canViewFinance) {
+    if (options?.canViewFinance ?? canViewFinance(user)) {
       apps.push({ view: 'analytics', label: 'Finanzas', group: 'finance' })
+    }
+    if (user) {
+      return apps.filter((app) => canAccessView(user, app.view))
     }
     return apps
   }

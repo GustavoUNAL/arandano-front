@@ -10,6 +10,7 @@ type IndustryId =
   | 'tiendas'
   | 'ferreterias'
   | 'farmacias'
+  | 'clinicas'
   | 'servicios'
 
 type IndustryPreset = {
@@ -109,6 +110,21 @@ const INDUSTRIES: IndustryPreset[] = [
       { item: 'Acetaminofén 500 mg', status: 'OK' },
       { item: 'Suero oral', status: 'Crítico' },
       { item: 'Alcohol antiséptico', status: '5 días' },
+    ],
+  },
+  {
+    id: 'clinicas',
+    label: 'Clínicas',
+    products: ['Valoración', 'Limpieza dental', 'Resina'],
+    kpis: [
+      { label: 'Citas hoy', value: '12' },
+      { label: 'Pacientes activos', value: '286' },
+      { label: 'Ingresos del mes', value: '$18.4M' },
+    ],
+    inventory: [
+      { item: 'Guantes nitrilo', status: 'OK' },
+      { item: 'Anestesia', status: '3 cajas' },
+      { item: 'Resina A2', status: 'Pedir' },
     ],
   },
   {

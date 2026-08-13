@@ -12,7 +12,29 @@ export const PLATFORM_MODE =
 
 export const PLATFORM_NAV_GROUPS = ['catalog', 'stock', 'sales', 'purchases', 'tasks', 'staff', 'finance'] as const
 
-export const PLATFORM_VIEWS = ['home', 'products', 'inventory', 'sales', 'pos', 'shop', 'purchases', 'cash-close', 'tasks', 'staff', 'analytics'] as const
+export const PLATFORM_VIEWS = [
+  'home',
+  'products',
+  'inventory',
+  'sales',
+  'pos',
+  'shop',
+  'purchases',
+  'cash-close',
+  'tasks',
+  'staff',
+  'analytics',
+  'patients',
+  'agenda',
+  'ingresos',
+  'financiamiento',
+  'gastos',
+  'reportes',
+  'bio-temp',
+  'bio-sterilization',
+  'bio-waste',
+  'dental-config',
+] as const
 export type PlatformView = (typeof PLATFORM_VIEWS)[number]
 
 export function isPlatformView(v: string | null | undefined): v is PlatformView {
@@ -27,7 +49,17 @@ export function isPlatformView(v: string | null | undefined): v is PlatformView 
     v === 'cash-close' ||
     v === 'tasks' ||
     v === 'staff' ||
-    v === 'analytics'
+    v === 'analytics' ||
+    v === 'patients' ||
+    v === 'agenda' ||
+    v === 'ingresos' ||
+    v === 'financiamiento' ||
+    v === 'gastos' ||
+    v === 'reportes' ||
+    v === 'bio-temp' ||
+    v === 'bio-sterilization' ||
+    v === 'bio-waste' ||
+    v === 'dental-config'
   )
 }
 

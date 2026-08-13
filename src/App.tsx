@@ -17,7 +17,9 @@ import { ShopAdminView } from './components/ShopAdminView'
 import { StaffManager } from './components/StaffManager'
 import { FinanceAnalyticsView } from './components/FinanceAnalyticsView'
 import { TasksView } from './components/TasksView'
-import { canViewFinance, canViewTasks } from './lib/permissions'
+import { canAccessView, canViewFinance, canViewTasks, hasDentalModule } from './lib/permissions'
+import { DentalClinicApp } from './dental/DentalClinicApp'
+import { isDentalView, type DentalView } from './dental/dentalNav'
 import { SalesManager } from './components/SalesManager'
 import { InventoryManager } from './components/InventoryManager'
 import { CostsView } from './components/CostsView'
@@ -55,6 +57,7 @@ import {
 import { setPendingPosTableId } from './lib/pending-pos-navigation'
 import {
   isAccessRequestHash,
+  isHealthLoginHash,
   isLandingHash,
   isLegalHash,
   isLoginHash,
@@ -62,12 +65,14 @@ import {
   isTermsHash,
   navigateAfterLogin,
   navigateToAccessRequest,
+  navigateToHealthLogin,
   navigateToLanding,
   navigateToLogin,
   navigateToPlatform,
   navigateToSelectCompany,
   isSelectCompanyHash,
 } from './lib/authRoutes'
+import { HealthLoginView } from './components/HealthLoginView'
 import { userNeedsCompanyPicker } from './lib/companySelect'
 import { isOdooHomeView } from './lib/odooNav'
 import {
@@ -129,10 +134,7 @@ export default function App() {
 
   useEffect(() => {
     if (!user) return
-    if (view === 'analytics' && !canViewFinance(user)) {
-      setView('home')
-    }
-    if (view === 'tasks' && !canViewTasks(user)) {
+    if (!canAccessView(user, view)) {
       setView('home')
     }
   }, [user, view])
@@ -164,6 +166,16 @@ export default function App() {
       /* ignore */
     }
   }, [theme])
+
+  useEffect(() => {
+    if (hasDentalModule(user)) {
+      try {
+        window.sessionStorage.setItem('vos_portal', 'health')
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [user])
 
   useEffect(() => {
     if (!getAccessToken()) {
@@ -198,6 +210,14 @@ export default function App() {
       setCompanyId(null)
       setUser(null)
       setAuthError('Sesión expirada. Iniciá sesión nuevamente.')
+      try {
+        if (window.sessionStorage.getItem('vos_portal') === 'health') {
+          navigateToHealthLogin()
+          return
+        }
+      } catch {
+        /* ignore */
+      }
       navigateToLogin()
     }
     const onTenantDenied = (ev: Event) => {
@@ -235,7 +255,14 @@ export default function App() {
 
   useEffect(() => {
     if (authInitializing || user) return
-    if (isLoginHash() || isLandingHash() || isAccessRequestHash() || isLegalHash()) return
+    if (
+      isLoginHash() ||
+      isHealthLoginHash() ||
+      isLandingHash() ||
+      isAccessRequestHash() ||
+      isLegalHash()
+    )
+      return
     navigateToLanding()
   }, [authInitializing, user])
 
@@ -303,11 +330,31 @@ export default function App() {
         <LandingView
           onLoginClick={() => navigateToLogin(false)}
           onAccessRequestClick={() => navigateToAccessRequest(false)}
+          onHealthLoginClick={() => navigateToHealthLogin(false)}
         />
       )
     }
     if (isAccessRequestHash()) {
       return <AccessRequestView baseUrl={baseUrl} />
+    }
+    if (isHealthLoginHash()) {
+      return (
+        <HealthLoginView
+          baseUrl={baseUrl}
+          initialMessage={authError}
+          onLogin={(u) => {
+            setUser(u)
+            setAuthError(null)
+            if (userNeedsCompanyPicker(u)) {
+              setCompanyPickFromLogin(true)
+              navigateToSelectCompany(true)
+              return
+            }
+            setView('home')
+            navigateAfterLogin(u)
+          }}
+        />
+      )
     }
     if (isLoginHash()) {
       return (
@@ -399,6 +446,45 @@ export default function App() {
     setAuthError(null)
     setView('home')
     navigateAfterLogin(nextUser)
+  }
+
+  if (hasDentalModule(user)) {
+    const dentalView: DentalView = isDentalView(view) ? view : 'home'
+    return (
+      <>
+        {user.isPlatformAdmin && !user.platformView ? (
+          <div className="app-banner app-banner--platform" role="status">
+            <span>
+              Modo administrador — viendo <strong>{user.companyName}</strong>
+            </span>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => void returnToPlatformPanel()}
+            >
+              Volver al panel admin
+            </button>
+          </div>
+        ) : null}
+        <DentalClinicApp
+          user={user}
+          baseUrl={baseUrl}
+          view={dentalView}
+          onNavigate={(v) => setView(v)}
+          theme={theme}
+          onToggleTheme={() => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))}
+          onLogout={() => {
+            setAccessToken(null)
+            setCompanyId(null)
+            setUser(null)
+            setAuthError(null)
+            navigateToHealthLogin()
+          }}
+          inventorySlot={<InventoryManager baseUrl={baseUrl} />}
+          analyticsSlot={<FinanceAnalyticsView baseUrl={baseUrl} />}
+        />
+      </>
+    )
   }
 
   return (
@@ -497,6 +583,7 @@ export default function App() {
           {PLATFORM_MODE && view === 'home' && (
             <OdooHomeScreen
               companyName={user?.companyName}
+              user={user}
               canViewFinance={canViewFinance(user)}
               canViewTasks={canViewTasks(user)}
               onOpenApp={(v) => setView(v as View)}
