@@ -6,6 +6,9 @@ import { defineConfig } from 'vite'
 const allowedHosts = [
   'localhost',
   '127.0.0.1',
+  'vos-ia.com',
+  'www.vos-ia.com',
+  '.vos-ia.com',
   'vos-ai.arandano.shop',
   '.arandano.shop',
 ]

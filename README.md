@@ -34,7 +34,7 @@ Ver `../vos.ai-api/docs/DEPLOY-VPS-PM2.md`.
 
 ```bash
 cp .env.production.example .env
-nano .env    # VITE_API_URL=https://vos-ai.arandano.shop/backend
+nano .env    # VITE_API_URL=https://vos-ia.com/backend
 npm run build
 ```
 
