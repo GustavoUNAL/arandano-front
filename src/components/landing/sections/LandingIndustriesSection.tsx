@@ -19,6 +19,7 @@ type IndustryPreset = {
   products: string[]
   kpis: { label: string; value: string }[]
   inventory: { item: string; status: string }[]
+  chart: { label: string; points: number[]; unit: string }
 }
 
 const INDUSTRIES: IndustryPreset[] = [
@@ -36,6 +37,7 @@ const INDUSTRIES: IndustryPreset[] = [
       { item: 'Leche entera', status: '2 días' },
       { item: 'Vasos 12 oz', status: 'OK' },
     ],
+    chart: { label: 'Ventas de la semana', unit: 'miles', points: [42, 58, 51, 73, 68, 91, 84] },
   },
   {
     id: 'bares',
@@ -51,6 +53,7 @@ const INDUSTRIES: IndustryPreset[] = [
       { item: 'Menta fresca', status: 'Crítico' },
       { item: 'Hielo', status: 'OK' },
     ],
+    chart: { label: 'Tickets por noche', unit: 'uds', points: [28, 36, 44, 61, 88, 96, 72] },
   },
   {
     id: 'restaurantes',
@@ -66,6 +69,7 @@ const INDUSTRIES: IndustryPreset[] = [
       { item: 'Verduras', status: '1 día' },
       { item: 'Aceite', status: 'OK' },
     ],
+    chart: { label: 'Cubiertos por día', unit: 'cub.', points: [112, 128, 141, 156, 148, 186, 174] },
   },
   {
     id: 'tiendas',
@@ -81,6 +85,7 @@ const INDUSTRIES: IndustryPreset[] = [
       { item: 'Jean 32', status: 'OK' },
       { item: 'Zapatillas 42', status: '5 uds' },
     ],
+    chart: { label: 'Conversión semanal', unit: '%', points: [12, 14, 16, 15, 18, 21, 19] },
   },
   {
     id: 'ferreterias',
@@ -96,6 +101,7 @@ const INDUSTRIES: IndustryPreset[] = [
       { item: 'Breakers 20A', status: '3 días' },
       { item: 'Tubería PVC', status: 'OK' },
     ],
+    chart: { label: 'Pedidos sugeridos', unit: 'ítems', points: [8, 11, 9, 14, 12, 16, 13] },
   },
   {
     id: 'farmacias',
@@ -111,6 +117,7 @@ const INDUSTRIES: IndustryPreset[] = [
       { item: 'Suero oral', status: 'Crítico' },
       { item: 'Alcohol antiséptico', status: '5 días' },
     ],
+    chart: { label: 'Ventas diarias', unit: 'miles', points: [38, 44, 41, 52, 49, 61, 57] },
   },
   {
     id: 'clinicas',
@@ -126,6 +133,7 @@ const INDUSTRIES: IndustryPreset[] = [
       { item: 'Anestesia', status: '3 cajas' },
       { item: 'Resina A2', status: 'Pedir' },
     ],
+    chart: { label: 'Citas de la semana', unit: 'citas', points: [8, 11, 9, 14, 12, 16, 13] },
   },
   {
     id: 'servicios',
@@ -141,6 +149,7 @@ const INDUSTRIES: IndustryPreset[] = [
       { item: 'Kit estándar', status: '2 kits' },
       { item: 'Consumibles', status: 'Pedir' },
     ],
+    chart: { label: 'Agenda de la semana', unit: 'citas', points: [6, 9, 11, 8, 14, 16, 12] },
   },
 ]
 
@@ -218,6 +227,7 @@ export function LandingIndustriesSection() {
                   </motion.div>
                 ))}
               </div>
+              <IndustrySparkChart key={active.id} chart={active.chart} />
             </div>
 
             <div className="grid grid-cols-2 gap-2.5 sm:gap-4 lg:grid-cols-1">
@@ -266,5 +276,98 @@ export function LandingIndustriesSection() {
         </AnimatePresence>
       </GlassCard>
     </LandingSection>
+  )
+}
+
+const WEEKDAYS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom']
+
+function IndustrySparkChart({
+  chart,
+}: {
+  chart: { label: string; points: number[]; unit: string }
+}) {
+  const max = Math.max(...chart.points, 1)
+  const peak = Math.max(...chart.points)
+  const peakIndex = chart.points.indexOf(peak)
+  const w = 280
+  const h = 88
+  const padX = 10
+  const padY = 12
+  const step = (w - padX * 2) / Math.max(chart.points.length - 1, 1)
+  const coords = chart.points.map((v, i) => {
+    const x = padX + i * step
+    const y = h - padY - (v / max) * (h - padY * 2)
+    return { x, y, v }
+  })
+  const line = coords.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+  const area = `${line} L ${coords[coords.length - 1].x} ${h - padY} L ${coords[0].x} ${h - padY} Z`
+
+  return (
+    <div className="lp-industry-chart mt-3 rounded-xl border border-[color-mix(in_srgb,var(--border)_65%,transparent)] bg-[color-mix(in_srgb,var(--surface)_42%,transparent)] p-3 sm:mt-4 sm:p-4">
+      <div className="mb-2 flex items-baseline justify-between gap-2">
+        <p className="text-[0.65rem] font-semibold uppercase tracking-wider text-[var(--muted)] sm:text-xs">
+          {chart.label}
+        </p>
+        <p className="text-[0.65rem] font-medium text-[var(--berry-light)] sm:text-xs">
+          Pico {peak} {chart.unit} · {WEEKDAYS[peakIndex]}
+        </p>
+      </div>
+      <svg viewBox={`0 0 ${w} ${h}`} className="h-24 w-full sm:h-28" role="img" aria-label={chart.label}>
+        <defs>
+          <linearGradient id="lp-chart-fill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--berry-light)" stopOpacity="0.38" />
+            <stop offset="100%" stopColor="var(--berry-light)" stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id="lp-chart-stroke" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="var(--accent)" />
+            <stop offset="55%" stopColor="var(--berry-light)" />
+            <stop offset="100%" stopColor="var(--tan)" />
+          </linearGradient>
+        </defs>
+        <motion.path
+          d={area}
+          fill="url(#lp-chart-fill)"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.45 }}
+        />
+        <motion.path
+          d={line}
+          fill="none"
+          stroke="url(#lp-chart-stroke)"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          initial={{ pathLength: 0 }}
+          animate={{ pathLength: 1 }}
+          transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
+        />
+        {coords.map((p, i) => (
+          <motion.circle
+            key={`${chart.label}-${i}`}
+            cx={p.x}
+            cy={p.y}
+            r={i === peakIndex ? 4.2 : 3}
+            fill={i === peakIndex ? 'var(--tan)' : 'var(--berry-light)'}
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.12 + i * 0.05, duration: 0.28 }}
+          />
+        ))}
+      </svg>
+      <div className="mt-1 grid grid-cols-7 gap-1">
+        {WEEKDAYS.map((day, i) => (
+          <span
+            key={day}
+            className={cn(
+              'text-center text-[0.58rem] font-semibold uppercase tracking-wide sm:text-[0.65rem]',
+              i === peakIndex ? 'text-[var(--tan)]' : 'text-[var(--muted)]',
+            )}
+          >
+            {day}
+          </span>
+        ))}
+      </div>
+    </div>
   )
 }
