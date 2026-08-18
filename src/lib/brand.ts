@@ -7,6 +7,6 @@ export const SITE_ORIGIN = `https://${SITE_DOMAIN}`
 
 export const BRAND_TAGLINE =
   (import.meta.env.VITE_BRAND_TAGLINE as string | undefined)?.trim() ||
-  'Sistema operativo inteligente para tu negocio.'
+  'Agentes inteligentes para empresas y profesionales.'
 
 export const BRAND_LOGIN_TITLE = `Iniciar sesión · ${BRAND_NAME}`

@@ -17,15 +17,15 @@ type ProductCard = {
 const PRODUCTS: ProductCard[] = [
   {
     id: 'vos-ai',
-    badge: 'Operaciones',
+    badge: 'Agentes',
     name: BRAND_NAME,
-    tagline: 'Sistema operativo para tu negocio',
+    tagline: 'Agentes inteligentes para empresas y profesionales',
     description:
-      'Lo que opera un negocio real: ventas, inventario, compras, POS, tienda, agenda, equipo y un asistente IA con tus datos.',
+      'Conecta tus herramientas, entiende tu contexto y automatiza tareas reales. Un agente para cada necesidad, sobre la forma en que ya trabajas.',
     points: [
-      'Punto de venta, pedidos web y agenda',
-      'Inventario, compras y costos',
-      'Finanzas, personal y reportes',
+      'Agentes que reciben información y completan tareas',
+      'Agenda, documentos, ventas, operaciones y análisis',
+      'Reglas que tú defines, herramientas que ya usas',
     ],
     ctaLabel: 'Iniciar sesión',
     ctaHref: getLoginUrl(),
@@ -34,13 +34,13 @@ const PRODUCTS: ProductCard[] = [
     id: 'vos-ia-health',
     badge: 'Salud',
     name: 'VOS IA HEALTH',
-    tagline: 'Clínicas y consultorios bajo control',
+    tagline: 'Agentes para clínicas y consultorios',
     description:
-      'Pacientes, agenda clínica, historia, odontograma, costos e inventario en un solo lugar — con la misma inteligencia de VOS IA.',
+      'Agentes para organizar la agenda, gestionar información y apoyar los procesos administrativos de clínicas y consultorios.',
     points: [
-      'Pacientes, agenda y odontograma',
-      'Ingresos, gastos y bioseguridad',
-      'Asistente IA orientado a clínica',
+      'Agenda e información del consultorio',
+      'Procesos administrativos con reglas tuyas',
+      'Agentes especializados en salud',
     ],
     ctaLabel: 'Entrar a VOS IA HEALTH',
     ctaHref: getHealthLoginUrl(),
@@ -58,8 +58,8 @@ export function LandingProductsSection({ onBusinessLogin, onHealthLogin }: Props
       <LandingSectionHeader
         kicker="Productos"
         titleId="products-title"
-        title="Una plataforma. Dos formas de operar."
-        subtitle={`${BRAND_NAME} cubre el negocio completo — comercio, inventario, agenda y finanzas. VOS IA HEALTH aplica la misma arquitectura a clínicas y consultorios.`}
+        title="Una plataforma. Cualquier negocio."
+        subtitle={`${BRAND_NAME} adapta sus agentes a la forma en que cada empresa o profesional trabaja. VOS IA HEALTH aplica la misma inteligencia a clínicas y consultorios.`}
       />
 
       <div className="lp-products__grid">
@@ -83,8 +83,8 @@ export function LandingProductsSection({ onBusinessLogin, onHealthLogin }: Props
                 ))}
               </ul>
               <a
-                className={`public-btn landing-v2__btn-solid lp-product-card__cta ${
-                  product.id === 'vos-ai' ? 'public-btn--accent' : 'public-btn--ghost'
+                className={`attio-btn lp-product-card__cta ${
+                  product.id === 'vos-ai' ? 'attio-btn--primary' : 'attio-btn--outline'
                 }`}
                 href={product.ctaHref}
                 onClick={(e) => {

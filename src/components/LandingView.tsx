@@ -1,124 +1,100 @@
-import { useEffect, type MouseEvent } from 'react'
+import { useEffect, useState, type MouseEvent } from 'react'
 import { useLandingScrollReveal } from '../hooks/useLandingScrollReveal'
 import { BRAND_NAME, BRAND_TAGLINE } from '../lib/brand'
 import { SiteFooter } from './SiteFooter'
-import {
-  getLoginUrl,
-  getRegisterUrl,
-} from '../lib/authRoutes'
+import { getLoginUrl, getRegisterUrl } from '../lib/authRoutes'
 import { BrandMark } from './BrandMark'
-import { PublicThemeSwitch } from './PublicThemeSwitch'
-import { usePublicTheme } from '../hooks/usePublicTheme'
-import { AppLauncherIcon, type LauncherIconView } from './AppLauncherIcon'
-import { LandingChatMock, type LandingChatTurn } from './landing/LandingChatMock'
 import { LandingSolutionDemo } from './landing/LandingSolutionDemo'
 import { LandingSalesChat } from './landing/LandingSalesChat'
 import {
+  LandingAgentsSection,
   LandingAutomationsSection,
   LandingCompareSection,
+  LandingFaqSection,
   LandingFinalCtaSection,
   LandingIndustriesSection,
   LandingModulesSection,
   LandingPricingSection,
   LandingProductsSection,
   LandingResultsSection,
+  LandingTestimonialsSection,
+  LandingWhySection,
 } from './landing/sections'
 import './landing/sections/landing-premium.css'
 import '../public-shell.css'
+import './landing/attio-home.css'
 
 const VALIDATION_STEPS = [
   {
-    title: 'Diagnóstico',
-    text: 'Entendemos cómo funciona tu negocio hoy.',
+    title: 'Conecta',
+    text: 'Tus datos, procesos y aplicaciones se integran para que los agentes entiendan el contexto real de tu trabajo.',
   },
   {
-    title: 'Digitalización',
-    text: 'Convertimos registros físicos, hojas de cálculo y procesos manuales en información estructurada.',
+    title: 'Define',
+    text: 'Creas agentes especializados con las reglas, herramientas y límites que tu negocio necesita.',
   },
   {
-    title: 'Automatización',
-    text: 'Centralizamos ventas, inventario, compras y clientes en una sola plataforma.',
+    title: 'Delega',
+    text: 'Los agentes reciben información, toman decisiones dentro de esas reglas y ejecutan tareas de principio a fin.',
   },
   {
-    title: 'Inteligencia',
-    text: 'La IA analiza la información de tu negocio y te ayuda a vender más, comprar mejor y tomar decisiones con datos.',
+    title: 'Escala',
+    text: 'Un agente para cada necesidad: agenda, documentos, ventas, operaciones, administración o análisis.',
   },
 ] as const
 
-/** Hero — demo en bucle (una pregunta a la vez, tamaño fijo) */
-const HERO_DEMOS: LandingChatTurn[][] = [
-  [
-    {
-      who: 'Sofía',
-      role: 'user',
-      text: '¿Cuánto vendí hoy?',
-    },
-    {
-      who: BRAND_NAME,
-      role: 'ai',
-      badge: 'Ventas · hoy',
-      text: 'Punto de venta, tienda web y pedidos del día:',
-      metrics: [
-        { label: 'Total', value: '$1.250.000', hint: '+14% vs ayer', trend: 'up' },
-        { label: 'Punto de venta', value: '$775.000' },
-        { label: 'Web', value: '$475.000' },
-        { label: 'Tickets', value: '44' },
-      ],
-    },
-  ],
-  [
-    {
-      who: 'Sofía',
-      role: 'user',
-      text: '¿Qué debo comprar?',
-    },
-    {
-      who: BRAND_NAME,
-      role: 'ai',
-      badge: 'Compras · esta semana',
-      text: 'Según stock y ritmo de venta, recomiendo pedir hoy:',
-      bullets: [
-        '<strong>Leche entera</strong> — 2 días de cobertura',
-        '<strong>Café molido</strong> — mínimo alcanzado',
-        '<strong>Vasos 12 oz</strong> — ritmo alto del fin de semana',
-      ],
-    },
-  ],
-  [
-    {
-      who: 'Sofía',
-      role: 'user',
-      text: '¿Cuál fue mi utilidad?',
-    },
-    {
-      who: BRAND_NAME,
-      role: 'ai',
-      badge: 'Finanzas · mes actual',
-      text: 'Utilidad neta con costos de inventario y operación:',
-      metrics: [
-        { label: 'Utilidad', value: '$4.820.000', hint: '+9% vs mes ant.', trend: 'up' },
-        { label: 'Margen', value: '34,2%' },
-        { label: 'Ingresos', value: '$14.100.000' },
-      ],
-    },
-  ],
-]
+const MODULE_LOGOS = [
+  'Agenda',
+  'Atención',
+  'Documentos',
+  'Ventas',
+  'Operaciones',
+  'Administración',
+  'Análisis',
+  'Cotizaciones',
+  'Informes',
+  'Citas',
+  'Proyectos',
+  'IA',
+] as const
 
-const HERO_MODULES: Array<{ view: LauncherIconView; name: string; href: string }> = [
-  { view: 'products', name: 'Catálogo', href: '#modulos' },
-  { view: 'pos', name: 'Punto de venta', href: '#modulos' },
-  { view: 'shop', name: 'Tienda', href: '#modulos' },
-  { view: 'inventory', name: 'Inventario', href: '#modulos' },
-  { view: 'purchases', name: 'Compras', href: '#modulos' },
-  { view: 'booking', name: 'Agenda', href: '#agenda' },
-  { view: 'staff', name: 'Personal', href: '#modulos' },
-  { view: 'analytics', name: 'Finanzas', href: '#modulos' },
-]
+const NAV_LINKS = [
+  { href: '#agentes', label: 'Agentes' },
+  { href: '#features', label: 'Capacidades' },
+  { href: '#planes', label: 'Precios' },
+] as const
 
 type Props = {
   onLoginClick?: () => void
   onAccessRequestClick?: () => void
   onHealthLoginClick?: () => void
+}
+
+function ArrowIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
+      <path
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.1"
+        d="M2.25 7h9.5m0 0L8.357 3.5M11.75 7l-3.393 3.5"
+      />
+    </svg>
+  )
+}
+
+function MenuIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden>
+      <path
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="1.2"
+        d="M15 6H3M15 12H3"
+      />
+    </svg>
+  )
 }
 
 export function LandingView({
@@ -128,11 +104,22 @@ export function LandingView({
 }: Props) {
   const loginUrl = getLoginUrl()
   const registerUrl = getRegisterUrl()
-  const { theme, toggleTheme } = usePublicTheme()
   const scrollWrapRef = useLandingScrollReveal()
+  const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
-    document.title = `${BRAND_NAME} — Sistema operativo inteligente para tu negocio`
+    document.title = `${BRAND_NAME} — Plataforma de agentes inteligentes`
+    const root = document.documentElement
+    const prevTheme = root.dataset.theme
+    const prevShell = root.dataset.shell
+    root.dataset.shell = 'public'
+    root.dataset.theme = 'light'
+    return () => {
+      if (prevShell) root.dataset.shell = prevShell
+      else delete root.dataset.shell
+      if (prevTheme) root.dataset.theme = prevTheme
+      else delete root.dataset.theme
+    }
   }, [])
 
   function handleLogin(e: MouseEvent<HTMLAnchorElement>) {
@@ -154,188 +141,258 @@ export function LandingView({
     })
   }
 
+  function closeMenu() {
+    setMenuOpen(false)
+  }
+
   return (
-    <div className="public-shell landing-v2">
-      <header className="public-topbar public-topbar--minimal landing-v2__topbar">
-        <BrandMark size="sm" />
-        <div className="landing-v2__topbar-actions">
-          <a className="public-btn public-btn--ghost landing-v2__top-modules" href="#modulos">
-            Módulos
+    <div className="public-shell landing-v2 attio-home">
+      <header className="attio-header">
+        <div className="attio-banner">
+          <a href="#features">
+            <span>De la IA que responde a la IA que trabaja</span>
+            <ArrowIcon />
           </a>
-          <a className="public-btn public-btn--ghost landing-v2__top-modules" href="#planes">
-            Planes
-          </a>
-          <a
-            className="public-btn public-btn--accent landing-v2__btn-solid landing-v2__top-login"
-            href={loginUrl}
-            onClick={handleLogin}
-          >
-            Iniciar sesión
-          </a>
-          <PublicThemeSwitch theme={theme} onToggle={toggleTheme} compact />
+        </div>
+        <div className="attio-container">
+          <nav className="attio-nav" aria-label="Principal">
+            <a className="attio-nav__brand" href="#top" aria-label={`${BRAND_NAME} inicio`}>
+              <BrandMark size="sm" />
+            </a>
+            <ul className="attio-nav__links">
+              {NAV_LINKS.map((link) => (
+                <li key={link.href}>
+                  <a href={link.href}>{link.label}</a>
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              className="attio-nav__menu"
+              aria-label={menuOpen ? 'Cerrar menú' : 'Abrir menú'}
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen((open) => !open)}
+            >
+              <MenuIcon />
+            </button>
+            <div className="attio-nav__cta">
+              <a className="attio-btn attio-btn--primary" href={registerUrl} onClick={handleAccess}>
+                Empieza gratis
+              </a>
+            </div>
+          </nav>
+          <div className={menuOpen ? 'attio-nav__drawer is-open' : 'attio-nav__drawer'}>
+            {NAV_LINKS.map((link) => (
+              <a key={link.href} href={link.href} onClick={closeMenu}>
+                {link.label}
+              </a>
+            ))}
+            <a href={registerUrl} onClick={(e) => { closeMenu(); handleAccess(e) }}>
+              Empieza gratis
+            </a>
+            <a href={loginUrl} onClick={(e) => { closeMenu(); handleLogin(e) }}>
+              Iniciar sesión
+            </a>
+          </div>
         </div>
       </header>
 
-      <div ref={scrollWrapRef} className="public-wrap landing-v2__wrap landing-v2__wrap--scroll">
-        <section className="landing-hero" aria-labelledby="landing-hero-title">
-          <div className="landing-hero__copy">
-            <p className="landing-hero__eyebrow">{BRAND_TAGLINE}</p>
-            <h1 id="landing-hero-title">
-              El sistema operativo de tu empresa.
-            </h1>
-            <p className="landing-hero__lead">
-              {BRAND_NAME} concentra ventas, inventario, compras, agenda, equipo y finanzas —
-              con un asistente IA que responde con los datos reales de tu operación.
-            </p>
-            <div className="landing-hero__actions">
-              <a className="public-btn landing-hero__cta-primary" href={registerUrl} onClick={handleAccess}>
-                Registrarme
-              </a>
-              <a
-                className="public-btn landing-hero__cta-secondary"
-                href={loginUrl}
-                onClick={handleLogin}
-              >
-                Iniciar sesión
-              </a>
-            </div>
-            <div className="landing-hero__modules" aria-label="Módulos de la plataforma">
-              {HERO_MODULES.map((mod) => (
-                <a key={mod.view} className="landing-hero__module" href={mod.href}>
-                  <span className="landing-hero__module-icon" aria-hidden>
-                    <AppLauncherIcon view={mod.view} />
-                  </span>
-                  <span>{mod.name}</span>
+      <div
+        ref={scrollWrapRef}
+        id="top"
+        className="public-wrap landing-v2__wrap landing-v2__wrap--scroll"
+      >
+        <div className="attio-container">
+          <div className="attio-frame">
+            <header className="attio-hero" aria-labelledby="landing-hero-title">
+              <div className="attio-badge">
+                Plataforma de agentes inteligentes
+              </div>
+              <h1 id="landing-hero-title">La inteligencia que trabaja contigo.</h1>
+              <p className="attio-hero__lead">
+                {BRAND_NAME} es una plataforma de agentes inteligentes para empresas y
+                profesionales. Conecta tus herramientas, entiende tu contexto y
+                automatiza tareas reales para que puedas dedicar tu tiempo a lo que
+                realmente importa.
+              </p>
+              <div className="attio-hero__cta">
+                <a className="attio-btn attio-btn--primary" href={registerUrl} onClick={handleAccess}>
+                  Empieza gratis
                 </a>
+              </div>
+            </header>
+            <LandingTestimonialsSection />
+          </div>
+        </div>
+
+        <div className="attio-container">
+          <div className="attio-frame">
+            <div className="attio-logos" aria-label="Capacidades de los agentes">
+              {MODULE_LOGOS.map((name) => (
+                <span key={name}>{name}</span>
               ))}
             </div>
           </div>
+        </div>
 
-          <LandingChatMock
-            demoLoop={HERO_DEMOS}
-            framed
-            playWhenCentered
-            readOnly
-            caption="Asistente con datos reales de tu negocio"
-          />
-        </section>
+        <hr className="attio-hairline" />
 
-        <LandingModulesSection accessUrl={registerUrl} onAccess={handleAccess} />
-
-        <section
-          className="public-section landing-section landing-validation"
-          aria-labelledby="validation-title"
-        >
-          <div className="public-section__head">
-            <p className="landing-section__kicker">Empezar</p>
-            <h2 id="validation-title">De papel a inteligencia artificial en cuatro pasos</h2>
-          </div>
-          <div className="landing-validation-grid">
-            {VALIDATION_STEPS.map((step, i) => (
-              <article key={step.title} className="landing-validation-step">
-                <span className="landing-validation-step__num" aria-hidden>
-                  {i + 1}
-                </span>
-                <h3>{step.title}</h3>
-                <p>{step.text}</p>
-              </article>
-            ))}
-          </div>
-          <div className="landing-validation-cta">
-            <a className="public-btn public-btn--accent landing-v2__btn-solid" href={registerUrl} onClick={handleAccess}>
-              Registrarme
-            </a>
-          </div>
-        </section>
-
-        <section
-          className="public-section landing-section"
-          aria-labelledby="problem-title"
-        >
-          <div className="public-section__head">
-            <p className="landing-section__kicker">El problema</p>
-            <h2 id="problem-title">Tu información está trabajando en lugares distintos.</h2>
-            <p>
-              Las ventas están en un lado, el inventario en otro, las compras en WhatsApp y
-              los reportes en hojas de cálculo. Los datos existen, pero nadie los conecta.
-            </p>
-            <p>
-              Mientras buscas información, pierdes tiempo, oportunidades y capacidad para
-              tomar mejores decisiones.
-            </p>
-            <p className="landing-section__after">
-              {BRAND_NAME} digitaliza, organiza y conecta toda la operación de tu negocio
-              para convertir datos dispersos en decisiones claras.
-            </p>
-          </div>
-        </section>
-
-        <section
-          className="public-section landing-section landing-section--solution"
-          aria-labelledby="solution-title"
-        >
-          <div className="public-section__head landing-section--solution__head">
-            <p className="landing-section__kicker">La solución</p>
-            <h2 id="solution-title">
-              Deja de buscar información. Empieza a hacer preguntas.
-            </h2>
-            <p>
-              {BRAND_NAME} conecta ventas, inventario, compras, finanzas y clientes
-              para que puedas obtener respuestas instantáneas, análisis y
-              recomendaciones basadas en los datos reales de tu negocio.
-            </p>
-          </div>
-          <LandingSolutionDemo />
-        </section>
-
-        <section
-          className="public-section landing-section"
-          aria-labelledby="how-title"
-        >
-          <div className="public-section__head">
-            <p className="landing-section__kicker">Cómo funciona</p>
-            <h2 id="how-title">
-              Digitalizamos. Conectamos. Analizamos. Conversamos.
-            </h2>
-          </div>
-          <div className="public-steps landing-how-steps">
-            <article className="public-step">
-              <h3>Digitalizamos</h3>
+        <div className="attio-container">
+          <div className="attio-frame attio-trust">
+            <div className="attio-trust__copy">
+              <h2>No necesitas cambiar la forma en que trabajas. </h2>
               <p>
-                Convertimos ventas, compras, inventario y procesos manuales en
-                información organizada.
+                {BRAND_NAME} funciona como una capa inteligente sobre las herramientas
+                que ya utilizas. Tus datos, procesos y aplicaciones se conectan para
+                que tus agentes entiendan el contexto y ejecuten tareas de principio a
+                fin.
               </p>
-            </article>
-            <article className="public-step">
-              <h3>Conectamos</h3>
-              <p>Centralizamos toda la operación en una sola plataforma.</p>
-            </article>
-            <article className="public-step">
-              <h3>Analizamos</h3>
-              <p>
-                La IA detecta tendencias, riesgos y oportunidades
-                automáticamente.
-              </p>
-            </article>
-            <article className="public-step">
-              <h3>Conversamos</h3>
-              <p>
-                Pregúntale a tu negocio como si hablaras con un experto
-                  disponible 24/7.
-              </p>
-            </article>
+            </div>
+            <div className="attio-trust__certs">
+              <div className="attio-trust__cert">
+                <span className="attio-trust__mark">CONECTA</span>
+                <span>Tus herramientas</span>
+              </div>
+              <div className="attio-trust__cert">
+                <span className="attio-trust__mark">ACTÚA</span>
+                <span>Tareas reales</span>
+              </div>
+              <div className="attio-trust__cert">
+                <span className="attio-trust__mark">ESCALA</span>
+                <span>Cualquier negocio</span>
+              </div>
+            </div>
           </div>
-        </section>
+        </div>
 
-        <LandingCompareSection />
-        <LandingAutomationsSection />
-        <LandingPricingSection accessUrl={registerUrl} onAccess={handleAccess} />
-        <LandingProductsSection
-          onBusinessLogin={onLoginClick}
-          onHealthLogin={onHealthLoginClick}
-        />
-        <LandingIndustriesSection />
-        <LandingResultsSection />
+        <hr className="attio-hairline" />
+
+        <div className="attio-container">
+          <div className="attio-frame">
+            <LandingWhySection />
+          </div>
+        </div>
+
+        <hr className="attio-hairline" />
+
+        <div className="attio-container" id="features">
+          <div className="attio-frame">
+            <LandingAgentsSection />
+            <LandingModulesSection accessUrl={registerUrl} onAccess={handleAccess} />
+
+            <section
+              className="public-section landing-section landing-validation"
+              aria-labelledby="validation-title"
+            >
+              <div className="public-section__head">
+                <p className="landing-section__kicker">Empezar</p>
+                <h2 id="validation-title">De conversar con una IA a darle trabajo</h2>
+              </div>
+              <div className="landing-validation-grid">
+                {VALIDATION_STEPS.map((step, i) => (
+                  <article key={step.title} className="landing-validation-step">
+                    <span className="landing-validation-step__num" aria-hidden>
+                      {i + 1}
+                    </span>
+                    <h3>{step.title}</h3>
+                    <p>{step.text}</p>
+                  </article>
+                ))}
+              </div>
+              <div className="landing-validation-cta">
+                <a className="attio-btn attio-btn--primary" href={registerUrl} onClick={handleAccess}>
+                  Empieza gratis
+                </a>
+              </div>
+            </section>
+
+            <section className="public-section landing-section" aria-labelledby="problem-title">
+              <div className="public-section__head">
+                <p className="landing-section__kicker">De la IA que responde a la IA que trabaja</p>
+                <h2 id="problem-title">No se trata solamente de conversar con una inteligencia artificial.</h2>
+                <p>
+                  Se trata de darle trabajo. Tus agentes pueden recibir información, tomar
+                  decisiones dentro de las reglas que definas, utilizar tus herramientas y
+                  completar tareas.
+                </p>
+                <p>
+                  Dejas de preguntar una y otra vez. Empiezas a delegar el trabajo que hoy
+                  consume tu tiempo.
+                </p>
+                <p className="landing-section__after">
+                  {BRAND_NAME} conecta el contexto de tu negocio para que la inteligencia
+                  ejecute, no solo responda.
+                </p>
+              </div>
+            </section>
+
+            <section
+              className="public-section landing-section landing-section--solution"
+              aria-labelledby="solution-title"
+            >
+              <div className="public-section__head landing-section--solution__head">
+                <p className="landing-section__kicker">La solución</p>
+                <h2 id="solution-title">
+                  Una plataforma. Cualquier negocio.
+                </h2>
+                <p>
+                  Desde un profesional independiente hasta una empresa con equipos completos,{' '}
+                  {BRAND_NAME} adapta sus agentes a la forma en que cada negocio trabaja.
+                </p>
+              </div>
+              <LandingSolutionDemo />
+            </section>
+
+            <section className="public-section landing-section" aria-labelledby="how-title">
+              <div className="public-section__head">
+                <p className="landing-section__kicker">Cómo funciona</p>
+                <h2 id="how-title">Conecta. Automatiza. Escala.</h2>
+              </div>
+              <div className="public-steps landing-how-steps">
+                <article className="public-step">
+                  <h3>Conecta</h3>
+                  <p>
+                    Tus herramientas y datos se unen para que los agentes entiendan el
+                    contexto de tu trabajo.
+                  </p>
+                </article>
+                <article className="public-step">
+                  <h3>Automatiza</h3>
+                  <p>
+                    Los agentes ejecutan tareas reales: agenda, documentos, ventas,
+                    operaciones y más.
+                  </p>
+                </article>
+                <article className="public-step">
+                  <h3>Decide</h3>
+                  <p>
+                    Trabajan dentro de las reglas que definas: reciben información y
+                    actúan con criterio.
+                  </p>
+                </article>
+                <article className="public-step">
+                  <h3>Escala</h3>
+                  <p>
+                    Un agente para cada necesidad, en un solo lugar para construir la
+                    inteligencia que tu negocio necesita.
+                  </p>
+                </article>
+              </div>
+            </section>
+
+            <LandingCompareSection />
+            <LandingAutomationsSection />
+            <LandingPricingSection accessUrl={registerUrl} onAccess={handleAccess} />
+            <LandingProductsSection
+              onBusinessLogin={onLoginClick}
+              onHealthLogin={onHealthLoginClick}
+            />
+            <LandingIndustriesSection />
+            <LandingResultsSection />
+            <LandingFaqSection />
+          </div>
+        </div>
+
         <LandingFinalCtaSection
           accessUrl={registerUrl}
           onAccess={handleAccess}
@@ -347,17 +404,13 @@ export function LandingView({
 
       <div className="landing-mobile-cta" role="region" aria-label="Acciones rápidas">
         <a
-          className="public-btn public-btn--accent landing-v2__btn-solid landing-mobile-cta__primary"
+          className="attio-btn attio-btn--primary landing-mobile-cta__primary"
           href={registerUrl}
           onClick={handleAccess}
         >
-          Registrarme
+          Empieza gratis
         </a>
-        <a
-          className="landing-mobile-cta__ghost"
-          href={loginUrl}
-          onClick={handleLogin}
-        >
+        <a className="landing-mobile-cta__ghost" href={loginUrl} onClick={handleLogin}>
           Iniciar sesión
         </a>
       </div>

@@ -4,7 +4,6 @@ import {
   AppLauncherIcon,
   type LauncherIconView,
 } from '../../AppLauncherIcon'
-import { BRAND_NAME } from '../../../lib/brand'
 import { fadeUp, GlassCard, LandingSection, LandingSectionHeader } from './shared'
 
 type ModuleCard = {
@@ -26,7 +25,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
   {
     id: 'comercial',
     title: 'Comercial',
-    intro: 'Catálogo, cobro y canales de venta en un mismo flujo.',
+    intro: 'Catálogo, cobro y canales de venta que tus agentes ya pueden usar.',
     modules: [
       {
         view: 'products',
@@ -58,7 +57,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
   {
     id: 'operacion',
     title: 'Operación',
-    intro: 'Stock, compras y costos conectados a lo que realmente se vende.',
+    intro: 'Stock, compras y costos conectados al trabajo que los agentes ejecutan.',
     modules: [
       {
         view: 'inventory',
@@ -85,7 +84,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
   {
     id: 'equipo',
     title: 'Equipo y servicios',
-    intro: 'Quién trabaja, qué hay que hacer y cómo se atiende al cliente.',
+    intro: 'Agenda, equipo y atención: el contexto con el que trabajan tus agentes.',
     modules: [
       {
         view: 'booking',
@@ -114,7 +113,7 @@ const MODULE_GROUPS: ModuleGroup[] = [
   {
     id: 'direccion',
     title: 'Dirección',
-    intro: 'Números del negocio y un asistente que responde con datos reales.',
+    intro: 'Números y análisis para que los agentes informen y completen, no solo respondan.',
     modules: [
       {
         view: 'analytics',
@@ -139,10 +138,10 @@ export function LandingModulesSection({ accessUrl, onAccess }: Props) {
   return (
     <LandingSection id="modulos" ariaLabelledBy="modules-title" className="lp-modules">
       <LandingSectionHeader
-        kicker="Plataforma"
+        kicker="Capacidades"
         titleId="modules-title"
-        title="Todos los módulos, en un solo sistema"
-        subtitle={`${BRAND_NAME} cubre la operación completa: vender, comprar, controlar stock, agendar, coordinar al equipo y leer las finanzas. Cada módulo comparte los mismos datos — no hay islas ni dobles digitaciones.`}
+        title="Un solo lugar para construir la inteligencia que tu negocio necesita"
+        subtitle="Agenda. Atención al cliente. Documentos. Ventas. Operaciones. Administración. Análisis. Cada capacidad comparte el mismo contexto para que tus agentes ejecuten de principio a fin."
       />
 
       {MODULE_GROUPS.map((group) => (
@@ -187,10 +186,10 @@ export function LandingModulesSection({ accessUrl, onAccess }: Props) {
               >
                 <GlassCard hover className="lp-module-card lp-module-card--ai h-full p-4 sm:p-5">
                   <p className="lp-module-card__group">Inteligencia</p>
-                  <h4 className="lp-module-card__name">Asistente IA</h4>
+                  <h4 className="lp-module-card__name">Agentes IA</h4>
                   <p className="lp-module-card__text">
-                    Preguntás en lenguaje natural y responde con ventas, stock, compras, citas y
-                    finanzas de tu empresa. No inventa cifras: lee la operación.
+                    Reciben información, deciden dentro de tus reglas y usan estas
+                    capacidades para completar el trabajo. No solo responden: ejecutan.
                   </p>
                 </GlassCard>
               </motion.div>
@@ -200,12 +199,8 @@ export function LandingModulesSection({ accessUrl, onAccess }: Props) {
       ))}
 
       <div className="lp-modules__cta">
-        <a
-          className="public-btn public-btn--accent landing-v2__btn-solid"
-          href={accessUrl}
-          onClick={onAccess}
-        >
-          Registrarme
+        <a className="attio-btn attio-btn--primary" href={accessUrl} onClick={onAccess}>
+          Empieza gratis
         </a>
       </div>
     </LandingSection>

@@ -24,13 +24,13 @@ type ChatMessage = {
 
 const WELCOME = `¡Hola! Soy el asistente de **${BRAND_NAME}**.
 
-Somos un sistema operativo inteligente para tu negocio. Estamos en etapa de validación con usuarios reales y te explico cómo usar la plataforma con tu operación.
+Somos una plataforma de agentes inteligentes para empresas y profesionales. Conectamos tus herramientas, entendemos tu contexto y automatizamos tareas reales.
 
 ¿Por dónde empezamos?`
 
 const SUGGESTIONS = [
   `¿Qué es ${BRAND_NAME}?`,
-  '¿Cómo empiezo con mi negocio?',
+  '¿Qué puede hacer un agente?',
   '¿Para qué negocios sirve?',
   `Quiero ${BRAND_NAME} en mi negocio`,
   'Hablar con un asesor',

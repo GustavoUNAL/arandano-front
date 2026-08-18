@@ -1,10 +1,10 @@
 import { motion } from 'framer-motion'
 import {
-  FileBarChart,
-  Package,
-  Star,
-  TrendingDown,
-  UserMinus,
+  CalendarClock,
+  FileSearch,
+  FileSpreadsheet,
+  FolderKanban,
+  ListChecks,
   type LucideIcon,
 } from 'lucide-react'
 import { BRAND_NAME } from '../../../lib/brand'
@@ -19,42 +19,45 @@ type AutomationCard = {
 
 const AUTOMATION_CARDS: AutomationCard[] = [
   {
-    id: 'sales-drop',
-    title: 'Detectar caída de ventas',
-    icon: TrendingDown,
+    id: 'booking',
+    title: 'Citas y recordatorios',
+    icon: CalendarClock,
     preview: [
-      { label: 'Alerta', value: 'Ventas 17% por debajo del promedio semanal', hint: 'vs semana anterior' },
+      { label: 'Agenda', value: '3 citas confirmadas y 2 recordatorios enviados', hint: 'hoy' },
     ],
   },
   {
-    id: 'restock',
-    title: 'Reposición automática',
-    icon: Package,
-    preview: [{ label: 'Stock', value: 'Café disponible para 3 días', hint: 'pedido sugerido' }],
+    id: 'documents',
+    title: 'Análisis de documentos',
+    icon: FileSearch,
+    preview: [{ label: 'Expediente', value: 'Informe listo a partir de 12 archivos', hint: 'completado' }],
+  },
+  {
+    id: 'quotes',
+    title: 'Cotizaciones',
+    icon: FileSpreadsheet,
+    preview: [
+      { label: 'Propuesta', value: 'Cotización enviada al cliente' },
+      { label: 'Seguimiento', value: 'Recordatorio en 48 h' },
+    ],
   },
   {
     id: 'daily-report',
-    title: 'Reporte diario',
-    icon: FileBarChart,
+    title: 'Informe del día',
+    icon: ListChecks,
     preview: [
-      { label: 'Ventas hoy', value: '$1.250.000' },
-      { label: 'Utilidad', value: '$410.000' },
+      { label: 'Resumen', value: 'Tareas, agenda y pendientes' },
+      { label: 'Estado', value: 'Listo para revisar' },
     ],
   },
   {
-    id: 'star-product',
-    title: 'Producto estrella',
-    icon: Star,
-    preview: [{ label: 'Destacado', value: 'Capuccino lidera las ventas esta semana' }],
-  },
-  {
-    id: 'inactive-client',
-    title: 'Cliente inactivo',
-    icon: UserMinus,
+    id: 'follow-up',
+    title: 'Seguimiento de proyectos',
+    icon: FolderKanban,
     preview: [
       {
-        label: 'Retención',
-        value: '12 clientes frecuentes no han comprado en 30 días',
+        label: 'Proyecto',
+        value: '2 hitos vencen esta semana · el agente ya avisó al equipo',
       },
     ],
   },
@@ -65,8 +68,8 @@ export function LandingAutomationsSection() {
     <LandingSection ariaLabelledBy="auto-title">
       <LandingSectionHeader
         titleId="auto-title"
-        title="Automatizaciones inteligentes"
-        subtitle={`${BRAND_NAME} monitorea tu negocio y actúa antes de que los problemas aparezcan.`}
+        title="Agentes que ejecutan, no solo responden"
+        subtitle={`${BRAND_NAME} conecta tu contexto y completa tareas reales: agenda, documentos, ventas, operaciones y más.`}
       />
 
       <motion.div

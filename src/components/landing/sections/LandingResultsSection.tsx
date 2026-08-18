@@ -4,9 +4,9 @@ import { useAnimatedCounter } from '../../../hooks/useAnimatedCounter'
 import { fadeUp, GlassCard, LandingSection, LandingSectionHeader, staggerContainer } from './shared'
 
 const METRICS = [
-  { id: 'time', value: 80, suffix: '%', label: 'Menos tiempo buscando información' },
-  { id: 'manual', value: 70, suffix: '%', label: 'Menos trabajo manual' },
-  { id: 'answers', value: 90, suffix: '%', label: 'Respuestas más rápidas' },
+  { id: 'time', value: 80, suffix: '%', label: 'Menos tiempo en tareas repetitivas' },
+  { id: 'manual', value: 70, suffix: '%', label: 'Menos trabajo que solo responde' },
+  { id: 'answers', value: 90, suffix: '%', label: 'Tareas completadas de punta a punta' },
 ] as const
 
 export function LandingResultsSection() {
@@ -17,8 +17,8 @@ export function LandingResultsSection() {
     <LandingSection ariaLabelledBy="results-title">
       <LandingSectionHeader
         titleId="results-title"
-        title="Más tiempo para lo que importa"
-        subtitle="Menos administración. Más control."
+        title="Más tiempo para lo que realmente importa"
+        subtitle="Conecta. Automatiza. Escala."
       />
 
       <motion.div
@@ -38,7 +38,7 @@ export function LandingResultsSection() {
               24/7
             </p>
             <p className="mt-2 max-w-[12rem] text-xs leading-relaxed text-[var(--muted)] sm:mt-3 sm:text-sm">
-              Visibilidad del negocio
+              Agentes disponibles 24/7
             </p>
           </GlassCard>
         </motion.div>
@@ -51,7 +51,7 @@ export function LandingResultsSection() {
         viewport={{ once: true }}
         transition={{ delay: 0.2, duration: 0.5 }}
       >
-        Cuando la información está conectada, las decisiones llegan más rápido.
+        Cuando los agentes entienden tu contexto, el trabajo se completa. Tú te quedas con lo que realmente importa.
       </motion.p>
     </LandingSection>
   )

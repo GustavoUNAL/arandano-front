@@ -4,19 +4,19 @@ import { cn } from '../../../lib/utils'
 import { fadeUp, GlassCard, LandingSection, LandingSectionHeader, staggerContainer } from './shared'
 
 const POS_ITEMS = [
-  'Registra ventas',
-  'Muestra reportes básicos',
-  'Guarda información',
-  'Requiere análisis manual',
-  'Funciona como herramienta de caja',
+  'Solo conversa',
+  'Espera la siguiente pregunta',
+  'No usa tus herramientas',
+  'No completa la tarea',
+  'Funciona como un chat',
 ] as const
 
 const VOS_ITEMS = [
-  'Entiende tu operación',
-  'Explica lo que ocurre',
-  'Detecta oportunidades',
-  'Recomienda acciones',
-  'Responde preguntas en lenguaje natural',
+  'Recibe información y actúa',
+  'Decide dentro de tus reglas',
+  'Usa las herramientas que ya tienes',
+  'Completa tareas de principio a fin',
+  'Trabaja como un agente, no como un chat',
 ] as const
 
 export function LandingCompareSection() {
@@ -24,8 +24,8 @@ export function LandingCompareSection() {
     <LandingSection ariaLabelledBy="compare-title">
       <LandingSectionHeader
         titleId="compare-title"
-        title="Más que un punto de venta"
-        subtitle="No somos una caja registradora digital. Somos el sistema operativo de tu negocio."
+        title="De la IA que responde a la IA que trabaja"
+        subtitle="No se trata solamente de conversar. Se trata de darle trabajo a un agente que entiende tu contexto y ejecuta."
       />
 
       <div className="relative">
@@ -37,7 +37,7 @@ export function LandingCompareSection() {
           transition={{ delay: 0.35, duration: 0.5 }}
         >
           <span className="inline-flex max-w-full rounded-full border border-[color-mix(in_srgb,var(--accent)_40%,var(--border))] bg-[color-mix(in_srgb,var(--accent-soft)_75%,var(--surface-elevated))] px-3 py-1 text-[0.65rem] font-semibold tracking-wide text-[var(--accent-text)] shadow-[0_8px_28px_color-mix(in_srgb,var(--accent)_18%,transparent)] sm:px-4 sm:py-1.5 sm:text-xs">
-            Nueva generación de software empresarial
+            Nueva generación de agentes inteligentes
           </span>
         </motion.div>
 
@@ -48,7 +48,7 @@ export function LandingCompareSection() {
           viewport={{ once: true, margin: '-60px' }}
           variants={staggerContainer}
         >
-          <CompareColumn title="Punto de venta tradicional" items={POS_ITEMS} variant="pos" />
+          <CompareColumn title="IA que solo responde" items={POS_ITEMS} variant="pos" />
           <CompareColumn title={BRAND_NAME} items={VOS_ITEMS} variant="vos" highlight />
         </motion.div>
       </div>

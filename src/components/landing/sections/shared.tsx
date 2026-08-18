@@ -43,7 +43,7 @@ export function LandingSectionHeader({
       transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
     >
       {kicker ? (
-        <p className="mb-3 text-xs font-bold uppercase tracking-[0.12em] text-[var(--berry-light)]">
+        <p className="landing-section__kicker mb-3 text-xs font-bold uppercase tracking-[0.12em]">
           {kicker}
         </p>
       ) : null}
@@ -70,7 +70,7 @@ export function GlassCard({ children, className, hover = false }: GlassCardProps
   return (
     <div
       className={cn(
-        'rounded-2xl border border-[color-mix(in_srgb,var(--border)_72%,transparent)]',
+        'glass-card rounded-2xl border border-[color-mix(in_srgb,var(--border)_72%,transparent)]',
         'bg-[color-mix(in_srgb,var(--surface-elevated)_68%,transparent)] backdrop-blur-md',
         'shadow-[0_20px_50px_color-mix(in_srgb,var(--shadow-soft)_55%,transparent)]',
         hover &&

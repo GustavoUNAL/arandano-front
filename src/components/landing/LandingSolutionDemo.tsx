@@ -3,104 +3,98 @@ import { LandingChatMock, type LandingChatTurn } from './LandingChatMock'
 
 const USER = 'María'
 
-/** Una sola conversación: las 5 preguntas en secuencia */
+/** Una sola conversación: el agente recibe trabajo y lo completa */
 export const SOLUTION_CONVERSATION: LandingChatTurn[] = [
   {
     who: USER,
     role: 'user',
-    text: '¿Cuánto vendí hoy?',
+    text: 'Confirma las citas de mañana y envía recordatorios.',
   },
   {
     who: BRAND_NAME,
     role: 'ai',
-    badge: 'Ventas · hoy',
-    text: 'Sumé punto de venta, tienda web y pedidos del día con desglose por canal.',
+    badge: 'Agente · agenda',
+    text: 'Revisé la agenda, confirmé los horarios disponibles y envié recordatorios con las reglas que definiste.',
     metrics: [
-      { label: 'Total', value: '$1.250.000', hint: '+14% vs ayer', trend: 'up' },
-      { label: 'Punto de venta', value: '$775.000' },
-      { label: 'Web', value: '$475.000' },
-      { label: 'Tickets', value: '44' },
+      { label: 'Confirmadas', value: '8 citas', hint: 'mañana', trend: 'up' },
+      { label: 'Recordatorios', value: '8 enviados' },
+      { label: 'Hueco cubierto', value: '16:00' },
     ],
   },
   {
     who: USER,
     role: 'user',
-    text: '¿Qué debo comprar?',
+    text: 'Prepara la cotización del proyecto Norte.',
   },
   {
     who: BRAND_NAME,
     role: 'ai',
-    badge: 'Compras · recomendación',
-    text: 'Cruce stock actual con ventas de los últimos 7 días y alertas de mínimo.',
+    badge: 'Agente · documentos',
+    text: 'Analicé el expediente, armé la propuesta y la dejé lista para enviar.',
     metrics: [
-      { label: 'Críticos', value: '3 ítems', hint: 'pedir hoy', trend: 'down' },
-      { label: 'Esta semana', value: '8 ítems' },
-      { label: 'Inversión est.', value: '$890.000' },
+      { label: 'Estado', value: 'Lista', hint: 'por revisar', trend: 'up' },
+      { label: 'Ítems', value: '14' },
+      { label: 'Seguimiento', value: '48 h' },
     ],
     bullets: [
-      '<strong>Leche entera</strong> — 2 días de cobertura · pedir 24 L',
-      '<strong>Café molido</strong> — mínimo alcanzado · pedir 5 kg',
-      '<strong>Vasos 12 oz</strong> — ritmo alto · pedir 2 cajas',
+      '<strong>Alcance</strong> — extraído del briefing y de 3 documentos adjuntos',
+      '<strong>Valores</strong> — según tu tabla de tarifas y reglas de margen',
+      '<strong>Entrega</strong> — 12 días hábiles, con hitos semanales',
     ],
   },
   {
     who: USER,
     role: 'user',
-    text: '¿Cuál fue mi utilidad?',
+    text: 'Genera el informe de la semana.',
   },
   {
     who: BRAND_NAME,
     role: 'ai',
-    badge: 'Finanzas · mes actual',
-    text: 'Utilidad neta con costos de inventario, nómina y gastos operativos cargados.',
+    badge: 'Agente · análisis',
+    text: 'Cruce de agenda, tareas cerradas y pendientes. El informe ya está en tu bandeja.',
     metrics: [
-      { label: 'Utilidad', value: '$4.820.000', hint: '+9% vs mes ant.', trend: 'up' },
-      { label: 'Margen', value: '34,2%' },
-      { label: 'Ingresos', value: '$14.100.000' },
-      { label: 'Costos', value: '$9.280.000' },
+      { label: 'Tareas hechas', value: '27', hint: '+6 vs semana ant.', trend: 'up' },
+      { label: 'Pendientes', value: '5' },
+      { label: 'Informe', value: 'Listo' },
     ],
   },
   {
     who: USER,
     role: 'user',
-    text: '¿Qué productos generan más ganancias?',
+    text: 'Da seguimiento a los proyectos que vencen.',
   },
   {
     who: BRAND_NAME,
     role: 'ai',
-    badge: 'Productos · top margen',
-    text: 'Ordené por utilidad absoluta y margen % en los últimos 30 días.',
+    badge: 'Agente · proyectos',
+    text: 'Identifiqué hitos próximos, avisé al equipo y dejé el siguiente paso en cada ficha.',
     metrics: [
-      { label: '#1', value: 'Cappuccino', hint: '$1,2M util.', trend: 'up' },
-      { label: '#2', value: 'Cheesecake', hint: '58% margen' },
-      { label: '#3', value: 'Cold brew', hint: '42% margen' },
+      { label: 'Hitos', value: '2 esta semana', trend: 'down' },
+      { label: 'Avisos', value: 'Enviados' },
+      { label: 'Bloqueos', value: '1 por resolver' },
     ],
     bullets: [
-      '<strong>Cappuccino</strong> — 312 uds · $1.248.000 de utilidad',
-      '<strong>Cheesecake</strong> — 89 uds · margen 58%',
+      '<strong>Obra Norte</strong> — entrega viernes · el equipo ya está enterado',
+      '<strong>Lote 12</strong> — espera un documento del cliente',
     ],
   },
   {
     who: USER,
     role: 'user',
-    text: '¿Qué clientes no han regresado?',
+    text: 'Quédate con la atención de hoy. Yo reviso al final.',
   },
   {
     who: BRAND_NAME,
     role: 'ai',
-    badge: 'Clientes · inactivos',
-    text: 'Compraron antes pero no vuelven hace más de 30 días.',
+    badge: 'Agente · atención',
+    text: 'Recibo, clasifico y cierro lo que esté dentro de tus reglas. Lo demás queda marcado para ti.',
     metrics: [
-      { label: 'Sin volver', value: '24 clientes' },
-      { label: 'Ticket prom.', value: '$31.200' },
-      { label: 'Valor en riesgo', value: '$748.000', hint: 'histórico/mes' },
-    ],
-    bullets: [
-      '<strong>Valentina R.</strong> — última visita hace 45 días · 8 compras',
-      '<strong>Miguel T.</strong> — hace 38 días · pedía los viernes',
+      { label: 'Resueltas', value: '14 consultas' },
+      { label: 'Derivadas', value: '3' },
+      { label: 'Por revisar', value: '2' },
     ],
     insight:
-      'Un mensaje personalizado a los 5 de mayor ticket puede recuperar ~$180.000 este mes.',
+      'Las 2 que requieren tu criterio están resumidas. El resto ya se completó.',
   },
 ]
 
@@ -113,7 +107,7 @@ export function LandingSolutionDemo() {
         readOnly
         conversationLoop
         className="landing-section__demo"
-        caption="Asistente con datos reales de tu negocio"
+        caption="Un agente que recibe trabajo y lo completa"
       />
     </div>
   )

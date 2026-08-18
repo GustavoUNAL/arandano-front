@@ -1,0 +1,1176 @@
+/* Home editorial — lenguaje visual tipo Attio, contenido VOS IA */
+
+.attio-home {
+  --attio-page: #f6f6f4;
+  --attio-surface: #ffffff;
+  --attio-surface-muted: #f2f2f0;
+  --attio-ink: #1c1d1f;
+  --attio-secondary: #5c6370;
+  --attio-tertiary: #727b84;
+  --attio-caption: #8f99a8;
+  --attio-stroke: #e6e8ec;
+  --attio-stroke-weak: #eceef1;
+  --attio-dot: #d5d8de;
+  --attio-banner: #1c1d1f;
+  --attio-radius-btn: 10px;
+  --attio-radius-card: 24px;
+  --attio-header-h: 4.5rem;
+  --sans: 'Inter', 'DM Sans', system-ui, sans-serif;
+  --attio-serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+
+  --text: var(--attio-ink);
+  --heading: var(--attio-ink);
+  --muted: var(--attio-secondary);
+  --surface: var(--attio-page);
+  --surface-elevated: var(--attio-surface);
+  --border: var(--attio-stroke);
+  --accent: #1c1d1f;
+  --accent-soft: rgba(28, 29, 31, 0.08);
+  --accent-text: #ffffff;
+  --accent-border: rgba(28, 29, 31, 0.16);
+  --berry: #1c1d1f;
+  --berry-light: #5c6370;
+  --berry-dark: #111213;
+  --berry-glow: rgba(28, 29, 31, 0.12);
+  --shadow-soft: rgba(28, 29, 31, 0.06);
+
+  color: var(--attio-ink);
+  background: var(--attio-page);
+  font-family: var(--sans);
+  color-scheme: light;
+}
+
+html:has(.attio-home),
+html:has(.attio-home) body {
+  height: auto;
+  min-height: 100%;
+  overflow-x: clip;
+  overflow-y: auto;
+  background: var(--attio-page, #f6f6f4);
+  color: #1c1d1f;
+  color-scheme: light;
+}
+
+html:has(.attio-home) #root {
+  display: block;
+  height: auto;
+  min-height: 100vh;
+  overflow: visible;
+}
+
+.attio-home.public-shell,
+.attio-home.landing-v2 {
+  background: var(--attio-page) !important;
+}
+
+.attio-home.public-shell::before {
+  display: none !important;
+}
+
+.attio-home .public-wrap,
+.attio-home .public-wrap.landing-v2__wrap {
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  padding-inline: 0;
+  background: var(--attio-page);
+}
+
+@media (max-width: 720px) {
+  .attio-home .public-wrap,
+  .attio-home .public-wrap.landing-v2__wrap {
+    padding-inline: 0;
+    padding-bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+.attio-home .landing-v2__orbs,
+.attio-home .landing-v2__grid,
+.attio-home .public-theme-switch {
+  display: none !important;
+}
+
+.attio-home .brand-mark__vos,
+.attio-home .brand-mark__ia,
+.attio-home .brand-mark__name {
+  color: var(--attio-ink);
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  letter-spacing: -0.04em;
+}
+
+.attio-container {
+  width: min(1180px, calc(100% - 1.5rem));
+  margin-inline: auto;
+}
+
+@media (min-width: 768px) {
+  .attio-container {
+    width: min(1180px, calc(100% - 2.5rem));
+  }
+}
+
+.attio-frame {
+  border-left: 1px solid var(--attio-stroke);
+  border-right: 1px solid var(--attio-stroke);
+  background: var(--attio-page);
+}
+
+.attio-hairline {
+  display: block;
+  width: 100%;
+  height: 1px;
+  background: var(--attio-stroke);
+  border: 0;
+}
+
+/* ——— Header ——— */
+.attio-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  border-bottom: 1px solid var(--attio-stroke);
+  background: color-mix(in srgb, var(--attio-surface) 92%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.attio-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.25rem;
+  padding: 0.4rem 2.5rem;
+  background: var(--attio-banner);
+  color: #f4f4f2;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.attio-banner a {
+  color: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.attio-banner a:hover span {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.attio-banner svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.2s ease;
+}
+
+.attio-banner a:hover svg {
+  transform: translateX(2px);
+}
+
+.attio-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 0.65rem 1.15rem 0.8rem;
+}
+
+@media (min-width: 1024px) {
+  .attio-nav {
+    padding: 1rem 1.5rem 0.95rem;
+  }
+}
+
+.attio-nav__brand {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+}
+
+.attio-nav__links {
+  display: none;
+  align-items: center;
+  gap: 0.15rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.attio-nav__links a {
+  display: inline-flex;
+  align-items: center;
+  height: 2.25rem;
+  padding: 0 0.75rem;
+  border-radius: var(--attio-radius-btn);
+  color: var(--attio-ink);
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: background 0.15s ease;
+}
+
+.attio-nav__links a:hover {
+  background: rgba(28, 29, 31, 0.05);
+}
+
+.attio-nav__cta {
+  display: none;
+}
+
+.attio-nav__menu {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0;
+  border-radius: var(--attio-radius-btn);
+  background: transparent;
+  color: var(--attio-ink);
+  cursor: pointer;
+}
+
+.attio-nav__menu:hover {
+  background: rgba(28, 29, 31, 0.05);
+}
+
+@media (min-width: 1024px) {
+  .attio-nav__links,
+  .attio-nav__cta {
+    display: flex;
+  }
+
+  .attio-nav__menu {
+    display: none;
+  }
+}
+
+.attio-nav__drawer {
+  display: none;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem 1.15rem 1.15rem;
+  border-top: 1px solid var(--attio-stroke);
+}
+
+.attio-nav__drawer.is-open {
+  display: flex;
+}
+
+.attio-nav__drawer a {
+  padding: 0.75rem 0.35rem;
+  color: var(--attio-ink);
+  text-decoration: none;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+@media (min-width: 1024px) {
+  .attio-nav__drawer {
+    display: none !important;
+  }
+}
+
+/* ——— Buttons ——— */
+.attio-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  height: 2.25rem;
+  padding: 0 0.85rem;
+  border-radius: var(--attio-radius-btn);
+  border: 1px solid transparent;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.attio-btn--primary {
+  background: var(--attio-ink);
+  color: #fff;
+  border-color: var(--attio-ink);
+}
+
+.attio-btn--primary:hover {
+  background: #111213;
+}
+
+.attio-btn--outline {
+  background: var(--attio-surface);
+  color: var(--attio-ink);
+  border-color: var(--attio-stroke);
+  box-shadow: 0 1px 1px rgba(28, 29, 31, 0.04);
+}
+
+.attio-btn--outline:hover {
+  border-color: #d0d4db;
+}
+
+.attio-btn--ghost {
+  background: transparent;
+  color: var(--attio-ink);
+}
+
+.attio-btn--ghost:hover {
+  background: rgba(28, 29, 31, 0.05);
+}
+
+.attio-btn--block {
+  width: 100%;
+}
+
+.attio-home .public-btn--accent,
+.attio-home .landing-v2__btn-solid,
+.attio-home .vos-btn--primary {
+  background: var(--attio-ink) !important;
+  color: #fff !important;
+  border-color: var(--attio-ink) !important;
+  border-radius: var(--attio-radius-btn) !important;
+  box-shadow: none !important;
+}
+
+.attio-home .public-btn--ghost,
+.attio-home .vos-btn--secondary {
+  background: var(--attio-surface) !important;
+  color: var(--attio-ink) !important;
+  border: 1px solid var(--attio-stroke) !important;
+  border-radius: var(--attio-radius-btn) !important;
+  box-shadow: 0 1px 1px rgba(28, 29, 31, 0.04) !important;
+}
+
+/* ——— Hero ——— */
+.attio-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 5rem 1.25rem 3.5rem;
+}
+
+@media (min-width: 768px) {
+  .attio-hero {
+    padding: 6.5rem 1.5rem 4rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .attio-hero {
+    padding: 7.5rem 2rem 4.25rem;
+  }
+}
+
+.attio-badge {
+  display: inline-block;
+  margin-bottom: 1.35rem;
+  padding: 0.38rem 0.8rem;
+  border: 1px solid var(--attio-stroke-weak);
+  border-radius: 13px;
+  background: var(--attio-surface);
+  color: var(--attio-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.attio-hero h1 {
+  margin: 0;
+  max-width: 15em;
+  font-size: clamp(2.15rem, 5.2vw, 3.65rem);
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  line-height: 1.08;
+  text-wrap: balance;
+  color: var(--attio-ink);
+}
+
+.attio-hero__lead {
+  margin: 1rem 0 0;
+  max-width: 36rem;
+  color: var(--attio-secondary);
+  font-size: clamp(1.05rem, 2vw, 1.25rem);
+  line-height: 1.55;
+  text-wrap: balance;
+}
+
+.attio-hero__cta {
+  margin-top: 1.5rem;
+}
+
+/* ——— Testimonials + dots ——— */
+.attio-social {
+  position: relative;
+  margin-top: -2.5rem;
+  padding: 2.5rem 1rem 0;
+  overflow: hidden;
+}
+
+.attio-dots {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, var(--attio-dot) 1px, transparent 1.2px);
+  background-size: 10px 10px;
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 62%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 62%, transparent 100%);
+  pointer-events: none;
+}
+
+.attio-tweets {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  max-height: 22rem;
+  overflow: hidden;
+  mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
+}
+
+@media (min-width: 640px) {
+  .attio-tweets {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: 26rem;
+  }
+
+  .attio-tweets__col:nth-child(2) {
+    margin-top: 2.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .attio-tweets {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    max-height: 28rem;
+    padding-inline: 1rem;
+  }
+
+  .attio-tweets__col:nth-child(2) {
+    margin-top: 5rem;
+  }
+
+  .attio-tweets__col:nth-child(3) {
+    margin-top: 2.5rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .attio-tweets {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    max-height: 26.5rem;
+  }
+
+  .attio-tweets__col:nth-child(2) {
+    margin-top: 7.5rem;
+  }
+
+  .attio-tweets__col:nth-child(3) {
+    margin-top: 5rem;
+  }
+
+  .attio-tweets__col:nth-child(4) {
+    margin-top: 2.5rem;
+  }
+}
+
+.attio-tweets__col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.attio-tweet {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  grid-template-rows: max-content 1fr;
+  align-items: center;
+  column-gap: 0.65rem;
+  row-gap: 0.25rem;
+  padding: 1rem;
+  border: 1px solid var(--attio-stroke-weak);
+  border-radius: var(--attio-radius-card);
+  background: #fff;
+}
+
+.attio-tweet__avatar {
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #eceef1;
+  color: var(--attio-ink);
+  font-size: 0.58rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.attio-tweet__meta {
+  display: flex;
+  min-width: 0;
+  gap: 0.35rem;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.attio-tweet__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.attio-tweet__handle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  color: var(--attio-caption);
+  font-weight: 500;
+}
+
+.attio-tweet__quote {
+  grid-column: 2;
+  margin: 0;
+  color: var(--attio-tertiary);
+  font-size: 0.9rem;
+  line-height: 1.45;
+  text-wrap: pretty;
+}
+
+.attio-tweet__quote strong {
+  color: var(--attio-secondary);
+  font-weight: 600;
+}
+
+/* ——— Logos strip ——— */
+.attio-logos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem 1rem;
+  padding: 3.5rem 1.25rem;
+  justify-items: center;
+}
+
+@media (min-width: 768px) {
+  .attio-logos {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: 5rem 1.5rem;
+    gap: 1.15rem 1.5rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .attio-logos {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+}
+
+.attio-logos span {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 2.5rem;
+  color: var(--attio-caption);
+  font-size: 0.92rem;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+
+/* ——— Trust ——— */
+.attio-trust {
+  display: grid;
+  gap: 0;
+  background: var(--attio-surface-muted);
+}
+
+@media (min-width: 1024px) {
+  .attio-trust {
+    grid-template-columns: 1.4fr 1fr;
+  }
+}
+
+.attio-trust__copy {
+  padding: 2.5rem 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .attio-trust__copy {
+    padding: 4rem 3.5rem 4rem 0;
+  }
+}
+
+.attio-trust__copy h2 {
+  margin: 0;
+  display: inline;
+  font-size: clamp(1.35rem, 2.2vw, 1.75rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.attio-trust__copy p {
+  display: inline;
+  margin: 0;
+  color: var(--attio-secondary);
+  font-size: clamp(1.15rem, 2vw, 1.5rem);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.attio-trust__certs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--attio-stroke);
+}
+
+@media (min-width: 1024px) {
+  .attio-trust__certs {
+    border-top: 0;
+    border-left: 1px solid var(--attio-stroke);
+  }
+}
+
+.attio-trust__cert {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  padding: 1.75rem 0.75rem;
+  color: var(--attio-secondary);
+  font-size: 0.95rem;
+}
+
+.attio-trust__cert + .attio-trust__cert {
+  border-left: 1px solid var(--attio-stroke);
+}
+
+.attio-trust__mark {
+  display: grid;
+  place-items: center;
+  width: auto;
+  min-width: 3.25rem;
+  height: 3.25rem;
+  padding-inline: 0.55rem;
+  border: 1px solid var(--attio-stroke);
+  border-radius: 999px;
+  color: #68707c;
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.attio-agents {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 768px) {
+  .attio-agents {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.25rem;
+  }
+}
+
+.attio-agent-card__label {
+  margin: 0 0 0.75rem;
+  color: var(--attio-caption);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.attio-agent-card__title {
+  margin: 0 0 0.65rem;
+  color: var(--attio-ink);
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.attio-agent-card__text {
+  margin: 0;
+  color: var(--attio-secondary);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+/* ——— Why VOS AI ——— */
+.attio-why {
+  padding: 3.5rem 1.25rem;
+}
+
+@media (min-width: 1024px) {
+  .attio-why {
+    padding: 5.5rem 1.75rem 5.75rem 0;
+  }
+}
+
+.attio-why__kicker {
+  margin: 0 0 1rem;
+  color: var(--attio-caption);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.attio-why h2 {
+  margin: 0 0 2rem;
+  max-width: 14em;
+  color: var(--attio-ink);
+  font-size: clamp(1.75rem, 3.2vw, 2.6rem);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+  text-wrap: balance;
+}
+
+.attio-why__grid {
+  display: grid;
+  gap: 1.75rem;
+}
+
+@media (min-width: 900px) {
+  .attio-why__grid {
+    grid-template-columns: 0.9fr 1.1fr;
+    gap: 4rem;
+    align-items: start;
+  }
+}
+
+.attio-why__lead p,
+.attio-why__body p {
+  margin: 0 0 1rem;
+  color: var(--attio-secondary);
+  font-size: clamp(1.05rem, 1.6vw, 1.2rem);
+  font-weight: 450;
+  letter-spacing: -0.02em;
+  line-height: 1.55;
+}
+
+.attio-why__lead p:last-child,
+.attio-why__body p:last-child {
+  margin-bottom: 0;
+}
+
+.attio-why__lead em {
+  font-family: var(--attio-serif);
+  font-style: italic;
+  font-weight: 400;
+  color: var(--attio-ink);
+}
+
+.attio-why__body strong {
+  color: var(--attio-ink);
+  font-weight: 600;
+}
+
+.attio-why__close {
+  margin: 2.25rem 0 0;
+  max-width: 18em;
+  color: var(--attio-ink);
+  font-family: var(--attio-serif);
+  font-size: clamp(1.65rem, 3vw, 2.15rem);
+  font-weight: 400;
+  font-style: italic;
+  letter-spacing: -0.03em;
+  line-height: 1.25;
+}
+
+/* ——— Existing sections inside the chrome ——— */
+.attio-home .lp-section,
+.attio-home .public-section.landing-section {
+  margin: 0;
+  padding: 3.5rem 1.25rem;
+  border: 0;
+  border-top: 1px solid var(--attio-stroke);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+@media (min-width: 1024px) {
+  .attio-home .lp-section,
+  .attio-home .public-section.landing-section {
+    padding: 5.5rem 1.75rem;
+  }
+}
+
+.attio-home .public-section__head,
+.attio-home .landing-section__kicker {
+  text-align: left;
+}
+
+.attio-home .landing-section__kicker {
+  color: var(--attio-caption) !important;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.attio-home .public-section__head h2,
+.attio-home .lp-section h2 {
+  color: var(--attio-ink);
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+
+.attio-home .landing-section--split,
+.attio-home .landing-section--solution {
+  display: grid;
+  gap: 2.5rem;
+}
+
+@media (min-width: 1024px) {
+  .attio-home .landing-section--solution {
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+  }
+}
+
+.attio-home .landing-validation-grid,
+.attio-home .public-steps {
+  gap: 1rem;
+}
+
+.attio-home .landing-validation-step,
+.attio-home .public-step {
+  border: 1px solid var(--attio-stroke-weak) !important;
+  border-radius: 20px !important;
+  background: #fff !important;
+  box-shadow: 0 1px 2px rgba(28, 29, 31, 0.04) !important;
+}
+
+.attio-home .glass-card,
+.attio-home .lp-module-card,
+.attio-home .lp-product-card {
+  backdrop-filter: none !important;
+}
+
+.attio-home .glass-card {
+  background: #fff !important;
+  border-color: var(--attio-stroke-weak) !important;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.04),
+    0 1px 1px -0.5px rgba(0, 0, 0, 0.04),
+    0 3px 3px -1.5px rgba(0, 0, 0, 0.04) !important;
+}
+
+.attio-home .glass-card:hover {
+  transform: none;
+  border-color: var(--attio-stroke) !important;
+}
+
+.attio-home .lp-module-card__icon {
+  color: var(--attio-caption) !important;
+  background: var(--attio-surface-muted) !important;
+  border-color: var(--attio-stroke-weak) !important;
+}
+
+.attio-home .lp-module-card__group {
+  color: var(--attio-caption) !important;
+}
+
+.attio-home .lp-pricing__card,
+.attio-home .lp-module-card,
+.attio-home .lp-product-card {
+  border: 1px solid var(--attio-stroke-weak) !important;
+  border-radius: var(--attio-radius-card) !important;
+  background: #fff !important;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.04),
+    0 1px 1px -0.5px rgba(0, 0, 0, 0.04),
+    0 3px 3px -1.5px rgba(0, 0, 0, 0.04) !important;
+}
+
+.attio-home .lp-pricing__card--featured {
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.05),
+    0 0 0 4px rgba(164, 173, 186, 0.1),
+    0 12px 24px -8px rgba(0, 0, 0, 0.08) !important;
+  background: #fff !important;
+}
+
+.attio-home .lp-pricing__badge {
+  color: var(--attio-caption) !important;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  font-weight: 600;
+}
+
+.attio-home .lp-pricing__name {
+  color: var(--attio-secondary);
+  font-weight: 500;
+  font-size: 1.25rem;
+}
+
+.attio-home .lp-pricing__price {
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+  letter-spacing: -0.05em;
+  font-weight: 600;
+}
+
+.attio-home .lp-pricing__features li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding-left: 0;
+  color: var(--attio-tertiary);
+}
+
+.attio-home .lp-pricing__features li::before {
+  display: none;
+}
+
+.attio-check {
+  flex-shrink: 0;
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.08rem;
+  padding: 0.1rem;
+  border-radius: 6px;
+  background: var(--attio-surface-muted);
+  color: var(--attio-caption);
+}
+
+.attio-home .lp-pricing__grid {
+  gap: 0.5rem;
+}
+
+/* ——— FAQ ——— */
+.attio-faq {
+  padding: 4.5rem 1.25rem 5.5rem;
+  border-top: 1px solid var(--attio-stroke);
+}
+
+@media (min-width: 768px) {
+  .attio-faq {
+    padding: 6rem 2rem 7rem;
+  }
+}
+
+.attio-faq__inner {
+  max-width: 40rem;
+  margin-inline: auto;
+}
+
+.attio-faq h2 {
+  margin: 0 0 1.5rem;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+  color: var(--attio-secondary);
+}
+
+.attio-faq__item {
+  border-bottom: 1px solid var(--attio-stroke-weak);
+  padding: 1.35rem 0;
+}
+
+.attio-faq__item summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.25rem;
+  list-style: none;
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--attio-secondary);
+}
+
+.attio-faq__item summary::-webkit-details-marker {
+  display: none;
+}
+
+.attio-faq__item summary:hover .attio-faq__plus {
+  color: var(--attio-secondary);
+}
+
+.attio-faq__plus {
+  flex-shrink: 0;
+  width: 1.2rem;
+  height: 0.75rem;
+  margin-top: 0.3rem;
+  color: #c5cad3;
+  transition: color 0.2s ease;
+}
+
+.attio-faq__plus-v {
+  transform-origin: center;
+  transition: transform 0.35s ease;
+}
+
+.attio-faq__item[open] .attio-faq__plus {
+  color: var(--attio-ink);
+}
+
+.attio-faq__item[open] .attio-faq__plus-v {
+  transform: scaleY(0);
+}
+
+.attio-faq__item p {
+  margin: 0.75rem 0 0;
+  max-width: 36rem;
+  color: var(--attio-tertiary);
+  font-size: 0.98rem;
+  line-height: 1.6;
+}
+
+/* ——— Dark CTA ——— */
+.attio-cta-final {
+  background: var(--attio-ink);
+  color: #f4f4f2;
+}
+
+.attio-cta-final .attio-frame {
+  border-color: #2c2e32;
+  background: transparent;
+}
+
+.attio-cta-final__grid {
+  display: grid;
+}
+
+@media (min-width: 1024px) {
+  .attio-cta-final__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.attio-cta-final__copy {
+  padding: 4.5rem 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .attio-cta-final__copy {
+    padding: 6.5rem 2.5rem 6.5rem 0;
+    border-right: 1px solid #2c2e32;
+  }
+}
+
+.attio-cta-final h2 {
+  margin: 0;
+  max-width: 14em;
+  font-size: clamp(1.85rem, 4vw, 2.75rem);
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+  text-wrap: balance;
+  color: #fff;
+}
+
+.attio-cta-final h2 em {
+  font-family: var(--attio-serif);
+  font-style: normal;
+  font-weight: 400;
+}
+
+.attio-cta-final__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  margin-top: 2rem;
+}
+
+.attio-cta-final .attio-btn--primary {
+  background: #fff;
+  color: var(--attio-ink);
+  border-color: #fff;
+}
+
+.attio-cta-final .attio-btn--outline {
+  background: transparent;
+  color: #fff;
+  border-color: #3a3d42;
+}
+
+.attio-cta-final__art {
+  position: relative;
+  min-height: 16rem;
+  overflow: hidden;
+}
+
+@media (min-width: 1024px) {
+  .attio-cta-final__art {
+    min-height: 100%;
+  }
+}
+
+.attio-cta-final__art::before,
+.attio-cta-final__art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    repeating-linear-gradient(
+      to right,
+      #2c2e32 0 1px,
+      transparent 1px 18%
+    );
+  opacity: 0.9;
+}
+
+.attio-cta-final__art::after {
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      #2c2e32 0 1px,
+      transparent 1px 10%
+    );
+}
+
+/* ——— Footer ——— */
+.attio-home .landing-site-footer,
+.attio-home .public-footer {
+  background: var(--attio-ink) !important;
+  color: #b8bec7 !important;
+  border-top: 1px solid #2c2e32 !important;
+  padding: 3rem 1.25rem 2.5rem !important;
+}
+
+.attio-home .public-footer__tagline,
+.attio-home .landing-footer__fine {
+  color: #8f99a8 !important;
+}
+
+.attio-home .landing-footer__legal a,
+.attio-home .landing-site-footer__icon {
+  color: #8f99a8 !important;
+}
+
+.attio-home .landing-footer__legal a:hover,
+.attio-home .landing-site-footer__icon:hover {
+  color: #eceef1 !important;
+}
+
+/* ——— Mobile sticky CTAs ——— */
+.attio-home .landing-mobile-cta {
+  background: color-mix(in srgb, var(--attio-surface) 92%, transparent);
+  border-top: 1px solid var(--attio-stroke);
+  backdrop-filter: blur(16px);
+}
+
+.attio-home .landing-mobile-cta__ghost {
+  color: var(--attio-ink) !important;
+}
+
+@media (min-width: 1024px) {
+  .attio-home .landing-mobile-cta {
+    display: none;
+  }
+}
