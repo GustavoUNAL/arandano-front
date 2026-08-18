@@ -4,6 +4,8 @@ export type NavGroupId =
   | 'sales'
   | 'purchases'
   | 'tasks'
+  | 'projects'
   | 'staff'
   | 'finance'
   | 'data'
+  | 'booking'

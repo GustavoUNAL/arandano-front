@@ -1,7 +1,7 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { submitAccessRequest } from '../api'
 import { BRAND_NAME, BRAND_TAGLINE } from '../lib/brand'
-import { getLandingUrl, getLoginUrl } from '../lib/authRoutes'
+import { getLandingUrl, getLoginUrl, getRegisterUrl } from '../lib/authRoutes'
 import { BrandMark } from './BrandMark'
 import { PublicAuthMobileIntro } from './PublicAuthMobileIntro'
 import { LandingSalesChat } from './landing/LandingSalesChat'
@@ -16,7 +16,21 @@ type Props = {
   baseUrl: string
 }
 
+type PlanInterest = 'TRIAL' | 'PRO' | 'BUSINESS'
+
+function planFromHash(): PlanInterest {
+  const hash = typeof window === 'undefined' ? '' : window.location.hash
+  const q = hash.includes('?') ? hash.slice(hash.indexOf('?') + 1) : ''
+  const plan = new URLSearchParams(q).get('plan')
+  if (plan === 'pro') return 'PRO'
+  if (plan === 'empresa') return 'BUSINESS'
+  return 'TRIAL'
+}
+
 export function AccessRequestView({ baseUrl }: Props) {
+  const plan = useMemo(() => planFromHash(), [])
+  const planTitle =
+    plan === 'PRO' ? 'Registrarme · Plan Pro' : plan === 'BUSINESS' ? 'Registrarme · Plan Empresa' : 'Registrarme'
   const [companyName, setCompanyName] = useState('')
   const [contactName, setContactName] = useState('')
   const [email, setEmail] = useState('')
@@ -29,8 +43,8 @@ export function AccessRequestView({ baseUrl }: Props) {
   const { theme, toggleTheme } = usePublicTheme()
 
   useEffect(() => {
-    document.title = `Quiero VOS AI en mi negocio · ${BRAND_NAME}`
-  }, [])
+    document.title = `${planTitle} · ${BRAND_NAME}`
+  }, [planTitle])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -48,6 +62,7 @@ export function AccessRequestView({ baseUrl }: Props) {
         email: email.trim(),
         phone: phone.trim() || undefined,
         message: message.trim() || undefined,
+        plan,
       })
       setSubmittedEmail(email.trim())
       setSuccess(res.message)
@@ -82,10 +97,11 @@ export function AccessRequestView({ baseUrl }: Props) {
         <aside className="public-auth__visual">
           <BrandMark size="md" showTagline />
           <div>
-            <h2>Acceso para tu empresa</h2>
+            <h2>{plan === 'TRIAL' ? 'Registrá tu empresa' : `Plan ${plan === 'PRO' ? 'Pro' : 'Empresa'}`}</h2>
             <p>
-              Completá el formulario y activamos tu espacio con credenciales propias
-              para empezar a operar con {BRAND_NAME}.
+              {plan === 'TRIAL'
+                ? `Completá el formulario y activamos tu espacio en ${BRAND_NAME} para empezar a operar.`
+                : 'Dejanos tus datos. Gustavo recibe la alerta en el panel de administración y te contacta para activar el plan.'}
             </p>
           </div>
           <ul className="public-auth__bullets">
@@ -115,7 +131,7 @@ export function AccessRequestView({ baseUrl }: Props) {
           ) : (
             <form className="public-auth__form vos-card" onSubmit={handleSubmit}>
               <header className="public-auth__head">
-                <h1 className="public-auth__title">Quiero VOS AI en mi negocio</h1>
+                <h1 className="public-auth__title">{planTitle}</h1>
                 <p className="public-auth__subtitle">{BRAND_TAGLINE}</p>
               </header>
 
@@ -180,12 +196,17 @@ export function AccessRequestView({ baseUrl }: Props) {
               ) : null}
 
               <Button type="submit" size="lg" block disabled={submitting}>
-                {submitting ? 'Enviando…' : 'Enviar solicitud'}
+                {submitting ? 'Enviando…' : 'Registrarme'}
               </Button>
 
               <div className="public-auth__alt-action">
+                {plan === 'TRIAL' ? (
+                  <a className="public-btn public-btn--ghost" href={getRegisterUrl()}>
+                    Crear cuenta ahora · formulario o Google
+                  </a>
+                ) : null}
                 <a className="public-btn public-btn--ghost" href={getLoginUrl()}>
-                  Ya tengo cuenta · Entrar
+                  Ya tengo cuenta · Iniciar sesión
                 </a>
               </div>
             </form>

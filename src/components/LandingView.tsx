@@ -3,12 +3,13 @@ import { useLandingScrollReveal } from '../hooks/useLandingScrollReveal'
 import { BRAND_NAME, BRAND_TAGLINE } from '../lib/brand'
 import { SiteFooter } from './SiteFooter'
 import {
-  getAccessRequestUrl,
   getLoginUrl,
+  getRegisterUrl,
 } from '../lib/authRoutes'
 import { BrandMark } from './BrandMark'
 import { PublicThemeSwitch } from './PublicThemeSwitch'
 import { usePublicTheme } from '../hooks/usePublicTheme'
+import { AppLauncherIcon, type LauncherIconView } from './AppLauncherIcon'
 import { LandingChatMock, type LandingChatTurn } from './landing/LandingChatMock'
 import { LandingSolutionDemo } from './landing/LandingSolutionDemo'
 import { LandingSalesChat } from './landing/LandingSalesChat'
@@ -17,6 +18,8 @@ import {
   LandingCompareSection,
   LandingFinalCtaSection,
   LandingIndustriesSection,
+  LandingModulesSection,
+  LandingPricingSection,
   LandingProductsSection,
   LandingResultsSection,
 } from './landing/sections'
@@ -101,6 +104,17 @@ const HERO_DEMOS: LandingChatTurn[][] = [
   ],
 ]
 
+const HERO_MODULES: Array<{ view: LauncherIconView; name: string; href: string }> = [
+  { view: 'products', name: 'Catálogo', href: '#modulos' },
+  { view: 'pos', name: 'Punto de venta', href: '#modulos' },
+  { view: 'shop', name: 'Tienda', href: '#modulos' },
+  { view: 'inventory', name: 'Inventario', href: '#modulos' },
+  { view: 'purchases', name: 'Compras', href: '#modulos' },
+  { view: 'booking', name: 'Agenda', href: '#agenda' },
+  { view: 'staff', name: 'Personal', href: '#modulos' },
+  { view: 'analytics', name: 'Finanzas', href: '#modulos' },
+]
+
 type Props = {
   onLoginClick?: () => void
   onAccessRequestClick?: () => void
@@ -113,7 +127,7 @@ export function LandingView({
   onHealthLoginClick,
 }: Props) {
   const loginUrl = getLoginUrl()
-  const accessUrl = getAccessRequestUrl()
+  const registerUrl = getRegisterUrl()
   const { theme, toggleTheme } = usePublicTheme()
   const scrollWrapRef = useLandingScrollReveal()
 
@@ -145,9 +159,18 @@ export function LandingView({
       <header className="public-topbar public-topbar--minimal landing-v2__topbar">
         <BrandMark size="sm" />
         <div className="landing-v2__topbar-actions">
-          <a className="public-btn public-btn--ghost landing-v2__top-login" href={loginUrl} onClick={handleLogin}>
-            <span className="landing-v2__top-login-label--full">Ir a mi negocio</span>
-            <span className="landing-v2__top-login-label--short">Entrar</span>
+          <a className="public-btn public-btn--ghost landing-v2__top-modules" href="#modulos">
+            Módulos
+          </a>
+          <a className="public-btn public-btn--ghost landing-v2__top-modules" href="#planes">
+            Planes
+          </a>
+          <a
+            className="public-btn public-btn--accent landing-v2__btn-solid landing-v2__top-login"
+            href={loginUrl}
+            onClick={handleLogin}
+          >
+            Iniciar sesión
           </a>
           <PublicThemeSwitch theme={theme} onToggle={toggleTheme} compact />
         </div>
@@ -158,23 +181,33 @@ export function LandingView({
           <div className="landing-hero__copy">
             <p className="landing-hero__eyebrow">{BRAND_TAGLINE}</p>
             <h1 id="landing-hero-title">
-              Tu negocio, bajo control.
+              El sistema operativo de tu empresa.
             </h1>
             <p className="landing-hero__lead">
-              {BRAND_NAME} une ventas, inventario, compras y un asistente IA que responde
-              con los datos reales de tu operación — desde el celular o el computador.
+              {BRAND_NAME} concentra ventas, inventario, compras, agenda, equipo y finanzas —
+              con un asistente IA que responde con los datos reales de tu operación.
             </p>
             <div className="landing-hero__actions">
-              <a className="public-btn public-btn--accent landing-v2__btn-solid" href={accessUrl} onClick={handleAccess}>
-                Quiero VOS AI en mi negocio
+              <a className="public-btn landing-hero__cta-primary" href={registerUrl} onClick={handleAccess}>
+                Registrarme
               </a>
               <a
-                className="public-btn public-btn--ghost landing-hero__cta-secondary"
+                className="public-btn landing-hero__cta-secondary"
                 href={loginUrl}
                 onClick={handleLogin}
               >
-                Ya tengo cuenta
+                Iniciar sesión
               </a>
+            </div>
+            <div className="landing-hero__modules" aria-label="Módulos de la plataforma">
+              {HERO_MODULES.map((mod) => (
+                <a key={mod.view} className="landing-hero__module" href={mod.href}>
+                  <span className="landing-hero__module-icon" aria-hidden>
+                    <AppLauncherIcon view={mod.view} />
+                  </span>
+                  <span>{mod.name}</span>
+                </a>
+              ))}
             </div>
           </div>
 
@@ -186,6 +219,8 @@ export function LandingView({
             caption="Asistente con datos reales de tu negocio"
           />
         </section>
+
+        <LandingModulesSection accessUrl={registerUrl} onAccess={handleAccess} />
 
         <section
           className="public-section landing-section landing-validation"
@@ -207,8 +242,8 @@ export function LandingView({
             ))}
           </div>
           <div className="landing-validation-cta">
-            <a className="public-btn public-btn--accent landing-v2__btn-solid" href={accessUrl} onClick={handleAccess}>
-              Quiero VOS AI en mi negocio
+            <a className="public-btn public-btn--accent landing-v2__btn-solid" href={registerUrl} onClick={handleAccess}>
+              Registrarme
             </a>
           </div>
         </section>
@@ -294,6 +329,7 @@ export function LandingView({
 
         <LandingCompareSection />
         <LandingAutomationsSection />
+        <LandingPricingSection accessUrl={registerUrl} onAccess={handleAccess} />
         <LandingProductsSection
           onBusinessLogin={onLoginClick}
           onHealthLogin={onHealthLoginClick}
@@ -301,7 +337,7 @@ export function LandingView({
         <LandingIndustriesSection />
         <LandingResultsSection />
         <LandingFinalCtaSection
-          accessUrl={accessUrl}
+          accessUrl={registerUrl}
           onAccess={handleAccess}
           onDemo={scrollToDemo}
         />
@@ -312,17 +348,17 @@ export function LandingView({
       <div className="landing-mobile-cta" role="region" aria-label="Acciones rápidas">
         <a
           className="public-btn public-btn--accent landing-v2__btn-solid landing-mobile-cta__primary"
-          href={accessUrl}
+          href={registerUrl}
           onClick={handleAccess}
         >
-          Quiero VOS AI
+          Registrarme
         </a>
         <a
           className="landing-mobile-cta__ghost"
           href={loginUrl}
           onClick={handleLogin}
         >
-          Entrar
+          Iniciar sesión
         </a>
       </div>
 

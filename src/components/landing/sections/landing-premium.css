@@ -24,6 +24,130 @@
   gap: 1rem;
 }
 
+.lp-product-card--featured {
+  grid-column: 1 / -1;
+}
+
+.lp-modules__grid-kicker {
+  margin: 1.75rem 0 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  text-align: center;
+}
+
+.lp-modules__group {
+  margin-top: 2rem;
+}
+
+.lp-modules__group-head {
+  margin-bottom: 0.85rem;
+  max-width: 40rem;
+}
+
+.lp-modules__group-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--heading);
+}
+
+.lp-modules__group-intro {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.lp-modules__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+@media (min-width: 1100px) {
+  .lp-modules__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+#modulos,
+#agenda {
+  scroll-margin-top: 5.25rem;
+}
+
+.lp-module-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 100%;
+}
+
+.lp-module-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.lp-module-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 13px;
+  color: var(--berry-light);
+  background: color-mix(in srgb, var(--accent-soft) 50%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
+}
+
+.lp-module-card__icon svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.lp-module-card__group {
+  margin: 0;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--berry-light);
+}
+
+.lp-module-card__name {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--heading);
+}
+
+.lp-module-card__text {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.lp-module-card--new {
+  border-color: color-mix(in srgb, var(--accent) 26%, var(--border));
+}
+
+.lp-module-card--ai {
+  border-color: color-mix(in srgb, var(--accent) 28%, var(--border));
+}
+
+.lp-modules__cta {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.75rem;
+}
+
 .lp-product-card {
   display: flex;
   flex-direction: column;
@@ -94,6 +218,16 @@
   .lp-products__grid {
     grid-template-columns: 1fr;
   }
+
+  .lp-modules__grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 520px) {
+  .lp-modules__grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 720px) {
@@ -121,5 +255,98 @@
     border-radius: 18px;
     padding-left: 1rem;
     padding-right: 1rem;
+  }
+}
+
+.lp-pricing__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.lp-pricing__card {
+  position: relative;
+}
+
+.lp-pricing__card--featured {
+  border-color: color-mix(in srgb, var(--berry) 42%, var(--border));
+  background:
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--berry) 14%, var(--surface-elevated)),
+      color-mix(in srgb, var(--surface-elevated) 88%, transparent)
+    );
+  box-shadow:
+    0 20px 50px color-mix(in srgb, var(--berry-glow) 45%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--berry) 18%, transparent);
+}
+
+.lp-pricing__badge {
+  margin: 0 0 0.65rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--berry-light);
+}
+
+.lp-pricing__name {
+  margin: 0;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+}
+
+.lp-pricing__price {
+  margin: 0.35rem 0 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--heading);
+}
+
+.lp-pricing__hint {
+  margin: 0.35rem 0 1rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.lp-pricing__features {
+  margin: 0 0 1.25rem;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+  flex: 1;
+}
+
+.lp-pricing__features li {
+  position: relative;
+  padding-left: 0.95rem;
+  font-size: 0.88rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.lp-pricing__features li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.55em;
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: var(--accent);
+}
+
+.lp-pricing__cta {
+  margin-top: auto;
+  justify-content: center;
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .lp-pricing__grid {
+    grid-template-columns: 1fr;
   }
 }

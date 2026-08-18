@@ -1,7 +1,7 @@
 import { PLATFORM_MODE, SALES_FLOOR_ONLY } from '../appScope'
 import type { AuthUser } from '../api'
 import type { NavGroupId } from '../navTypes'
-import { canAccessView, canViewFinance, canViewTasks } from './permissions'
+import { canAccessView, canViewFinance, canViewProjects, canViewTasks, hasBookingModule } from './permissions'
 
 export type DesktopNavLink = {
   view: string
@@ -73,6 +73,28 @@ export function buildDesktopNavGroups(options: {
         id: 'tasks',
         label: 'Tareas',
         items: [{ view: 'tasks', label: 'Calendario' }],
+      })
+    }
+    if (canViewProjects(user)) {
+      groups.push({
+        id: 'projects',
+        label: 'Proyectos',
+        items: [{ view: 'projects', label: 'Historial de proyectos' }],
+      })
+    }
+    if (hasBookingModule(user) || canAccessView(user, 'booking')) {
+      groups.push({
+        id: 'booking',
+        label: 'Agenda de citas',
+        items: [
+          { view: 'booking', label: 'Agenda' },
+          { view: 'appointments', label: 'Citas' },
+          { view: 'customers', label: 'Clientes' },
+          { view: 'services', label: 'Servicios' },
+          { view: 'professionals', label: 'Profesionales' },
+          { view: 'hours', label: 'Disponibilidad' },
+          { view: 'settings', label: 'Enlace público' },
+        ],
       })
     }
     if (options.canViewFinance ?? canViewFinance(user)) {

@@ -194,7 +194,7 @@ export function HeaderSystray({
           <button
             type="button"
             className={`header-systray__btn header-systray__btn--assistant${assistantOpen ? ' header-systray__btn--active' : ''}`}
-            title="VOS AI"
+            title="VOS IA"
             aria-expanded={assistantOpen}
             onClick={() => {
               closePanel()
@@ -202,7 +202,7 @@ export function HeaderSystray({
             }}
           >
             <Bot className="header-systray__icon" strokeWidth={2} aria-hidden />
-            <span className="sr-only">VOS AI</span>
+            <span className="sr-only">VOS IA</span>
           </button>
         </div>
       ) : null}

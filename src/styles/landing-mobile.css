@@ -134,15 +134,25 @@
   }
 
   .landing-hero__actions .public-btn {
-    min-height: 3rem;
+    min-height: 3.05rem;
     width: 100%;
-    font-size: 0.92rem;
+    font-size: 0.95rem;
     border-radius: 14px;
   }
 
   .landing-hero__actions .landing-hero__cta-secondary {
-    min-height: 2.75rem;
-    font-size: 0.88rem;
+    min-height: 3.05rem;
+    font-size: 0.95rem;
+  }
+
+  .landing-hero__modules {
+    max-width: 100%;
+    margin-top: 1rem;
+  }
+
+  .landing-hero__module {
+    font-size: 0.74rem;
+    padding: 0.32rem 0.6rem 0.32rem 0.36rem;
   }
 
   /* ——— Secciones ——— */

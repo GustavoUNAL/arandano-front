@@ -44,6 +44,7 @@ export const VIEW_MODULE: Record<string, string | null> = {
   staff: 'staff',
   analytics: 'finance',
   tasks: 'tasks',
+  projects: 'projects',
   costs: null,
   gastos: null,
   explorer: null,
@@ -56,6 +57,13 @@ export const VIEW_MODULE: Record<string, string | null> = {
   'bio-sterilization': 'dental',
   'bio-waste': 'dental',
   'dental-config': 'dental',
+  appointments: 'booking',
+  customers: 'booking',
+  services: 'booking',
+  professionals: 'booking',
+  hours: 'booking',
+  settings: 'booking',
+  booking: 'booking',
 }
 
 export function canAccessView(
@@ -63,11 +71,29 @@ export function canAccessView(
   view: string,
 ): boolean {
   if (!user) return false
+  if (hasCompanyModule(user, 'booking')) {
+    if (
+      view === 'home' ||
+      view === 'booking' ||
+      view === 'agenda' ||
+      view === 'appointments' ||
+      view === 'customers' ||
+      view === 'services' ||
+      view === 'professionals' ||
+      view === 'hours' ||
+      view === 'settings'
+    ) {
+      return hasPermission(user, 'booking.view') || user.role === 'owner' || user.role === 'manager' || user.role === 'admin'
+    }
+  }
   if (view === 'analytics') {
     return hasCompanyModule(user, 'finance') && hasPermission(user, 'finance.view')
   }
   if (view === 'tasks') {
     return canViewTasks(user)
+  }
+  if (view === 'projects') {
+    return canViewProjects(user)
   }
   if (view === 'gastos' && hasCompanyModule(user, 'dental')) {
     return hasCompanyModule(user, 'dental')
@@ -80,8 +106,23 @@ export function canAccessView(
   return hasCompanyModule(user, mod)
 }
 
+export function hasBookingModule(user: AuthUser | null | undefined): boolean {
+  return hasCompanyModule(user, 'booking')
+}
+
+/** Empresa cuyo único módulo habilitado es la agenda (p. ej. Ricky). */
+export function isBookingOnlyCompany(user: AuthUser | null | undefined): boolean {
+  const mods = getCompanyModules(user)
+  return mods.includes('booking') && mods.every((m) => m === 'booking')
+}
+
 export function hasDentalModule(user: AuthUser | null | undefined): boolean {
   return hasCompanyModule(user, 'dental')
+}
+
+/** Clínica Health: dental sin operación general (ventas). El resto usa VOS IA. */
+export function isHealthClinicCompany(user: AuthUser | null | undefined): boolean {
+  return hasDentalModule(user) && !hasCompanyModule(user, 'sales')
 }
 
 export function canViewFinance(user: AuthUser | null | undefined): boolean {
@@ -105,6 +146,14 @@ export function canDeleteSales(user: AuthUser | null | undefined): boolean {
 
 function companyHasTasksModule(user: AuthUser | null | undefined): boolean {
   return hasCompanyModule(user, 'tasks')
+}
+
+export function canViewProjects(user: AuthUser | null | undefined): boolean {
+  if (!user) return false
+  if (!hasCompanyModule(user, 'projects')) return false
+  if (hasPermission(user, 'projects.view')) return true
+  if (user.role === 'owner' || user.role === 'manager') return true
+  return false
 }
 
 export function canViewTasks(user: AuthUser | null | undefined): boolean {

@@ -29,10 +29,10 @@ Somos un sistema operativo inteligente para tu negocio. Estamos en etapa de vali
 ¿Por dónde empezamos?`
 
 const SUGGESTIONS = [
-  '¿Qué es VOS AI?',
+  `¿Qué es ${BRAND_NAME}?`,
   '¿Cómo empiezo con mi negocio?',
   '¿Para qué negocios sirve?',
-  'Quiero VOS AI en mi negocio',
+  `Quiero ${BRAND_NAME} en mi negocio`,
   'Hablar con un asesor',
 ] as const
 
@@ -243,7 +243,7 @@ function TypingIndicator() {
 export function LandingSalesChat() {
   const baseUrl = getApiBase()
   const advisorUrl = getLandingAdvisorUrl(
-    'Hola, vengo de la web de VOS AI y me gustaría hablar con un asesor.',
+    `Hola, vengo de la web de ${BRAND_NAME} y me gustaría hablar con un asesor.`,
   )
 
   const [open, setOpen] = useState(false)
@@ -346,7 +346,7 @@ export function LandingSalesChat() {
       ) : null}
 
       {open ? (
-        <div className="landing-sales-chat__panel" role="dialog" aria-label="Asistente comercial VOS AI">
+        <div className="landing-sales-chat__panel" role="dialog" aria-label={`Asistente comercial ${BRAND_NAME}`}>
           <header className="landing-sales-chat__head">
             <div className="landing-sales-chat__head-brand">
               <span className="landing-sales-chat__head-icon" aria-hidden>
@@ -459,7 +459,7 @@ export function LandingSalesChat() {
                 onBlur={() => {
                   setInputFocused(false)
                 }}
-                placeholder="Pregunta sobre VOS AI…"
+                placeholder={`Pregunta sobre ${BRAND_NAME}…`}
                 disabled={busy}
                 enterKeyHint="send"
                 autoComplete="off"

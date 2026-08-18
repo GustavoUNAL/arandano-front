@@ -11,6 +11,7 @@ export type AppView =
   | 'shop'
   | 'purchases'
   | 'tasks'
+  | 'projects'
   | 'staff'
   | 'analytics'
   | 'cash-close'
@@ -26,6 +27,13 @@ export type AppView =
   | 'bio-sterilization'
   | 'bio-waste'
   | 'dental-config'
+  | 'appointments'
+  | 'customers'
+  | 'services'
+  | 'professionals'
+  | 'hours'
+  | 'settings'
+  | 'booking'
 
 const VIEW_KEYS = new Set<string>([
   'home',
@@ -38,6 +46,7 @@ const VIEW_KEYS = new Set<string>([
   'shop',
   'purchases',
   'tasks',
+  'projects',
   'staff',
   'analytics',
   'cash-close',
@@ -53,6 +62,13 @@ const VIEW_KEYS = new Set<string>([
   'bio-sterilization',
   'bio-waste',
   'dental-config',
+  'appointments',
+  'customers',
+  'services',
+  'professionals',
+  'hours',
+  'settings',
+  'booking',
 ])
 
 export function slugifyLabel(raw: string): string {

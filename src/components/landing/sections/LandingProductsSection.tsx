@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion'
 import { getHealthLoginUrl, getLoginUrl } from '../../../lib/authRoutes'
 import { BRAND_NAME } from '../../../lib/brand'
-import { cn } from '../../../lib/utils'
 import { fadeUp, GlassCard, LandingSection, LandingSectionHeader } from './shared'
 
 type ProductCard = {
@@ -13,7 +12,6 @@ type ProductCard = {
   points: string[]
   ctaLabel: string
   ctaHref: string
-  featured?: boolean
 }
 
 const PRODUCTS: ProductCard[] = [
@@ -23,9 +21,13 @@ const PRODUCTS: ProductCard[] = [
     name: BRAND_NAME,
     tagline: 'Sistema operativo para tu negocio',
     description:
-      'Ventas, inventario, compras y un asistente IA con los datos reales de tu operación.',
-    points: ['Punto de venta y pedidos', 'Inventario y compras', 'Finanzas y reportes'],
-    ctaLabel: 'Entrar a mi negocio',
+      'Lo que opera un negocio real: ventas, inventario, compras, POS, tienda, agenda, equipo y un asistente IA con tus datos.',
+    points: [
+      'Punto de venta, pedidos web y agenda',
+      'Inventario, compras y costos',
+      'Finanzas, personal y reportes',
+    ],
+    ctaLabel: 'Iniciar sesión',
     ctaHref: getLoginUrl(),
   },
   {
@@ -34,7 +36,7 @@ const PRODUCTS: ProductCard[] = [
     name: 'VOS IA HEALTH',
     tagline: 'Clínicas y consultorios bajo control',
     description:
-      'Ayudamos a empresas del sector salud a digitalizar pacientes, agenda, historia clínica, costos e inventario en un solo lugar.',
+      'Pacientes, agenda clínica, historia, odontograma, costos e inventario en un solo lugar — con la misma inteligencia de VOS IA.',
     points: [
       'Pacientes, agenda y odontograma',
       'Ingresos, gastos y bioseguridad',
@@ -42,7 +44,6 @@ const PRODUCTS: ProductCard[] = [
     ],
     ctaLabel: 'Entrar a VOS IA HEALTH',
     ctaHref: getHealthLoginUrl(),
-    featured: true,
   },
 ]
 
@@ -57,8 +58,8 @@ export function LandingProductsSection({ onBusinessLogin, onHealthLogin }: Props
       <LandingSectionHeader
         kicker="Productos"
         titleId="products-title"
-        title="Una plataforma. Productos pensados por industria."
-        subtitle={`${BRAND_NAME} crece con verticales especializadas. VOS IA HEALTH lleva la misma inteligencia a clínicas y consultorios.`}
+        title="Una plataforma. Dos formas de operar."
+        subtitle={`${BRAND_NAME} cubre el negocio completo — comercio, inventario, agenda y finanzas. VOS IA HEALTH aplica la misma arquitectura a clínicas y consultorios.`}
       />
 
       <div className="lp-products__grid">
@@ -71,13 +72,7 @@ export function LandingProductsSection({ onBusinessLogin, onHealthLogin }: Props
             variants={fadeUp}
             transition={{ duration: 0.5, delay: i * 0.08, ease: [0.22, 1, 0.36, 1] }}
           >
-            <GlassCard
-              hover
-              className={cn(
-                'lp-product-card h-full p-5 sm:p-6',
-                product.featured && 'lp-product-card--featured',
-              )}
-            >
+            <GlassCard hover className="lp-product-card h-full p-5 sm:p-6">
               <p className="lp-product-card__badge">{product.badge}</p>
               <h3 className="lp-product-card__name">{product.name}</h3>
               <p className="lp-product-card__tagline">{product.tagline}</p>
@@ -88,15 +83,15 @@ export function LandingProductsSection({ onBusinessLogin, onHealthLogin }: Props
                 ))}
               </ul>
               <a
-                className={cn(
-                  'public-btn landing-v2__btn-solid lp-product-card__cta',
-                  product.featured ? 'public-btn--accent' : 'public-btn--ghost',
-                )}
+                className={`public-btn landing-v2__btn-solid lp-product-card__cta ${
+                  product.id === 'vos-ai' ? 'public-btn--accent' : 'public-btn--ghost'
+                }`}
                 href={product.ctaHref}
                 onClick={(e) => {
                   if (product.id === 'vos-ia-health' && onHealthLogin) {
                     e.preventDefault()
                     onHealthLogin()
+                    return
                   }
                   if (product.id === 'vos-ai' && onBusinessLogin) {
                     e.preventDefault()

@@ -12,10 +12,12 @@ export type MobileModuleIconId =
   | 'staff'
   | 'analytics'
   | 'tasks'
+  | 'projects'
   | 'costs'
   | 'gastos'
   | 'explorer'
   | 'assistant'
+  | 'booking'
 
 export function MobileModuleIcon({
   id,
@@ -150,6 +152,23 @@ export function MobileModuleIcon({
           />
         </svg>
       )
+    case 'projects':
+      return (
+        <svg className={c} viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path
+            d="M4 7h16v12H4V7Zm4-3h8l1 3H7l1-3Z"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M8 12h8M8 16h5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        </svg>
+      )
     case 'staff':
       return (
         <svg className={c} viewBox="0 0 24 24" fill="none" aria-hidden>
@@ -205,6 +224,23 @@ export function MobileModuleIcon({
           <ellipse cx="12" cy="5" rx="7" ry="3" stroke="currentColor" strokeWidth="1.5" />
           <path
             d="M5 5v6c0 1.7 3.1 3 7 3s7-1.3 7-3V5M5 11v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+        </svg>
+      )
+    case 'booking':
+      return (
+        <svg className={c} viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path
+            d="M7 3.5v3M17 3.5v3M4.5 8.5h15M6 5.5h12a1.5 1.5 0 0 1 1.5 1.5v12A1.5 1.5 0 0 1 18 20.5H6A1.5 1.5 0 0 1 4.5 19V7A1.5 1.5 0 0 1 6 5.5Z"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+          <path
+            d="M8 13h3v3H8z"
             stroke="currentColor"
             strokeWidth="1.5"
             strokeLinejoin="round"

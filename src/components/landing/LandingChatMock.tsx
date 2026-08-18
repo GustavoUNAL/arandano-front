@@ -463,8 +463,8 @@ export function LandingChatMock({
         readOnly
           ? undefined
           : isWhatsApp
-            ? 'Ejemplo de conversación por WhatsApp con VOS AI'
-            : 'Ejemplo de conversación con VOS AI'
+            ? `Ejemplo de conversación por WhatsApp con ${BRAND_NAME}`
+            : `Ejemplo de conversación con ${BRAND_NAME}`
       }
     >
       <div className={`landing-chat__head${isWhatsApp ? ' landing-chat__head--wa' : ''}`}>
@@ -553,7 +553,7 @@ export function LandingChatMock({
       role={readOnly ? 'img' : undefined}
       aria-label={
         readOnly
-          ? 'Demo animado: preguntas sobre ventas, compras y utilidad con VOS AI'
+          ? `Demo animado: preguntas sobre ventas, compras y utilidad con ${BRAND_NAME}`
           : undefined
       }
       className={`landing-chat-figure landing-chat-reveal${framed ? ' landing-chat-figure--framed' : ''}${playWhenCentered ? ' landing-chat-reveal--centered-play' : ''}${readOnly ? ' landing-chat-figure--readonly' : ''}`}

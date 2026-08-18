@@ -29,9 +29,17 @@ export type MobileChromeView =
   | 'staff'
   | 'analytics'
   | 'tasks'
+  | 'projects'
   | 'costs'
   | 'gastos'
   | 'explorer'
+  | 'booking'
+  | 'appointments'
+  | 'customers'
+  | 'services'
+  | 'professionals'
+  | 'hours'
+  | 'settings'
 
 const SCREEN_TITLE: Record<MobileChromeView, string> = {
   home: 'Inicio',
@@ -47,9 +55,17 @@ const SCREEN_TITLE: Record<MobileChromeView, string> = {
   staff: 'Personal',
   analytics: 'Finanzas',
   tasks: 'Tareas',
+  projects: 'Proyectos',
   costs: 'Costos',
   gastos: 'Gastos',
   explorer: 'Datos',
+  booking: 'Agenda de citas',
+  appointments: 'Citas',
+  customers: 'Clientes',
+  services: 'Servicios',
+  professionals: 'Profesionales',
+  hours: 'Disponibilidad',
+  settings: 'Enlace público',
 }
 
 export function isMobileChromeView(view: string): view is MobileChromeView {
@@ -70,11 +86,13 @@ const PLATFORM_SHEET_LINKS: SheetLink[] = [
   { view: 'cash-close', label: 'Cierre del día', icon: 'cash-close' },
   { view: 'purchases', label: 'Compras', icon: 'purchases' },
   { view: 'tasks', label: 'Tareas', icon: 'tasks' },
+  { view: 'projects', label: 'Proyectos', icon: 'projects' },
   { view: 'inventory', label: 'Inventario', icon: 'inventory' },
   { view: 'shop', label: 'Tienda en línea', icon: 'shop' },
   { view: 'staff', label: 'Personal', icon: 'staff' },
+  { view: 'booking', label: 'Agenda de citas', icon: 'booking' },
   { view: 'analytics', label: 'Análisis financiero', icon: 'analytics' },
-  { view: 'assistant', label: 'VOS AI', icon: 'assistant' },
+  { view: 'assistant', label: 'VOS IA', icon: 'assistant' },
 ]
 
 const FULL_SHEET_LINKS: SheetLink[] = [

@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { login, type AuthUser } from '../api'
+import { fetchMe, login, setAccessToken, type AuthUser } from '../api'
 import { getAccessRequestUrl, getLandingUrl, getLoginUrl } from '../lib/authRoutes'
 import { PublicAuthMobileIntro } from './PublicAuthMobileIntro'
+import { GoogleSignInButton } from './GoogleSignInButton'
 import { PublicThemeSwitch } from './PublicThemeSwitch'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -53,6 +54,20 @@ export function HealthLoginView({ baseUrl, onLogin, initialMessage }: Props) {
     }
   }
 
+  async function handleGoogleSuccess(token: string) {
+    setError(null)
+    setSubmitting(true)
+    try {
+      setAccessToken(token)
+      const user = await fetchMe(baseUrl)
+      onLogin(user)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo iniciar sesión.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return (
     <div className="public-shell public-auth health-login">
       <div className="public-shell__grid-bg" aria-hidden />
@@ -70,7 +85,7 @@ export function HealthLoginView({ baseUrl, onLogin, initialMessage }: Props) {
 
       <div className="public-auth__layout health-login__card">
         <aside className="public-auth__visual health-login__visual">
-          <p className="health-login__eyebrow">Producto VOS AI</p>
+          <p className="health-login__eyebrow">Producto VOS IA</p>
           <h1 className="health-login__brand">VOS IA HEALTH</h1>
           <p className="health-login__lead">
             Plataforma clínica para odontología y salud: pacientes, agenda, historia
@@ -98,7 +113,7 @@ export function HealthLoginView({ baseUrl, onLogin, initialMessage }: Props) {
           </div>
           <p className="public-auth__aside-note">
             ¿Negocio, no clínica?{' '}
-            <a href={getLoginUrl()}>Entrar a VOS AI</a>
+            <a href={getLoginUrl()}>Entrar a VOS IA</a>
           </p>
         </aside>
 
@@ -112,10 +127,20 @@ export function HealthLoginView({ baseUrl, onLogin, initialMessage }: Props) {
             </header>
 
             {initialMessage ? (
-              <div className="vos-alert vos-alert--info" role="status">
+              <div className="vos-alert vos-alert--error" role="alert">
                 {initialMessage}
               </div>
             ) : null}
+
+            <GoogleSignInButton
+              returnTo="health"
+              label="Continuar con Google"
+              disabled={submitting}
+              onSuccess={handleGoogleSuccess}
+              onError={(msg) => setError(msg)}
+            />
+
+            <p className="public-auth__or">o con tu email profesional</p>
 
             <Label>
               <span>Email profesional</span>

@@ -31,6 +31,11 @@ export default defineConfig({
         ws: true,
         rewrite: (path) => path.replace(/^\/dev-api/, ''),
       },
+      /** Callback de Google OAuth: mismo origen que el login (localhost:5173). */
+      '/auth/google': {
+        target: 'http://127.0.0.1:3000',
+        changeOrigin: true,
+      },
     },
   },
   preview: {

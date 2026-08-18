@@ -13,7 +13,7 @@ html[data-shell='public'] #root {
   min-height: 100vh;
 }
 
-/* Shell público — paleta Dracula + acentos VOS */
+/* Shell público — paleta VOS IA (berry Arándano) */
 .public-shell {
   --pub-cyan: var(--berry-light);
   --pub-purple: var(--accent);
@@ -27,7 +27,7 @@ html[data-shell='public'] #root {
     radial-gradient(ellipse 90% 60% at 0% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 50%),
     radial-gradient(ellipse 70% 50% at 100% 10%, color-mix(in srgb, var(--berry) 16%, transparent), transparent 48%),
     radial-gradient(ellipse 80% 55% at 50% 100%, color-mix(in srgb, var(--tan) 8%, transparent), transparent 52%),
-    var(--surface, #282a36);
+    var(--surface, #161114);
   font-family: var(--sans);
   isolation: isolate;
 }
@@ -362,10 +362,11 @@ html[data-shell='public'] #root {
 
 /* Landing v2: botones sólidos sin degradado ni brillo */
 .landing-v2 .landing-v2__btn-solid.public-btn--accent {
-  background: var(--accent);
+  background: var(--berry-dark);
   background-size: auto;
   animation: none;
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 35%, transparent);
+  color: #fff;
+  box-shadow: 0 6px 18px var(--berry-glow);
 }
 
 .landing-v2 .landing-v2__btn-solid.public-btn--accent::after {
@@ -373,8 +374,8 @@ html[data-shell='public'] #root {
 }
 
 .landing-v2 .landing-v2__btn-solid.public-btn--accent:hover {
-  background: var(--berry);
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--berry-dark) 82%, #000);
+  box-shadow: 0 8px 22px var(--berry-glow);
 }
 
 .public-section {
@@ -729,6 +730,29 @@ html[data-shell='public'] #root {
   z-index: 30;
 }
 
+.public-auth--simple {
+  align-items: center;
+  justify-content: center;
+}
+
+.public-auth--simple .public-auth__layout {
+  max-width: 26.5rem;
+  grid-template-columns: 1fr;
+}
+
+.public-auth--simple .public-auth__head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  margin-bottom: 0.25rem;
+  text-align: center;
+}
+
+.public-auth--simple .public-auth__title {
+  margin: 0.15rem 0 0;
+}
+
 .public-auth__layout {
   width: 100%;
   max-width: 900px;
@@ -869,6 +893,219 @@ html[data-shell='public'] #root {
   display: flex;
   flex-direction: column;
   gap: 0.9rem;
+}
+
+.public-auth__or {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.15rem 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.public-auth__or::before,
+.public-auth__or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.public-auth__google-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.55rem 1.15rem;
+  border-radius: 999px;
+  font-weight: 650;
+  font-size: 0.92rem;
+  text-decoration: none;
+  color: var(--heading);
+  background: color-mix(in srgb, var(--surface-elevated) 80%, #fff 8%);
+  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
+  cursor: pointer;
+  box-sizing: border-box;
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.22s ease,
+    border-color 0.22s ease,
+    background 0.22s ease;
+}
+
+.public-auth__google-btn:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent-border);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-border) 40%, transparent);
+}
+
+.public-auth__google-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.public-auth__google-btn:disabled {
+  opacity: 0.55;
+  pointer-events: none;
+  cursor: default;
+}
+
+.public-auth__google-wait {
+  margin: 0;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.public-auth__legal-note {
+  margin: 0.55rem 0 0;
+  text-align: center;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.google-signup__kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--berry-light);
+}
+
+.google-signup__identity {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--surface-elevated) 70%, transparent);
+}
+
+.google-signup__identity strong,
+.google-signup__identity span {
+  display: block;
+}
+
+.google-signup__identity span {
+  margin-top: 0.12rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.google-signup__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 999px;
+  font-weight: 750;
+  color: var(--heading);
+  background: color-mix(in srgb, var(--accent-soft) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+}
+
+.google-signup__legal {
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+
+.google-signup__legal-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.55rem;
+}
+
+.google-signup__legal h2 {
+  margin: 0;
+  font-size: 0.92rem;
+  letter-spacing: -0.02em;
+}
+
+.google-signup__legal-head p {
+  margin: 0;
+  font-size: 0.72rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.google-signup__legal p,
+.google-signup__legal li {
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.google-signup__legal p {
+  margin: 0 0 0.55rem;
+}
+
+.google-signup__legal ul {
+  margin: 0;
+  padding-left: 1.05rem;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.google-signup__legal li strong {
+  color: var(--text);
+}
+
+.google-signup__legal a {
+  color: var(--berry-light);
+  font-weight: 650;
+}
+
+.google-signup__check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--text);
+}
+
+.google-signup__check input {
+  margin-top: 0.2rem;
+  accent-color: var(--accent);
+}
+
+.google-signup__check a {
+  color: var(--berry-light);
+  font-weight: 650;
+}
+
+.google-auth-popup {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+}
+
+.google-auth-popup__card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  text-align: center;
+}
+
+.google-auth-popup__text {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--muted);
 }
 
 .public-auth__head {
@@ -1336,11 +1573,122 @@ html[data-shell='public'] #root {
   max-width: 34rem;
 }
 
+.landing-hero__inline-link {
+  color: var(--heading);
+  font-weight: 650;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  text-underline-offset: 0.18em;
+}
+
+.landing-hero__inline-link:hover {
+  color: var(--accent-text, var(--berry-light));
+}
+
 .landing-hero__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6rem;
-  margin-top: 1.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1.65rem;
+}
+
+.landing-hero__cta-primary,
+.landing-hero__cta-secondary {
+  min-height: 2.9rem;
+  padding: 0.7rem 1.4rem;
+  font-size: 0.95rem;
+  font-weight: 750;
+  border-radius: 14px;
+  text-decoration: none;
+}
+
+.landing-hero__cta-primary {
+  color: #fff;
+  background: var(--berry-dark);
+  border: 1px solid color-mix(in srgb, var(--berry-dark) 70%, #000);
+  box-shadow:
+    0 8px 22px var(--berry-glow),
+    0 1px 0 color-mix(in srgb, #fff 18%, transparent) inset;
+}
+
+.landing-hero__cta-primary:hover {
+  background: color-mix(in srgb, var(--berry-dark) 82%, #000);
+  filter: none;
+}
+
+.landing-hero__cta-secondary {
+  color: var(--heading);
+  background: var(--surface-elevated);
+  border: 1.5px solid color-mix(in srgb, var(--heading) 28%, var(--border));
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--shadow-soft) 55%, transparent);
+}
+
+.landing-hero__cta-secondary:hover {
+  border-color: var(--berry);
+  background: color-mix(in srgb, var(--accent-soft) 40%, var(--surface-elevated));
+}
+
+html[data-theme='light'] .landing-hero__cta-secondary {
+  background: #fff;
+  color: #0b1220;
+  border-color: #0b1220;
+}
+
+html[data-theme='light'] .landing-hero__cta-secondary:hover {
+  background: #f8fafc;
+  border-color: var(--berry-dark);
+}
+
+.landing-hero__modules {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 1.65rem;
+  padding-top: 1.15rem;
+  border-top: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  max-width: 36rem;
+}
+
+.landing-hero__module {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.38rem 0.7rem 0.38rem 0.42rem;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  background: color-mix(in srgb, var(--surface-elevated) 72%, transparent);
+  color: var(--heading);
+  font-size: 0.78rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  transition:
+    border-color 0.2s ease,
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.landing-hero__module:hover {
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
+  background: color-mix(in srgb, var(--accent-soft) 45%, var(--surface-elevated));
+  transform: translateY(-1px);
+}
+
+.landing-hero__module-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.45rem;
+  height: 1.45rem;
+  border-radius: 999px;
+  color: var(--berry-light);
+  background: color-mix(in srgb, var(--accent-soft) 55%, transparent);
+}
+
+.landing-hero__module-icon svg {
+  width: 0.85rem;
+  height: 0.85rem;
 }
 
 .landing-chat {

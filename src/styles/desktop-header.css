@@ -13,21 +13,21 @@
 }
 
 .app-shell--odoo-home .app-main {
-  background: color-mix(in srgb, var(--surface) 94%, #242733);
+  background: var(--surface);
 }
 
 /* ——— Navbar ——— */
 .odoo-navbar {
   flex-shrink: 0;
   z-index: 120;
-  color: #eef0f5;
-  background: #242733;
-  border-bottom: 1px solid color-mix(in srgb, #000 35%, transparent);
-  box-shadow: 0 2px 12px color-mix(in srgb, #000 28%, transparent);
+  color: #f6eef1;
+  background: #1c1418;
+  border-bottom: 1px solid color-mix(in srgb, var(--berry-dark) 42%, transparent);
+  box-shadow: 0 2px 12px color-mix(in srgb, #000 32%, transparent);
 }
 
 .odoo-navbar--home {
-  background: linear-gradient(180deg, #2b2f3d 0%, #242733 100%);
+  background: linear-gradient(180deg, #261a1f 0%, #1c1418 100%);
 }
 
 .odoo-navbar__inner {
@@ -339,7 +339,7 @@
   text-align: center;
   background: #e85d4c;
   color: #fff;
-  box-shadow: 0 0 0 1.5px #242733;
+  box-shadow: 0 0 0 1.5px #1c1418;
 }
 
 .header-systray__panel {
@@ -725,9 +725,19 @@
   --odoo-accent: #8b5cf6;
 }
 
+.odoo-app-tile--projects,
+.app-launcher-tile--projects {
+  --odoo-accent: #f59e0b;
+}
+
 .odoo-app-tile--staff,
 .app-launcher-tile--staff {
   --odoo-accent: #14b8a6;
+}
+
+.odoo-app-tile--booking,
+.app-launcher-tile--booking {
+  --odoo-accent: #8b2942;
 }
 
 /* ——— Pantalla de inicio (homemenu) ——— */

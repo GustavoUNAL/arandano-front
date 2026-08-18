@@ -11,10 +11,15 @@ import './styles/landing-mobile.css'
 import App from './App.tsx'
 import { PublicShopApp } from './shop/PublicShopApp'
 import { isPublicShopRoute } from './shop/shopApi'
+import { PublicBookingApp } from './booking/PublicBookingApp'
+import { isPublicBookingRoute } from './booking/bookingApi'
 
 function RootApp() {
   if (isPublicShopRoute()) {
     return <PublicShopApp />
+  }
+  if (isPublicBookingRoute()) {
+    return <PublicBookingApp />
   }
   return (
     <NavigationProvider>

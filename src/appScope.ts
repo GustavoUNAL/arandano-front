@@ -10,7 +10,7 @@ const platformFlag = import.meta.env.VITE_PLATFORM_MODE as string | undefined
 export const PLATFORM_MODE =
   platformFlag !== '0' && platformFlag !== 'false' && platformFlag !== 'off'
 
-export const PLATFORM_NAV_GROUPS = ['catalog', 'stock', 'sales', 'purchases', 'tasks', 'staff', 'finance'] as const
+export const PLATFORM_NAV_GROUPS = ['catalog', 'stock', 'sales', 'purchases', 'tasks', 'projects', 'staff', 'finance', 'booking'] as const
 
 export const PLATFORM_VIEWS = [
   'home',
@@ -22,6 +22,7 @@ export const PLATFORM_VIEWS = [
   'purchases',
   'cash-close',
   'tasks',
+  'projects',
   'staff',
   'analytics',
   'patients',
@@ -34,6 +35,13 @@ export const PLATFORM_VIEWS = [
   'bio-sterilization',
   'bio-waste',
   'dental-config',
+  'appointments',
+  'customers',
+  'services',
+  'professionals',
+  'hours',
+  'settings',
+  'booking',
 ] as const
 export type PlatformView = (typeof PLATFORM_VIEWS)[number]
 
@@ -48,6 +56,7 @@ export function isPlatformView(v: string | null | undefined): v is PlatformView 
     v === 'purchases' ||
     v === 'cash-close' ||
     v === 'tasks' ||
+    v === 'projects' ||
     v === 'staff' ||
     v === 'analytics' ||
     v === 'patients' ||
@@ -59,7 +68,14 @@ export function isPlatformView(v: string | null | undefined): v is PlatformView 
     v === 'bio-temp' ||
     v === 'bio-sterilization' ||
     v === 'bio-waste' ||
-    v === 'dental-config'
+    v === 'dental-config' ||
+    v === 'appointments' ||
+    v === 'customers' ||
+    v === 'services' ||
+    v === 'professionals' ||
+    v === 'hours' ||
+    v === 'settings' ||
+    v === 'booking'
   )
 }
 

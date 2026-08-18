@@ -7,9 +7,12 @@ import {
   fetchMe,
   getAccessToken,
   getApiBase,
+  getLastCompanyId,
+  restorePreferredCompany,
   setAccessToken,
   setCompanyId,
   type AuthUser,
+  type CompanyUsage,
 } from './api'
 import { inaugurationDateForUser } from './config/systemSettings'
 import { ProductsManager } from './components/ProductsManager'
@@ -17,9 +20,12 @@ import { ShopAdminView } from './components/ShopAdminView'
 import { StaffManager } from './components/StaffManager'
 import { FinanceAnalyticsView } from './components/FinanceAnalyticsView'
 import { TasksView } from './components/TasksView'
-import { canAccessView, canViewFinance, canViewTasks, hasDentalModule } from './lib/permissions'
+import { ProjectsHistoryView } from './components/ProjectsHistoryView'
+import { canAccessView, canViewFinance, canViewProjects, canViewTasks, hasBookingModule, isHealthClinicCompany } from './lib/permissions'
 import { DentalClinicApp } from './dental/DentalClinicApp'
 import { isDentalView, type DentalView } from './dental/dentalNav'
+import { BookingApp } from './booking/BookingApp'
+import { isBookingView, normalizeBookingView } from './booking/bookingNav'
 import { SalesManager } from './components/SalesManager'
 import { InventoryManager } from './components/InventoryManager'
 import { CostsView } from './components/CostsView'
@@ -57,23 +63,33 @@ import {
 } from './lib/pending-view-filter'
 import { setPendingPosTableId } from './lib/pending-pos-navigation'
 import {
+  consumeGoogleAuthHash,
+  googleAuthErrorMessage,
   isAccessRequestHash,
+  isGooglePopupHash,
+  isGoogleSignupHash,
   isHealthLoginHash,
   isLandingHash,
   isLegalHash,
   isLoginHash,
   isPrivacyHash,
+  isRegisterHash,
   isTermsHash,
   navigateAfterLogin,
-  navigateToAccessRequest,
   navigateToHealthLogin,
   navigateToLanding,
   navigateToLogin,
   navigateToPlatform,
+  navigateToRegister,
   navigateToSelectCompany,
   isSelectCompanyHash,
+  storeGoogleSignupToken,
 } from './lib/authRoutes'
 import { HealthLoginView } from './components/HealthLoginView'
+import { GoogleAuthPopupView } from './components/GoogleAuthPopupView'
+import { GoogleSignupView } from './components/GoogleSignupView'
+import { RegisterView } from './components/RegisterView'
+import { TrialPaywallModal, TrialQuotaBanner } from './components/TrialPlanOffer'
 import { userNeedsCompanyPicker } from './lib/companySelect'
 import { isOdooHomeView } from './lib/odooNav'
 import {
@@ -92,6 +108,42 @@ function getViewFromHash(): View | null {
 
 function companyViewHash(user: AuthUser, view: View): string {
   return buildCompanyViewHash(getCompanySlugFromUser(user), view)
+}
+
+let googleAuthBoot: {
+  hasToken: boolean
+  error: string | null
+  preferredCompanyId: string | null
+  fromGoogle: boolean
+} | null = null
+
+function readGoogleAuthBoot(): {
+  hasToken: boolean
+  error: string | null
+  preferredCompanyId: string | null
+  fromGoogle: boolean
+} {
+  if (googleAuthBoot) return googleAuthBoot
+  if (typeof window !== 'undefined' && isGooglePopupHash()) {
+    googleAuthBoot = {
+      hasToken: false,
+      error: null,
+      preferredCompanyId: null,
+      fromGoogle: false,
+    }
+    return googleAuthBoot
+  }
+  const preferredCompanyId = getLastCompanyId()
+  const fromHash = consumeGoogleAuthHash()
+  if (fromHash.token) setAccessToken(fromHash.token)
+  if (fromHash.signupToken) storeGoogleSignupToken(fromHash.signupToken)
+  googleAuthBoot = {
+    hasToken: Boolean(getAccessToken()),
+    error: googleAuthErrorMessage(fromHash.error),
+    preferredCompanyId,
+    fromGoogle: Boolean(fromHash.token),
+  }
+  return googleAuthBoot
 }
 
 export default function App() {
@@ -122,16 +174,20 @@ export default function App() {
   })
 
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [authError, setAuthError] = useState<string | null>(null)
+  const [authError, setAuthError] = useState<string | null>(
+    () => readGoogleAuthBoot().error,
+  )
   const [companyPickFromLogin, setCompanyPickFromLogin] = useState(false)
   const [authInitializing, setAuthInitializing] = useState<boolean>(() =>
-    Boolean(getAccessToken()),
+    readGoogleAuthBoot().hasToken,
   )
   const [, setPublicRouteTick] = useState(0)
 
   const isMobileNav = useMatchMedia('(max-width: 720px)')
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false)
   const [assistantOpen, setAssistantOpen] = useState(false)
+  const [trialPaywallOpen, setTrialPaywallOpen] = useState(false)
+  const [trialPaywallUsage, setTrialPaywallUsage] = useState<CompanyUsage | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -160,6 +216,19 @@ export default function App() {
 
 
   useEffect(() => {
+    function onLimit(ev: Event) {
+      const detail = (ev as CustomEvent<{ usage?: CompanyUsage }>).detail
+      if (detail?.usage) setTrialPaywallUsage(detail.usage)
+      setTrialPaywallOpen(true)
+      void fetchMe(baseUrl)
+        .then((u) => setUser(u))
+        .catch(() => undefined)
+    }
+    window.addEventListener('vos:trial-limit', onLimit)
+    return () => window.removeEventListener('vos:trial-limit', onLimit)
+  }, [baseUrl])
+
+  useEffect(() => {
     document.documentElement.dataset.theme = theme
     try {
       window.localStorage.setItem('vos_theme', theme)
@@ -169,7 +238,7 @@ export default function App() {
   }, [theme])
 
   useEffect(() => {
-    if (hasDentalModule(user)) {
+    if (isHealthClinicCompany(user)) {
       try {
         window.sessionStorage.setItem('vos_portal', 'health')
       } catch {
@@ -179,6 +248,10 @@ export default function App() {
   }, [user])
 
   useEffect(() => {
+    if (isGooglePopupHash()) {
+      setAuthInitializing(false)
+      return
+    }
     if (!getAccessToken()) {
       setAuthInitializing(false)
       return
@@ -186,6 +259,11 @@ export default function App() {
     let cancelled = false
     setAuthInitializing(true)
     fetchMe(baseUrl)
+      .then((u) => {
+        const boot = readGoogleAuthBoot()
+        if (!boot.fromGoogle) return u
+        return restorePreferredCompany(baseUrl, u, boot.preferredCompanyId)
+      })
       .then((u) => {
         if (!cancelled) {
           setUser(u)
@@ -259,6 +337,9 @@ export default function App() {
     if (
       isLoginHash() ||
       isHealthLoginHash() ||
+      isGooglePopupHash() ||
+      isGoogleSignupHash() ||
+      isRegisterHash() ||
       isLandingHash() ||
       isAccessRequestHash() ||
       isLegalHash()
@@ -317,9 +398,13 @@ export default function App() {
     window.history.replaceState({}, '', desired)
   }, [view, user])
 
+  if (isGooglePopupHash()) {
+    return <GoogleAuthPopupView />
+  }
+
   if (authInitializing) {
     return (
-      <div className="app-initial-boot" aria-busy="true" aria-label="Cargando VOS AI">
+      <div className="app-initial-boot" aria-busy="true" aria-label="Cargando VOS IA">
         <BrandMark size="lg" className="brand-mark--splash" />
       </div>
     )
@@ -330,13 +415,49 @@ export default function App() {
       return (
         <LandingView
           onLoginClick={() => navigateToLogin(false)}
-          onAccessRequestClick={() => navigateToAccessRequest(false)}
+          onAccessRequestClick={() => navigateToRegister(false)}
           onHealthLoginClick={() => navigateToHealthLogin(false)}
         />
       )
     }
     if (isAccessRequestHash()) {
       return <AccessRequestView baseUrl={baseUrl} />
+    }
+    if (isRegisterHash()) {
+      return (
+        <RegisterView
+          baseUrl={baseUrl}
+          onCreated={(u) => {
+            setUser(u)
+            setAuthError(null)
+            if (userNeedsCompanyPicker(u)) {
+              setCompanyPickFromLogin(true)
+              navigateToSelectCompany(true)
+              return
+            }
+            setView('home')
+            navigateAfterLogin(u)
+          }}
+        />
+      )
+    }
+    if (isGoogleSignupHash()) {
+      return (
+        <GoogleSignupView
+          baseUrl={baseUrl}
+          onCreated={(u) => {
+            setUser(u)
+            setAuthError(null)
+            if (userNeedsCompanyPicker(u)) {
+              setCompanyPickFromLogin(true)
+              navigateToSelectCompany(true)
+              return
+            }
+            setView('home')
+            navigateAfterLogin(u)
+          }}
+        />
+      )
     }
     if (isHealthLoginHash()) {
       return (
@@ -385,6 +506,25 @@ export default function App() {
     navigateToLanding()
     return null
   }
+
+  const trialChrome = (
+    <>
+      <TrialQuotaBanner
+        user={user}
+        onUpgrade={() => {
+          setTrialPaywallUsage(user.usage ?? null)
+          setTrialPaywallOpen(true)
+        }}
+      />
+      {trialPaywallOpen ? (
+        <TrialPaywallModal
+          user={user}
+          usage={trialPaywallUsage ?? user.usage}
+          onClose={() => setTrialPaywallOpen(false)}
+        />
+      ) : null}
+    </>
+  )
 
   const showPlatformAdmin =
     user.isPlatformAdmin &&
@@ -449,10 +589,11 @@ export default function App() {
     navigateAfterLogin(nextUser)
   }
 
-  if (hasDentalModule(user)) {
+  if (isHealthClinicCompany(user)) {
     const dentalView: DentalView = isDentalView(view) ? view : 'home'
     return (
       <>
+        {trialChrome}
         {user.isPlatformAdmin && !user.platformView ? (
           <div className="app-banner app-banner--platform" role="status">
             <span>
@@ -500,6 +641,7 @@ export default function App() {
           <span className="banner-warn">Auth: {authError}</span>
         </div>
       )}
+      {trialChrome}
       {user.isPlatformAdmin && !user.platformView ? (
         <div className="app-banner app-banner--platform" role="status">
           <span>
@@ -651,9 +793,29 @@ export default function App() {
           {PLATFORM_MODE && view === 'tasks' && canViewTasks(user) && (
             <TasksView baseUrl={baseUrl} user={user} />
           )}
+          {PLATFORM_MODE && view === 'projects' && canViewProjects(user) && (
+            <ProjectsHistoryView baseUrl={baseUrl} />
+          )}
           {PLATFORM_MODE && view === 'analytics' && canViewFinance(user) && (
             <FinanceAnalyticsView baseUrl={baseUrl} />
           )}
+          {hasBookingModule(user) && isBookingView(view) && view !== 'home' ? (
+            <BookingApp
+              user={user}
+              baseUrl={baseUrl}
+              view={normalizeBookingView(view)}
+              onNavigate={(v) => setView(v)}
+              embedded
+              onHome={() => setView('home')}
+              onLogout={() => {
+                setAccessToken(null)
+                setCompanyId(null)
+                setUser(null)
+                setAuthError(null)
+                navigateToLogin()
+              }}
+            />
+          ) : null}
           {!SALES_FLOOR_ONLY && !PLATFORM_MODE && view === 'costs' && (
             <CostsView baseUrl={baseUrl} />
           )}

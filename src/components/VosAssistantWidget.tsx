@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from 'react'
 import { askBusinessAssistant, type AssistantHistoryItem } from '../api'
+import { BRAND_NAME } from '../lib/brand'
 import { useMobileChatKeyboard } from '../hooks/useMobileChatKeyboard'
 import './VosAssistantWidget.css'
 
@@ -99,7 +100,7 @@ const FOLLOW_UP_SUGGESTIONS: SuggestionItem[] = [
 ]
 
 const FALLBACK_WELCOME =
-  '¡Hola! Soy **VOS AI**, tu gerente digital.\n\nPuedo contarte ventas en vivo, inventario, compras, personal, pedidos web y tareas del día.\n\n¿Qué querés revisar?'
+  `¡Hola! Soy **${BRAND_NAME}**, tu gerente digital.\n\nPuedo contarte ventas en vivo, inventario, compras, personal, pedidos web y tareas del día.\n\n¿Qué querés revisar?`
 
 function RobotIcon() {
   return (
@@ -506,14 +507,14 @@ export function VosAssistantWidget({
         />
       ) : null}
       {open ? (
-        <div className="vos-assistant__panel" role="dialog" aria-label="Asistente VOS AI">
+        <div className="vos-assistant__panel" role="dialog" aria-label={`Asistente ${BRAND_NAME}`}>
           <header className="vos-assistant__head">
             <div className="vos-assistant__head-title">
               <div className="vos-assistant__avatar" aria-hidden>
                 <RobotIcon />
               </div>
               <div>
-                <strong>VOS AI</strong>
+                <strong>{BRAND_NAME}</strong>
                 <span>Gerente digital · datos en vivo</span>
               </div>
             </div>
@@ -614,7 +615,7 @@ export function VosAssistantWidget({
         <button
           type="button"
           className="vos-assistant__fab"
-          aria-label={open ? 'Cerrar asistente' : 'Abrir asistente VOS AI'}
+          aria-label={open ? 'Cerrar asistente' : `Abrir asistente ${BRAND_NAME}`}
           aria-expanded={open}
           onClick={() => setOpen(!open)}
         >

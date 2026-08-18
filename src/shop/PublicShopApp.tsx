@@ -235,7 +235,7 @@ export function PublicShopApp() {
     return (
       <header className="shop-header shop-header--minimal">
         <div className="shop-header__actions">
-          <a href="#/" className="shop-header-btn" aria-label="Inicio VOS AI">
+          <a href="#/" className="shop-header-btn" aria-label="Inicio VOS IA">
             <ShopHomeIcon />
           </a>
           <PublicThemeSwitch

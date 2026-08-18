@@ -213,6 +213,152 @@
   font-size: 0.78rem;
 }
 
+.platform-admin__storage {
+  display: grid;
+  gap: 0.28rem;
+  margin-top: 0.45rem;
+  text-align: left;
+}
+
+.platform-admin__storage-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  color: var(--muted, #9a8fa8);
+}
+
+.platform-admin__storage-track {
+  height: 0.42rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border, #3a3344) 70%, transparent);
+  overflow: hidden;
+}
+
+.platform-admin__storage-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent, #c4a5f5);
+}
+
+.platform-admin__storage-track span.is-warn {
+  background: #d4a017;
+}
+
+.platform-admin__storage-track span.is-full {
+  background: #c0392b;
+}
+
+.platform-admin__storage-track--free span {
+  background: color-mix(in srgb, var(--accent, #c4a5f5) 55%, #6fbf73);
+}
+
+.platform-admin__edit {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 0.65rem;
+  align-items: end;
+  margin: 0 0 1rem;
+}
+
+.platform-admin__edit label {
+  display: grid;
+  gap: 0.28rem;
+  font-size: 0.75rem;
+  color: var(--muted, #9a8fa8);
+}
+
+.platform-admin__edit input {
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  background: var(--surface, #120e18);
+  color: inherit;
+  font: inherit;
+}
+
+.platform-admin__company-cards {
+  display: grid;
+  gap: 0.9rem;
+  margin-bottom: 1.25rem;
+}
+
+.platform-admin__company-card {
+  padding: 0.9rem 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+  background: color-mix(in srgb, var(--surface, #120e18) 75%, transparent);
+}
+
+.platform-admin__company-card header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: baseline;
+  margin-bottom: 0.65rem;
+}
+
+.platform-admin__company-card header strong {
+  display: block;
+}
+
+.platform-admin__company-card header span {
+  color: var(--muted, #9a8fa8);
+  font-size: 0.82rem;
+}
+
+.platform-admin__mods {
+  margin-top: 0.75rem;
+}
+
+.platform-admin__mods-label {
+  margin: 0.55rem 0 0.4rem;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted, #9a8fa8);
+}
+
+.platform-admin__mod-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.platform-admin__mod-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.38rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  background: transparent;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.platform-admin__mod-toggle.is-on {
+  border-color: color-mix(in srgb, var(--accent, #c4a5f5) 45%, var(--border));
+  background: color-mix(in srgb, var(--accent, #c4a5f5) 16%, transparent);
+}
+
+.platform-admin__mod-toggle.is-booking.is-on {
+  border-color: color-mix(in srgb, var(--berry, #9b5de5) 50%, var(--border));
+}
+
+.platform-admin__mod-toggle input {
+  accent-color: var(--accent, #c4a5f5);
+}
+
+@media (max-width: 720px) {
+  .platform-admin__edit {
+    grid-template-columns: 1fr;
+  }
+}
+
 .platform-admin__detail {
   padding: 1rem;
   border-radius: 16px;
@@ -226,6 +372,12 @@
   gap: 1rem;
   flex-wrap: wrap;
   align-items: flex-start;
+}
+
+.platform-admin__detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .platform-admin__detail-head p {
@@ -329,9 +481,76 @@
   color: var(--muted, #9a8fa8);
 }
 
-.platform-admin__hint {
-  margin: -0.35rem 0 1rem;
-  font-size: 0.88rem;
+.platform-admin__search {
+  display: block;
+  margin: 0 0 1rem;
+}
+
+.platform-admin__search input {
+  width: min(100%, 28rem);
+  padding: 0.55rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  background: var(--surface, #120e18);
+  color: inherit;
+}
+
+.platform-admin__user-companies {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.platform-admin__link-btn {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--accent, #c4a5f5);
+  cursor: pointer;
+  font: inherit;
+  text-decoration: underline;
+}
+
+.platform-admin__link-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+
+.platform-admin__plan-select select {
+  padding: 0.45rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  background: var(--surface, #120e18);
+  color: inherit;
+  font: inherit;
+}
+
+.platform-admin__activity {
+  margin: 0 0 1.25rem;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.platform-admin__activity li {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  background: color-mix(in srgb, var(--surface, #120e18) 80%, transparent);
+}
+
+.platform-admin__activity strong {
+  font-size: 0.92rem;
+}
+
+.platform-admin__activity span {
+  color: var(--muted, #9a8fa8);
+  font-size: 0.82rem;
 }
 
 .app-banner--platform {

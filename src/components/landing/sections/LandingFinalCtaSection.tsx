@@ -71,7 +71,7 @@ export function LandingFinalCtaSection({ accessUrl, onAccess, onDemo }: Props) {
                   'radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--berry-light) 35%, transparent), transparent 70%)',
               }}
             />
-            <span className="relative">Solicitar acceso</span>
+            <span className="relative">Registrarme</span>
           </motion.a>
           <button
             type="button"

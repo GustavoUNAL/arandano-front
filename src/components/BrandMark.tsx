@@ -16,7 +16,7 @@ export function BrandMark({
       <div className="brand-mark__text">
         <span className="brand-mark__name" aria-label={BRAND_NAME}>
           <span className="brand-mark__vos">VOS </span>
-          <span className="brand-mark__ai">AI</span>
+          <span className="brand-mark__ia">IA</span>
         </span>
         {showTagline ? (
           <span className="brand-mark__tagline">{BRAND_TAGLINE}</span>

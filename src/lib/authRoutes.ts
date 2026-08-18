@@ -11,16 +11,21 @@ export const LANDING_HASH = '#/'
 export const LOGIN_HASH = '#/login'
 export const HEALTH_LOGIN_HASH = '#/health/login'
 export const ACCESS_REQUEST_HASH = '#/solicitar-acceso'
+export const REGISTER_HASH = '#/registro'
 export const PRIVACY_HASH = '#/privacidad'
 export const TERMS_HASH = '#/terminos'
 export const PLATFORM_HASH = '#/platform'
 export const SELECT_COMPANY_HASH = '#/elegir-empresa'
-/** @deprecated usar ACCESS_REQUEST_HASH */
-export const REGISTER_HASH = ACCESS_REQUEST_HASH
+export const GOOGLE_POPUP_HASH = '#/auth/google/popup'
+export const GOOGLE_SIGNUP_HASH = '#/registro-google'
+export const GOOGLE_AUTH_MESSAGE = 'vos-google-auth'
+export const GOOGLE_AUTH_STORAGE_KEY = 'vos_google_auth_result'
+export const GOOGLE_SIGNUP_STORAGE_KEY = 'vos_google_signup_token'
 
 export function getPublicHashPath(): string {
   const raw = (window.location.hash ?? '').replace(/^#/, '')
-  return raw.split('/').filter(Boolean)[0] ?? ''
+  const pathOnly = raw.split('?')[0] ?? ''
+  return pathOnly.split('/').filter(Boolean)[0] ?? ''
 }
 
 export function isLandingHash(): boolean {
@@ -33,14 +38,13 @@ export function isLoginHash(): boolean {
 }
 
 export function isHealthLoginHash(): boolean {
-  const raw = (window.location.hash ?? '').replace(/^#/, '')
+  const raw = (window.location.hash ?? '').replace(/^#/, '').split('?')[0] ?? ''
   const parts = raw.split('/').filter(Boolean)
   return parts[0] === 'health' && (parts[1] === 'login' || parts.length === 1)
 }
 
 export function isAccessRequestHash(): boolean {
-  const p = getPublicHashPath()
-  return p === 'solicitar-acceso' || p === 'registro'
+  return getPublicHashPath() === 'solicitar-acceso'
 }
 
 export function isPrivacyHash(): boolean {
@@ -63,9 +67,18 @@ export function isSelectCompanyHash(): boolean {
   return getPublicHashPath() === 'elegir-empresa'
 }
 
-/** @deprecated */
+export function isGooglePopupHash(): boolean {
+  const raw = (window.location.hash ?? '').replace(/^#/, '').split('?')[0] ?? ''
+  const parts = raw.split('/').filter(Boolean)
+  return parts[0] === 'auth' && parts[1] === 'google'
+}
+
+export function isGoogleSignupHash(): boolean {
+  return getPublicHashPath() === 'registro-google'
+}
+
 export function isRegisterHash(): boolean {
-  return isAccessRequestHash()
+  return getPublicHashPath() === 'registro'
 }
 
 export function navigateToLanding(replace = true): void {
@@ -100,8 +113,12 @@ export function navigateToSelectCompany(replace = true): void {
   setHash(SELECT_COMPANY_HASH, replace)
 }
 
+export function navigateToGoogleSignup(replace = true): void {
+  setHash(GOOGLE_SIGNUP_HASH, replace)
+}
+
 export function navigateToRegister(replace = true): void {
-  navigateToAccessRequest(replace)
+  setHash(REGISTER_HASH, replace)
 }
 
 export function navigateAfterLogin(user: AuthUser): void {
@@ -119,9 +136,13 @@ export function navigateAfterLogin(user: AuthUser): void {
 }
 
 function setHash(target: string, replace: boolean): void {
+  const current = window.location.hash ?? ''
   if (replace) {
     window.history.replaceState({}, '', target)
-  } else {
+    if (current !== target) {
+      window.dispatchEvent(new Event('hashchange'))
+    }
+  } else if (current !== target) {
     window.location.hash = target
   }
 }
@@ -145,12 +166,17 @@ export function getHealthLoginUrl(appBase?: string): string {
   return `${appBaseUrl(appBase)}${HEALTH_LOGIN_HASH}`
 }
 
-export function getAccessRequestUrl(appBase?: string): string {
-  return `${appBaseUrl(appBase)}${ACCESS_REQUEST_HASH}`
+export function getAccessRequestUrl(
+  appBase?: string,
+  plan?: 'free' | 'pro' | 'empresa',
+): string {
+  const base = `${appBaseUrl(appBase)}${ACCESS_REQUEST_HASH}`
+  if (plan === 'pro' || plan === 'empresa') return `${base}?plan=${plan}`
+  return base
 }
 
 export function getRegisterUrl(appBase?: string): string {
-  return getAccessRequestUrl(appBase)
+  return `${appBaseUrl(appBase)}${REGISTER_HASH}`
 }
 
 export function getLandingUrl(appBase?: string): string {
@@ -165,4 +191,121 @@ export function getPrivacyUrl(appBase?: string): string {
 
 export function getTermsUrl(appBase?: string): string {
   return `${appBaseUrl(appBase)}${TERMS_HASH}`
+}
+
+const GOOGLE_AUTH_MESSAGES: Record<string, string> = {
+  no_account:
+    'No hay una cuenta VOS IA con este email de Google. Registrate o solicitá acceso.',
+  inactive: 'Esta cuenta está inactiva.',
+  no_company: 'Tu usuario no tiene empresas activas.',
+  access_denied: 'Cancelaste el acceso con Google.',
+  not_configured: 'Inicio con Google no está configurado en el servidor.',
+  invalid_state: 'La sesión con Google expiró. Volvé a intentar.',
+  oauth_failed: 'No se pudo iniciar sesión con Google.',
+}
+
+export function googleAuthErrorMessage(code: string | null | undefined): string | null {
+  const key = (code ?? '').trim()
+  if (!key) return null
+  return GOOGLE_AUTH_MESSAGES[key] ?? GOOGLE_AUTH_MESSAGES.oauth_failed
+}
+
+export function consumeGoogleAuthHash(): {
+  token: string | null
+  signupToken: string | null
+  error: string | null
+} {
+  if (typeof window === 'undefined') {
+    return { token: null, signupToken: null, error: null }
+  }
+  const hash = window.location.hash ?? ''
+  const q = hash.indexOf('?')
+  if (q < 0) return { token: null, signupToken: null, error: null }
+  const path = hash.slice(0, q) || LOGIN_HASH
+  const params = new URLSearchParams(hash.slice(q + 1))
+  const token = params.get('google_token')
+  const signupToken = params.get('google_signup')
+  const error = params.get('google_error')
+  if (!token && !signupToken && !error) return { token: null, signupToken: null, error: null }
+  window.history.replaceState({}, '', path)
+  return { token, signupToken, error }
+}
+
+export type GoogleSignupProfile = {
+  email: string
+  name: string
+}
+
+export function decodeGoogleSignupToken(token: string): GoogleSignupProfile | null {
+  try {
+    const part = token.split('.')[1]
+    if (!part) return null
+    const padded =
+      part.replace(/-/g, '+').replace(/_/g, '/') +
+      '='.repeat((4 - (part.length % 4)) % 4)
+    const json = atob(padded)
+    const data = JSON.parse(json) as { t?: string; email?: string; name?: string }
+    if (data.t !== 'gs' || !data.email?.trim() || !data.name?.trim()) return null
+    return { email: data.email.trim().toLowerCase(), name: data.name.trim() }
+  } catch {
+    return null
+  }
+}
+
+export function storeGoogleSignupToken(token: string | null): void {
+  try {
+    if (!token?.trim()) window.sessionStorage.removeItem(GOOGLE_SIGNUP_STORAGE_KEY)
+    else window.sessionStorage.setItem(GOOGLE_SIGNUP_STORAGE_KEY, token.trim())
+  } catch {
+    /* ignore */
+  }
+}
+
+export function readGoogleSignupToken(): string | null {
+  try {
+    return window.sessionStorage.getItem(GOOGLE_SIGNUP_STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
+export type GoogleAuthPopupResult = {
+  type: typeof GOOGLE_AUTH_MESSAGE
+  token: string | null
+  signupToken: string | null
+  error: string | null
+}
+
+export function notifyGoogleAuthOpener(result: {
+  token: string | null
+  signupToken?: string | null
+  error: string | null
+}): void {
+  const payload: GoogleAuthPopupResult = {
+    type: GOOGLE_AUTH_MESSAGE,
+    token: result.token,
+    signupToken: result.signupToken ?? null,
+    error: result.error,
+  }
+  const origin = window.location.origin
+  try {
+    window.opener?.postMessage(payload, origin)
+  } catch {
+    /* ignore */
+  }
+  try {
+    const ch = new BroadcastChannel(GOOGLE_AUTH_MESSAGE)
+    ch.postMessage(payload)
+    ch.close()
+  } catch {
+    /* ignore */
+  }
+  try {
+    window.localStorage.setItem(
+      GOOGLE_AUTH_STORAGE_KEY,
+      JSON.stringify({ ...payload, at: Date.now() }),
+    )
+  } catch {
+    /* ignore */
+  }
 }

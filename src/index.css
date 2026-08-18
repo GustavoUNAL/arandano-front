@@ -1,36 +1,37 @@
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap');
 
-/* Tema Dracula (oficial) + acentos alineados al logo (naranja #ffb86c) */
-:root {
-  --text: #f8f8f2;
-  --heading: #f8f8f2;
-  --muted: #6272a4;
-  --surface: #282a36;
-  --surface-elevated: #32343f;
-  --border: #44475a;
-  --input-bg: #21222c;
-  --hover: #44475a;
-  --table-header: #3a3d4e;
-  --code-bg: #44475a;
-  --table-stripe: rgba(189, 147, 249, 0.07);
-  --header-border: rgba(139, 233, 253, 0.28);
-  --accent: #bd93f9;
-  --accent-soft: rgba(189, 147, 249, 0.2);
-  --accent-text: #e6d4ff;
-  --accent-border: rgba(189, 147, 249, 0.45);
-  --berry: #8be9fd;
-  --berry-light: #a8f0ff;
-  --berry-dark: #6bc4dc;
-  --berry-glow: rgba(139, 233, 253, 0.22);
-  --tan: #ffb86c;
-  --tan-soft: rgba(255, 184, 108, 0.16);
-  --olive: #50fa7b;
-  --shadow-soft: rgba(0, 0, 0, 0.35);
-  --danger: #ff5555;
-  --danger-soft: rgba(255, 85, 85, 0.14);
-  --danger-border: rgba(255, 85, 85, 0.45);
-  --warn: #ffb86c;
-  --warn-soft: rgba(255, 184, 108, 0.14);
+/* Oscuro — paleta Arándano (berry) para la app y el sitio */
+:root,
+html[data-theme='dark'] {
+  --text: #f4ecef;
+  --heading: #fff8fa;
+  --muted: #c4b0b6;
+  --surface: #161114;
+  --surface-elevated: #22181c;
+  --border: #3d2c32;
+  --input-bg: #1b1417;
+  --hover: #2c2126;
+  --table-header: #2a1f24;
+  --code-bg: #2c2126;
+  --table-stripe: rgba(139, 41, 66, 0.1);
+  --header-border: rgba(196, 90, 114, 0.38);
+  --accent: #8b2942;
+  --accent-soft: rgba(139, 41, 66, 0.28);
+  --accent-text: #f3c5d0;
+  --accent-border: rgba(196, 90, 114, 0.5);
+  --berry: #c45a72;
+  --berry-light: #e8a0b0;
+  --berry-dark: #8b2942;
+  --berry-glow: rgba(139, 41, 66, 0.42);
+  --tan: #e8c4a0;
+  --tan-soft: rgba(232, 196, 160, 0.16);
+  --olive: #9dcc9d;
+  --shadow-soft: rgba(0, 0, 0, 0.45);
+  --danger: #f07178;
+  --danger-soft: rgba(240, 113, 120, 0.16);
+  --danger-border: rgba(240, 113, 120, 0.42);
+  --warn: #e8c4a0;
+  --warn-soft: rgba(232, 196, 160, 0.14);
   --sans: 'DM Sans', system-ui, sans-serif;
   --mono: 'JetBrains Mono', ui-monospace, monospace;
 }

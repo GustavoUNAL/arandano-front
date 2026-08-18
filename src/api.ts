@@ -5,6 +5,7 @@ import { getWhatsAppUrl } from './lib/siteContact'
 const STORAGE_KEY = 'vos_api_base'
 const TOKEN_KEY = 'vos_access_token'
 const COMPANY_KEY = 'vos_company_id'
+const LAST_COMPANY_KEY = 'vos_last_company_id'
 
 export function getCompanyId(): string | null {
   if (typeof window === 'undefined') return null
@@ -16,13 +17,27 @@ export function getCompanyId(): string | null {
   }
 }
 
+/** Última empresa activa; sobrevive al logout para no perder el contexto al volver a entrar. */
+export function getLastCompanyId(): string | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const last = window.localStorage.getItem(LAST_COMPANY_KEY)?.trim()
+    if (last) return last
+  } catch {
+    /* ignore */
+  }
+  return getCompanyId()
+}
+
 export function setCompanyId(companyId: string | null): void {
   if (typeof window === 'undefined') return
   try {
     if (!companyId?.trim()) {
       window.localStorage.removeItem(COMPANY_KEY)
     } else {
-      window.localStorage.setItem(COMPANY_KEY, companyId.trim())
+      const id = companyId.trim()
+      window.localStorage.setItem(COMPANY_KEY, id)
+      window.localStorage.setItem(LAST_COMPANY_KEY, id)
     }
   } catch {
     /* ignore */
@@ -404,6 +419,8 @@ export type ApiErrorBody = {
   message?: string | string[]
   hint?: string
   path?: string
+  code?: string
+  usage?: CompanyUsage
 }
 
 /**
@@ -463,31 +480,34 @@ export async function apiFetch(
       window.dispatchEvent(new CustomEvent('auth:logout'))
     }
   }
-  if (auth && token && res.status === 403 && companyId) {
-    const msg = await res
+  if (auth && res.status === 403 && typeof window !== 'undefined') {
+    const body = (await res
       .clone()
       .json()
-      .then((body) => formatApiErrorFromBody(body, ''))
-      .catch(() => '')
-    if (
-      /Seleccioná una empresa|Sin acceso a esta empresa|Contexto de empresa|X-Company-Id/i.test(
-        msg,
-      ) &&
-      typeof window !== 'undefined'
-    ) {
-      const jwtCompany = companyIdFromAccessToken(token)
-      if (!jwtCompany || jwtCompany !== companyId) {
-        setCompanyId(jwtCompany)
+      .catch(() => null)) as ApiErrorBody | null
+    if (body?.code === 'TRIAL_LIMIT') {
+      window.dispatchEvent(new CustomEvent('vos:trial-limit', { detail: body }))
+    } else if (token && companyId) {
+      const msg = formatApiErrorFromBody(body, '')
+      if (
+        /Seleccioná una empresa|Sin acceso a esta empresa|Contexto de empresa|X-Company-Id/i.test(
+          msg,
+        )
+      ) {
+        const jwtCompany = companyIdFromAccessToken(token)
+        if (!jwtCompany || jwtCompany !== companyId) {
+          setCompanyId(jwtCompany)
+        }
+        window.dispatchEvent(
+          new CustomEvent('auth:tenant-denied', { detail: { message: msg } }),
+        )
       }
-      window.dispatchEvent(
-        new CustomEvent('auth:tenant-denied', { detail: { message: msg } }),
-      )
     }
   }
   return res
 }
 
-export type LoginPayload = { email: string; password: string }
+export type LoginPayload = { email: string; password: string; companyId?: string }
 export type CompanySummary = {
   id: string
   name: string
@@ -498,6 +518,21 @@ export type CompanySummary = {
 
 export type SystemSettings = {
   inaugurationDate: string | null
+}
+
+export type CompanyUsage = {
+  plan: 'TRIAL' | 'PRO' | 'BUSINESS'
+  storageUsedBytes: number
+  storageLimitBytes: number
+  percent: number
+  products: number
+  sales: number
+  purchases: number
+  inventory: number
+  appointments: number
+  overLimit: boolean
+  offerPro: boolean
+  limitLabel: string | null
 }
 
 export type AuthUser = {
@@ -513,6 +548,7 @@ export type AuthUser = {
   permissions?: string[]
   companies: CompanySummary[]
   systemSettings?: SystemSettings
+  usage?: CompanyUsage | null
 }
 
 export type LoginResponse = { accessToken: string; user: AuthUser }
@@ -535,7 +571,15 @@ export async function login(
     method: 'POST',
     auth: false,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      email: payload.email,
+      password: payload.password,
+      ...(payload.companyId?.trim()
+        ? { companyId: payload.companyId.trim() }
+        : getLastCompanyId()
+          ? { companyId: getLastCompanyId() }
+          : {}),
+    }),
   })
   if (!res.ok) throw new Error(await parseJsonError(res))
   const out = (await res.json()) as LoginResponse
@@ -549,6 +593,8 @@ export type RegisterPayload = {
   email: string
   password: string
   companyName: string
+  acceptTerms: boolean
+  acceptPrivacy: boolean
 }
 
 export async function submitAccessRequest(
@@ -559,6 +605,7 @@ export async function submitAccessRequest(
     email: string
     phone?: string
     message?: string
+    plan?: 'TRIAL' | 'PRO' | 'BUSINESS'
   },
 ): Promise<{ ok: boolean; message: string }> {
   const res = await apiFetch(`${base}/access-requests`, {
@@ -588,16 +635,20 @@ export async function register(
   return out
 }
 
-export async function loginWithGoogle(
+export async function completeGoogleSignup(
   base: string,
-  idToken: string,
-  companyName?: string,
+  payload: {
+    signupToken: string
+    companyName: string
+    acceptTerms: boolean
+    acceptPrivacy: boolean
+  },
 ): Promise<LoginResponse> {
-  const res = await apiFetch(`${base}/auth/google`, {
+  const res = await apiFetch(`${base}/auth/google/complete`, {
     method: 'POST',
     auth: false,
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ idToken, companyName }),
+    body: JSON.stringify(payload),
   })
   if (!res.ok) throw new Error(await parseJsonError(res))
   const out = (await res.json()) as LoginResponse
@@ -646,6 +697,28 @@ export async function enterPlatformCompany(
   return out
 }
 
+export async function restorePreferredCompany(
+  base: string,
+  user: AuthUser,
+  preferredCompanyId?: string | null,
+): Promise<AuthUser> {
+  const preferred = preferredCompanyId?.trim()
+  if (!preferred || user.companyId === preferred) return user
+  try {
+    if (user.isPlatformAdmin) {
+      const out = await enterPlatformCompany(base, preferred)
+      return out.user
+    }
+    if (user.companies?.some((c) => c.id === preferred)) {
+      const out = await switchCompany(base, preferred)
+      return out.user
+    }
+  } catch {
+    return user
+  }
+  return user
+}
+
 export async function exitToPlatformAdmin(base: string): Promise<LoginResponse> {
   const res = await apiFetch(`${base}/auth/platform/home`, { method: 'POST' })
   if (!res.ok) throw new Error(await parseJsonError(res))
@@ -681,6 +754,7 @@ export type PlatformOverview = {
   companyStats?: Array<{
     id: string
     name: string
+    plan?: 'TRIAL' | 'PRO' | 'BUSINESS'
     membersCount: number
     productsCount: number
     salesCount: number
@@ -689,12 +763,20 @@ export type PlatformOverview = {
   }>
 }
 
+export type PlatformModuleToggle = {
+  slug: string
+  name: string
+  enabled: boolean
+  core: boolean
+}
+
 export type PlatformCompanyRow = {
   id: string
   name: string
   slug: string
   shopSlug: string | null
   status: string
+  plan?: 'TRIAL' | 'PRO' | 'BUSINESS'
   email: string | null
   phone: string | null
   membersCount: number
@@ -723,6 +805,21 @@ export type PlatformCompanyDetail = PlatformCompanyRow & {
     status: string
     roles: string[]
   }>
+  allModules?: PlatformModuleToggle[]
+}
+
+export type PlatformUserCompany = {
+  id: string
+  name: string
+  slug: string
+  role: string
+  status: string
+  plan?: 'TRIAL' | 'PRO' | 'BUSINESS'
+  storageUsedBytes?: number
+  storageLimitBytes?: number
+  storageRemainingBytes?: number | null
+  usage?: CompanyUsage | null
+  modules?: PlatformModuleToggle[]
 }
 
 export type PlatformUserRow = {
@@ -732,12 +829,50 @@ export type PlatformUserRow = {
   active: boolean
   isPlatformAdmin: boolean
   createdAt: string
-  companies: Array<{
+  lastLoginAt?: string | null
+  lastActivityAt?: string | null
+  salesCount?: number
+  tasksCount?: number
+  cashClosesCount?: number
+  auditCount?: number
+  storageUsedBytes?: number
+  storageLimitBytes?: number
+  storageUnlimited?: boolean
+  companies: PlatformUserCompany[]
+}
+
+export type PlatformUserDetail = PlatformUserRow & {
+  recentSales: Array<{
     id: string
-    name: string
-    slug: string
-    role: string
+    code: string | null
+    total: number
+    saleDate: string
+    paymentMethod: string | null
+    companyName: string
+  }>
+  recentTasks: Array<{
+    id: string
+    title: string
+    taskDate: string
+    completed: boolean
+    createdAt: string
+    kind: 'created' | 'assigned' | 'created_assigned'
+    companyName: string
+  }>
+  recentLogs: Array<{
+    id: string
+    action: string
+    tableName: string
+    createdAt: string
+    companyName: string | null
+  }>
+  recentCashCloses: Array<{
+    id: string
+    closeDate: string
+    closedAt: string | null
     status: string
+    salesTotalCOP: number
+    companyName: string
   }>
 }
 
@@ -777,6 +912,73 @@ export async function fetchPlatformUsers(base: string): Promise<PlatformUserRow[
   const res = await apiFetch(`${base}/platform/users`)
   if (!res.ok) throw new Error(await parseJsonError(res))
   return (await res.json()) as PlatformUserRow[]
+}
+
+export async function fetchPlatformUserDetail(
+  base: string,
+  userId: string,
+): Promise<PlatformUserDetail> {
+  const res = await apiFetch(`${base}/platform/users/${encodeURIComponent(userId)}`)
+  if (!res.ok) throw new Error(await parseJsonError(res))
+  return (await res.json()) as PlatformUserDetail
+}
+
+export async function patchPlatformUser(
+  base: string,
+  userId: string,
+  body: { active?: boolean; name?: string; email?: string },
+): Promise<PlatformUserDetail> {
+  const res = await apiFetch(`${base}/platform/users/${encodeURIComponent(userId)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await parseJsonError(res))
+  return (await res.json()) as PlatformUserDetail
+}
+
+export async function deletePlatformUser(base: string, userId: string): Promise<void> {
+  const res = await apiFetch(`${base}/platform/users/${encodeURIComponent(userId)}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) throw new Error(await parseJsonError(res))
+}
+
+export async function patchPlatformCompanyModule(
+  base: string,
+  companyId: string,
+  slug: string,
+  enabled: boolean,
+): Promise<{ companyId: string; slug: string; enabled: boolean; modules: PlatformModuleToggle[] }> {
+  const res = await apiFetch(
+    `${base}/platform/companies/${encodeURIComponent(companyId)}/modules`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug, enabled }),
+    },
+  )
+  if (!res.ok) throw new Error(await parseJsonError(res))
+  return (await res.json()) as {
+    companyId: string
+    slug: string
+    enabled: boolean
+    modules: PlatformModuleToggle[]
+  }
+}
+
+export async function patchPlatformCompanyPlan(
+  base: string,
+  companyId: string,
+  plan: 'TRIAL' | 'PRO' | 'BUSINESS',
+): Promise<{ id: string; name: string; plan: 'TRIAL' | 'PRO' | 'BUSINESS' }> {
+  const res = await apiFetch(`${base}/platform/companies/${encodeURIComponent(companyId)}/plan`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ plan }),
+  })
+  if (!res.ok) throw new Error(await parseJsonError(res))
+  return (await res.json()) as { id: string; name: string; plan: 'TRIAL' | 'PRO' | 'BUSINESS' }
 }
 
 export async function fetchPlatformAccessRequests(
@@ -2283,6 +2485,92 @@ export async function deleteTask(
   id: string,
 ): Promise<{ ok: boolean }> {
   const res = await apiFetch(`${base}/tasks/${id}`, { method: 'DELETE' })
+  if (!res.ok) throw new Error(await parseJsonError(res))
+  return res.json() as Promise<{ ok: boolean }>
+}
+
+// ——— Service projects (El electricista) ———
+
+export type ServiceProjectStatus = 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+
+export type ServiceProject = {
+  id: string
+  name: string
+  address: string
+  description: string
+  chargedAmount: number
+  status: ServiceProjectStatus
+  notes?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type ServiceProjectsResponse = {
+  projects: ServiceProject[]
+  summary: {
+    total: number
+    inProgress: number
+    completed: number
+    chargedTotal: number
+  }
+}
+
+export async function fetchServiceProjects(
+  base: string,
+  status?: ServiceProjectStatus,
+): Promise<ServiceProjectsResponse> {
+  const q = status ? `?status=${encodeURIComponent(status)}` : ''
+  const res = await apiFetch(`${base}/projects${q}`)
+  if (!res.ok) throw new Error(await parseJsonError(res))
+  return res.json() as Promise<ServiceProjectsResponse>
+}
+
+export async function createServiceProject(
+  base: string,
+  body: {
+    name: string
+    address: string
+    description?: string
+    chargedAmount: number
+    status?: ServiceProjectStatus
+    notes?: string
+  },
+): Promise<ServiceProject> {
+  const res = await apiFetch(`${base}/projects`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await parseJsonError(res))
+  return res.json() as Promise<ServiceProject>
+}
+
+export async function updateServiceProject(
+  base: string,
+  id: string,
+  body: Partial<{
+    name: string
+    address: string
+    description: string
+    chargedAmount: number
+    status: ServiceProjectStatus
+    notes: string | null
+  }>,
+): Promise<ServiceProject> {
+  const res = await apiFetch(`${base}/projects/${id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) throw new Error(await parseJsonError(res))
+  return res.json() as Promise<ServiceProject>
+}
+
+export async function deleteServiceProject(
+  base: string,
+  id: string,
+): Promise<{ ok: boolean }> {
+  const res = await apiFetch(`${base}/projects/${id}`, { method: 'DELETE' })
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<{ ok: boolean }>
 }

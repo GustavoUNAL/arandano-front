@@ -58,8 +58,82 @@
   flex-wrap: wrap;
 }
 
-.app-banner {
-  padding: 0.65rem 1.25rem 0;
+.app-banner--trial {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.65rem;
+}
+
+.app-banner--trial-over {
+  color: #f3d2a4;
+}
+
+.trial-paywall {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 1.25rem;
+}
+
+.trial-paywall__backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(8, 6, 12, 0.72);
+  cursor: pointer;
+}
+
+.trial-paywall__card {
+  position: relative;
+  width: min(32rem, 100%);
+  padding: 1.4rem 1.35rem 1.2rem;
+  border-radius: 18px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  background: var(--surface-elevated, #1a1522);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.35);
+}
+
+.trial-paywall__kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted, #9a8fa8);
+}
+
+.trial-paywall__card h2 {
+  margin: 0 0 0.6rem;
+  font-size: 1.35rem;
+}
+
+.trial-paywall__card p {
+  margin: 0 0 0.85rem;
+  color: var(--muted, #c9c1d4);
+  line-height: 1.45;
+}
+
+.trial-paywall__usage {
+  margin: 0 0 1rem;
+  padding-left: 1.1rem;
+  color: var(--muted, #c9c1d4);
+}
+
+.trial-paywall__hint {
+  margin: 0 0 0.85rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--muted, #c9c1d4);
+}
+
+.trial-paywall__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
 }
 
 .app-banner--api-down {
@@ -609,6 +683,10 @@
   --nav-accent: #14b8a6;
 }
 
+.app-nav-group--booking {
+  --nav-accent: #8b2942;
+}
+
 .app-nav-group--active {
   background: color-mix(in srgb, var(--nav-accent, var(--accent)) 7%, transparent);
   border-color: color-mix(in srgb, var(--nav-accent, var(--border)) 28%, var(--border));
@@ -891,8 +969,16 @@
   --launcher-accent: #8b5cf6;
 }
 
+.app-launcher-tile--projects {
+  --launcher-accent: #f59e0b;
+}
+
 .app-launcher-tile--staff {
   --launcher-accent: #14b8a6;
+}
+
+.app-launcher-tile--booking {
+  --launcher-accent: #8b2942;
 }
 
 .home-dashboard .app-launcher {
@@ -1634,8 +1720,8 @@
   font-weight: 700;
 }
 
-.brand-mark__ai {
-  background: linear-gradient(135deg, #b07cff 0%, #6e9fff 55%, #5ce0c8 100%);
+.brand-mark__ia {
+  background: linear-gradient(135deg, var(--berry-light) 0%, var(--berry) 48%, var(--tan) 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;

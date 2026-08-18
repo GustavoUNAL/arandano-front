@@ -1,10 +1,15 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { fetchMe, login, setAccessToken, type AuthUser } from '../api'
-import { getLandingUrl, getRegisterUrl, navigateToGoogleSignup, storeGoogleSignupToken } from '../lib/authRoutes'
+import { fetchMe, register, setAccessToken, type AuthUser } from '../api'
+import { BRAND_NAME } from '../lib/brand'
+import {
+  getLandingUrl,
+  getLoginUrl,
+  navigateToGoogleSignup,
+  storeGoogleSignupToken,
+} from '../lib/authRoutes'
 import { BrandMark } from './BrandMark'
-import { BRAND_LOGIN_TITLE } from '../lib/brand'
 import { GoogleSignInButton } from './GoogleSignInButton'
-import { LandingSalesChat } from './landing/LandingSalesChat'
+import { PublicLegalConsent } from './PublicLegalConsent'
 import { PublicThemeSwitch } from './PublicThemeSwitch'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
@@ -14,42 +19,54 @@ import '../public-shell.css'
 
 type Props = {
   baseUrl: string
-  onLogin: (user: AuthUser) => void
-  initialMessage?: string | null
+  onCreated: (user: AuthUser) => void
 }
 
-export function LoginView({ baseUrl, onLogin, initialMessage }: Props) {
+export function RegisterView({ baseUrl, onCreated }: Props) {
+  const [companyName, setCompanyName] = useState('')
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [acceptTerms, setAcceptTerms] = useState(false)
+  const [acceptPrivacy, setAcceptPrivacy] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { theme, toggleTheme } = usePublicTheme()
 
   useEffect(() => {
-    document.title = BRAND_LOGIN_TITLE
-    try {
-      window.sessionStorage.removeItem('vos_portal')
-    } catch {
-      /* ignore */
-    }
+    document.title = `Crear cuenta · ${BRAND_NAME}`
   }, [])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (submitting) return
-    const trimmedEmail = email.trim()
-    if (!trimmedEmail || !password) {
-      setError('Ingresá email y contraseña.')
+    if (!companyName.trim() || !name.trim() || !email.trim() || !password) {
+      setError('Completá empresa, nombre, email y contraseña.')
+      return
+    }
+    if (password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres.')
+      return
+    }
+    if (!acceptTerms || !acceptPrivacy) {
+      setError('Para continuar, aceptá los términos y el tratamiento de datos.')
       return
     }
     setError(null)
     setSubmitting(true)
     try {
-      const res = await login(baseUrl, { email: trimmedEmail, password })
-      onLogin(res.user)
+      const res = await register(baseUrl, {
+        name: name.trim(),
+        email: email.trim(),
+        password,
+        companyName: companyName.trim(),
+        acceptTerms,
+        acceptPrivacy,
+      })
+      onCreated(res.user)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo iniciar sesión.')
+      setError(err instanceof Error ? err.message : 'No se pudo crear la cuenta.')
     } finally {
       setSubmitting(false)
     }
@@ -61,7 +78,7 @@ export function LoginView({ baseUrl, onLogin, initialMessage }: Props) {
     try {
       setAccessToken(token)
       const user = await fetchMe(baseUrl)
-      onLogin(user)
+      onCreated(user)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo iniciar sesión.')
     } finally {
@@ -70,7 +87,7 @@ export function LoginView({ baseUrl, onLogin, initialMessage }: Props) {
   }
 
   return (
-    <div className="public-shell public-auth public-auth--simple">
+    <div className="public-shell public-auth google-signup">
       <div className="public-shell__grid-bg" aria-hidden />
       <a className="public-btn public-btn--ghost public-auth__back" href={getLandingUrl()}>
         ← Volver
@@ -83,19 +100,32 @@ export function LoginView({ baseUrl, onLogin, initialMessage }: Props) {
       />
 
       <div className="public-auth__layout">
-        <div className="public-auth__form-wrap">
-          <form className="public-auth__form" onSubmit={handleSubmit}>
-            <header className="public-auth__head">
-              <BrandMark size="sm" />
-              <h1 className="public-auth__title">Iniciar sesión</h1>
-              <p className="public-auth__subtitle">Entrá al panel de tu negocio.</p>
-            </header>
+        <aside className="public-auth__visual">
+          <BrandMark size="md" showTagline />
+          <div>
+            <h2>Creá tu espacio en {BRAND_NAME}</h2>
+            <p>
+              Registrate con Google o con el formulario. En ambos casos aceptás el tratamiento
+              de datos de tu negocio antes de activar el panel.
+            </p>
+          </div>
+          <ul className="public-auth__bullets">
+            <li>Entrá al panel en el momento</li>
+            <li>Datos aislados por empresa</li>
+            <li>Tratamiento según Ley 1581 de 2012</li>
+            <li>Sin vender información a terceros</li>
+          </ul>
+        </aside>
 
-            {initialMessage ? (
-              <div className="vos-alert vos-alert--error" role="alert">
-                {initialMessage}
-              </div>
-            ) : null}
+        <div className="public-auth__form-wrap">
+          <form className="public-auth__form google-signup__form" onSubmit={handleSubmit}>
+            <header className="public-auth__head">
+              <p className="google-signup__kicker">Registro</p>
+              <h1 className="public-auth__title">Crear tu cuenta</h1>
+              <p className="public-auth__subtitle">
+                Elegí Google o completá tus datos. El espacio queda listo para operar.
+              </p>
+            </header>
 
             <GoogleSignInButton
               returnTo="login"
@@ -107,12 +137,33 @@ export function LoginView({ baseUrl, onLogin, initialMessage }: Props) {
               }}
               onError={(msg) => setError(msg)}
             />
-            <p className="public-auth__legal-note">
-              Si es la primera vez con Google, te vamos a pedir el nombre de tu empresa y la
-              autorización del tratamiento de datos.
-            </p>
 
             <p className="public-auth__or">o con tu email</p>
+
+            <Label>
+              <span>Nombre de la empresa</span>
+              <Input
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                autoComplete="organization"
+                required
+                autoFocus
+                disabled={submitting}
+                placeholder="Ej. Café Central"
+              />
+            </Label>
+
+            <Label>
+              <span>Tu nombre</span>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoComplete="name"
+                required
+                disabled={submitting}
+                placeholder="María García"
+              />
+            </Label>
 
             <Label>
               <span>Email</span>
@@ -122,7 +173,6 @@ export function LoginView({ baseUrl, onLogin, initialMessage }: Props) {
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="username"
                 required
-                autoFocus
                 disabled={submitting}
                 placeholder="tu@empresa.com"
               />
@@ -135,10 +185,11 @@ export function LoginView({ baseUrl, onLogin, initialMessage }: Props) {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   required
+                  minLength={8}
                   disabled={submitting}
-                  placeholder="••••••••"
+                  placeholder="Mínimo 8 caracteres"
                 />
                 <button
                   type="button"
@@ -151,28 +202,31 @@ export function LoginView({ baseUrl, onLogin, initialMessage }: Props) {
               </div>
             </Label>
 
+            <PublicLegalConsent
+              identity="email"
+              acceptTerms={acceptTerms}
+              acceptPrivacy={acceptPrivacy}
+              disabled={submitting}
+              onAcceptTerms={setAcceptTerms}
+              onAcceptPrivacy={setAcceptPrivacy}
+            />
+
             {error ? (
               <div className="vos-alert vos-alert--error" role="alert">
                 {error}
-                <p className="public-auth__error-hint">
-                  Si aún no tenés cuenta,{' '}
-                  <a href={getRegisterUrl()}>registrate acá</a>.
-                </p>
               </div>
             ) : null}
 
             <Button type="submit" size="lg" block disabled={submitting}>
-              {submitting ? 'Ingresando…' : 'Iniciar sesión'}
+              {submitting ? 'Creando cuenta…' : 'Crear mi cuenta'}
             </Button>
 
             <p className="public-auth__footer-link">
-              ¿Todavía no tenés acceso?{' '}
-              <a href={getRegisterUrl()}>Registrarme</a>
+              ¿Ya tenés acceso? <a href={getLoginUrl()}>Iniciar sesión</a>
             </p>
           </form>
         </div>
       </div>
-      <LandingSalesChat />
     </div>
   )
 }
