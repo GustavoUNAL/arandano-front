@@ -37,7 +37,7 @@
     --mv-gap: 0.55rem;
     --mv-gap-lg: 0.75rem;
     --mv-pad-x: max(0.65rem, env(safe-area-inset-left, 0px));
-    --mv-pad-bottom: calc(4.35rem + env(safe-area-inset-bottom, 0px));
+    --mv-pad-bottom: calc(4.35rem + max(16px, env(safe-area-inset-bottom, 0px)));
     --mv-card-radius: 14px;
     --mv-card-pad: 0.72rem 0.8rem;
     --mv-card-border: 1px solid color-mix(in srgb, var(--border) 84%, transparent);

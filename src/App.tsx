@@ -15,6 +15,7 @@ import {
   type CompanyUsage,
 } from './api'
 import { inaugurationDateForUser } from './config/systemSettings'
+import { setThemeColor, themeColorForScheme } from './lib/themeColor'
 import { ProductsManager } from './components/ProductsManager'
 import { ShopAdminView } from './components/ShopAdminView'
 import { StaffManager } from './components/StaffManager'
@@ -230,6 +231,7 @@ export default function App() {
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
+    setThemeColor(themeColorForScheme(theme))
     try {
       window.localStorage.setItem('vos_theme', theme)
     } catch {

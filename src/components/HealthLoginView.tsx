@@ -146,11 +146,12 @@ export function HealthLoginView({ baseUrl, onLogin, initialMessage }: Props) {
               <span>Email profesional</span>
               <Input
                 type="email"
+                inputMode="email"
+                enterKeyHint="next"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="username"
                 required
-                autoFocus
                 disabled={submitting}
                 placeholder="dra@clinic.com"
               />

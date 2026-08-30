@@ -118,11 +118,12 @@ export function LoginView({ baseUrl, onLogin, initialMessage }: Props) {
               <span>Email</span>
               <Input
                 type="email"
+                inputMode="email"
+                enterKeyHint="next"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 autoComplete="username"
                 required
-                autoFocus
                 disabled={submitting}
                 placeholder="tu@empresa.com"
               />

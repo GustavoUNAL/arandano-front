@@ -1,6 +1,7 @@
 import { useEffect, useState, type MouseEvent } from 'react'
 import { useLandingScrollReveal } from '../hooks/useLandingScrollReveal'
 import { BRAND_NAME, BRAND_TAGLINE } from '../lib/brand'
+import { setThemeColor } from '../lib/themeColor'
 import { SiteFooter } from './SiteFooter'
 import { getLoginUrl, getRegisterUrl } from '../lib/authRoutes'
 import { BrandMark } from './BrandMark'
@@ -112,13 +113,17 @@ export function LandingView({
     const root = document.documentElement
     const prevTheme = root.dataset.theme
     const prevShell = root.dataset.shell
+    const prevThemeColor =
+      document.querySelector('meta[name="theme-color"]')?.getAttribute('content') ?? null
     root.dataset.shell = 'public'
     root.dataset.theme = 'light'
+    setThemeColor('#f6f6f4')
     return () => {
       if (prevShell) root.dataset.shell = prevShell
       else delete root.dataset.shell
       if (prevTheme) root.dataset.theme = prevTheme
       else delete root.dataset.theme
+      setThemeColor(prevThemeColor ?? '#161114')
     }
   }, [])
 
