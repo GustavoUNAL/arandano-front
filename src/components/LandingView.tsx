@@ -181,8 +181,11 @@ export function LandingView({
               <MenuIcon />
             </button>
             <div className="attio-nav__cta">
+              <a className="attio-btn attio-btn--outline" href={loginUrl} onClick={handleLogin}>
+                Iniciar sesión
+              </a>
               <a className="attio-btn attio-btn--primary" href={registerUrl} onClick={handleAccess}>
-                Empieza gratis
+                Registrarse
               </a>
             </div>
           </nav>
@@ -192,11 +195,11 @@ export function LandingView({
                 {link.label}
               </a>
             ))}
-            <a href={registerUrl} onClick={(e) => { closeMenu(); handleAccess(e) }}>
-              Empieza gratis
-            </a>
             <a href={loginUrl} onClick={(e) => { closeMenu(); handleLogin(e) }}>
               Iniciar sesión
+            </a>
+            <a href={registerUrl} onClick={(e) => { closeMenu(); handleAccess(e) }}>
+              Registrarse
             </a>
           </div>
         </div>
@@ -222,7 +225,10 @@ export function LandingView({
               </p>
               <div className="attio-hero__cta">
                 <a className="attio-btn attio-btn--primary" href={registerUrl} onClick={handleAccess}>
-                  Empieza gratis
+                  Registrarse
+                </a>
+                <a className="attio-btn attio-btn--outline" href={loginUrl} onClick={handleLogin}>
+                  Iniciar sesión
                 </a>
               </div>
             </header>
@@ -413,7 +419,7 @@ export function LandingView({
           href={registerUrl}
           onClick={handleAccess}
         >
-          Empieza gratis
+          Registrarse
         </a>
         <a className="landing-mobile-cta__ghost" href={loginUrl} onClick={handleLogin}>
           Iniciar sesión

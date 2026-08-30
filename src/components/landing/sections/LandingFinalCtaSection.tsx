@@ -18,7 +18,7 @@ export function LandingFinalCtaSection({ accessUrl, onAccess, onDemo }: Props) {
             </h2>
             <div className="attio-cta-final__actions">
               <a className="attio-btn attio-btn--primary" href={accessUrl} onClick={onAccess}>
-                Empieza gratis
+                Registrarse
               </a>
               <button type="button" className="attio-btn attio-btn--outline" onClick={onDemo}>
                 Ver demostración

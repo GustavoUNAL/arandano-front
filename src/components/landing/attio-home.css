@@ -236,7 +236,18 @@ html:has(.attio-home) #root {
 }
 
 .attio-nav__cta {
-  display: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.4rem;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.attio-nav__cta .attio-btn {
+  min-height: 2.5rem;
+  padding: 0.5rem 0.7rem;
+  font-size: 0.82rem;
 }
 
 .attio-nav__menu {
@@ -258,9 +269,14 @@ html:has(.attio-home) #root {
 }
 
 @media (min-width: 1024px) {
-  .attio-nav__links,
-  .attio-nav__cta {
+  .attio-nav__links {
     display: flex;
+  }
+
+  .attio-nav__cta .attio-btn {
+    min-height: 2.25rem;
+    padding: 0 0.85rem;
+    font-size: 0.875rem;
   }
 
   .attio-nav__menu {
@@ -437,6 +453,9 @@ html:has(.attio-home) #root {
 }
 
 .attio-hero__cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
   margin-top: 1.5rem;
 }
 
