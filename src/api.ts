@@ -1668,6 +1668,7 @@ export type InventoryRow = {
   supplier?: string | null
   lot?: string | null
   minStock?: string | number | null
+  behavior?: 'CONSUMABLE' | 'CAPITAL_ASSET'
   category: { id: string; name: string; type: string }
   /**
    * Lote de compra enlazado por FK (`inventory.lot` → `purchase_lots.code`).
@@ -1700,6 +1701,7 @@ export type CreateInventoryPayload = {
   supplier?: string
   lot?: string
   minStock?: number
+  behavior?: 'CONSUMABLE' | 'CAPITAL_ASSET'
 }
 
 export type UpdateInventoryPayload = Partial<CreateInventoryPayload> & {
@@ -1789,6 +1791,7 @@ export async function fetchInventoryItems(
     belowMinimum?: boolean
     /** Filtro por código de lote (coincidencia según backend). */
     lot?: string
+    behavior?: 'CONSUMABLE' | 'CAPITAL_ASSET'
     signal?: AbortSignal
   },
 ): Promise<InventoryListResponse> {
@@ -1803,6 +1806,9 @@ export async function fetchInventoryItems(
   }
   if (opts.belowMinimum === true) q.set('belowMinimum', 'true')
   if (opts.lot?.trim()) q.set('lot', opts.lot.trim())
+  if (opts.behavior === 'CONSUMABLE' || opts.behavior === 'CAPITAL_ASSET') {
+    q.set('behavior', opts.behavior)
+  }
   const res = await apiFetch(`${base}/inventory?${q}`, { signal: opts.signal })
   if (!res.ok) throw new Error(await parseJsonError(res))
   return res.json() as Promise<InventoryListResponse>
@@ -3352,6 +3358,7 @@ export type StaffMemberRow = {
   phone?: string | null
   email?: string | null
   idNumber?: string | null
+  userId?: string | null
   defaultHourlyRate: string
   active: boolean
   notes?: string | null

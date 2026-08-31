@@ -790,7 +790,7 @@ export default function App() {
               />
             )}
           {PLATFORM_MODE && view === 'staff' && (
-            <StaffManager baseUrl={baseUrl} />
+            <StaffManager baseUrl={baseUrl} user={user} />
           )}
           {PLATFORM_MODE && view === 'tasks' && canViewTasks(user) && (
             <TasksView baseUrl={baseUrl} user={user} />

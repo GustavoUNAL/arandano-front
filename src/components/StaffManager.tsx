@@ -17,6 +17,8 @@ import {
   type StaffSummary,
 } from '../api'
 import { ViewBootSplash } from './DataLoadingSplash'
+import type { AuthUser } from '../api'
+import { canManageAllStaff } from '../lib/permissions'
 
 function formatCOP(value: string | number | null | undefined): string {
   const n =
@@ -151,7 +153,13 @@ function emptyShiftDraft(members: StaffMemberRow[]): ShiftDraft {
   }
 }
 
-export function StaffManager({ baseUrl }: { baseUrl: string }) {
+export function StaffManager({
+  baseUrl,
+  user,
+}: {
+  baseUrl: string
+  user?: AuthUser | null
+}) {
   const { rowClass, panelClass, runPanelRemove, flashSaved } = useEntityActionAnimation()
   const [tab, setTab] = useState<Tab>('shifts')
   const [loading, setLoading] = useState(true)
@@ -172,6 +180,23 @@ export function StaffManager({ baseUrl }: { baseUrl: string }) {
   const [shiftSaving, setShiftSaving] = useState(false)
   const [periodYm, setPeriodYm] = useState(currentPeriodYm)
   const autoPeriodSteps = useRef(0)
+  const manageAll = canManageAllStaff(user)
+
+  const selfMember = useMemo(() => {
+    if (manageAll) return null
+    if (!user) return members[0] ?? null
+    return (
+      members.find((m) => m.userId && m.userId === user.sub) ||
+      members.find(
+        (m) => m.email?.trim().toLowerCase() === user.email.trim().toLowerCase(),
+      ) ||
+      members.find(
+        (m) => m.name.trim().toLowerCase() === user.name.trim().toLowerCase(),
+      ) ||
+      members[0] ||
+      null
+    )
+  }, [manageAll, members, user])
 
   const period = useMemo(() => periodRange(periodYm), [periodYm])
   const periodLabel = useMemo(() => formatPeriodLabel(periodYm), [periodYm])
@@ -203,6 +228,16 @@ export function StaffManager({ baseUrl }: { baseUrl: string }) {
   useEffect(() => {
     void load()
   }, [load])
+
+  useEffect(() => {
+    if (!manageAll && tab === 'people') setTab('shifts')
+  }, [manageAll, tab])
+
+  useEffect(() => {
+    if (!manageAll && selfMember && filterMemberId !== selfMember.id) {
+      setFilterMemberId(selfMember.id)
+    }
+  }, [manageAll, selfMember, filterMemberId])
 
   useEffect(() => {
     if (loading || tab !== 'shifts' || autoPeriodSteps.current >= 6) return
@@ -283,7 +318,12 @@ export function StaffManager({ baseUrl }: { baseUrl: string }) {
 
   const openCreateShift = () => {
     setEditingShiftId(null)
-    setShiftDraft(emptyShiftDraft(members))
+    const draft = emptyShiftDraft(members)
+    if (!manageAll && selfMember) {
+      draft.staffMemberId = selfMember.id
+      draft.hourlyRate = selfMember.defaultHourlyRate
+    }
+    setShiftDraft(draft)
     setShiftModalOpen(true)
   }
 
@@ -387,9 +427,12 @@ export function StaffManager({ baseUrl }: { baseUrl: string }) {
         <div>
           <h1 className="staff-manager__title">Personal</h1>
           <p className="muted staff-manager__lead">
-            Turnos de atención: registra horas trabajadas y tarifa por hora para calcular el pago.
+            {manageAll
+              ? 'Turnos de atención: registra horas trabajadas y tarifa por hora para calcular el pago.'
+              : 'Registrá solo tus turnos: entrada, salida y notas. No ves los turnos de otras personas.'}
           </p>
         </div>
+        {manageAll ? (
         <div className="view-toggle module-view-toggle" role="tablist" aria-label="Vista personal">
           <button
             type="button"
@@ -410,6 +453,7 @@ export function StaffManager({ baseUrl }: { baseUrl: string }) {
             Personas
           </button>
         </div>
+        ) : null}
       </header>
 
       {error && (
@@ -520,8 +564,9 @@ export function StaffManager({ baseUrl }: { baseUrl: string }) {
       ) : (
         <section className="staff-manager__panel">
           <div className="staff-manager__panel-head">
-            <h2>Turnos · {periodLabel}</h2>
+            <h2>{manageAll ? `Turnos · ${periodLabel}` : `Mis turnos · ${periodLabel}`}</h2>
             <div className="staff-manager__panel-actions">
+              {manageAll ? (
               <label className="inventory-filter">
                 <span className="inventory-filter__label">Persona</span>
                 <select
@@ -537,6 +582,7 @@ export function StaffManager({ baseUrl }: { baseUrl: string }) {
                   ))}
                 </select>
               </label>
+              ) : null}
               <button type="button" className="btn-primary btn-compact" onClick={openCreateShift}>
                 + Turno
               </button>
@@ -596,7 +642,7 @@ export function StaffManager({ baseUrl }: { baseUrl: string }) {
                             Cerrar
                           </button>
                         )}
-                        {s.status === 'CLOSED' && (
+                        {s.status === 'CLOSED' && manageAll && (
                           <button
                             type="button"
                             className="btn-secondary btn-compact"
@@ -756,7 +802,7 @@ export function StaffManager({ baseUrl }: { baseUrl: string }) {
                 <span>Persona</span>
                 <select
                   value={shiftDraft.staffMemberId}
-                  disabled={Boolean(editingShiftId)}
+                  disabled={!manageAll || Boolean(editingShiftId)}
                   onChange={(e) => {
                     const id = e.target.value
                     const m = members.find((x) => x.id === id)
@@ -840,7 +886,7 @@ export function StaffManager({ baseUrl }: { baseUrl: string }) {
                 >
                   <option value="OPEN">En curso</option>
                   <option value="CLOSED">Cerrado</option>
-                  <option value="PAID">Pagado</option>
+                  {manageAll ? <option value="PAID">Pagado</option> : null}
                 </select>
               </label>
               {previewShift && (
@@ -859,7 +905,7 @@ export function StaffManager({ baseUrl }: { baseUrl: string }) {
               </label>
             </div>
             <footer className="modal-foot modal-foot--config">
-              {editingShiftId && (
+              {editingShiftId && manageAll && (
                 <button
                   type="button"
                   className="btn-secondary"

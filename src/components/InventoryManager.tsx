@@ -31,7 +31,7 @@ import { FloatingGearFab, FloatingGearFabDockAdd } from './FloatingGearFab'
 import { SectionSummaryDeck } from './SectionSummaryDeck'
 import { type SectionSummaryItem } from './SectionSummaryBar'
 
-const LIMIT = 18
+const LIMIT = 50
 
 function paginationDots(current: number, total: number): number[] {
   if (total <= 1) return []
@@ -57,6 +57,11 @@ function inventoryCategoryLabel(name: string | null | undefined): string {
 }
 
 type AvailabilityFilter = '' | 'available' | 'depleted'
+type BehaviorFilter = '' | 'CONSUMABLE' | 'CAPITAL_ASSET'
+
+function inventoryTypeLabel(behavior?: string | null): string {
+  return behavior === 'CAPITAL_ASSET' ? 'Activo' : 'Insumo'
+}
 
 function num(v: string | number | null | undefined): number {
   const n = parseFloat(String(v ?? '').replace(',', '.'))
@@ -152,6 +157,7 @@ type Draft = {
   lot: string
   minStock: string
   traceModifiedLocal: string
+  behavior: 'CONSUMABLE' | 'CAPITAL_ASSET'
 }
 
 function emptyDraft(cats: CategoryRef[]): Draft {
@@ -165,6 +171,7 @@ function emptyDraft(cats: CategoryRef[]): Draft {
     lot: '',
     minStock: '',
     traceModifiedLocal: '',
+    behavior: 'CONSUMABLE',
   }
 }
 
@@ -179,6 +186,7 @@ function rowToDraft(r: InventoryRow): Draft {
     lot: r.lot ?? '',
     minStock: r.minStock != null ? String(r.minStock) : '',
     traceModifiedLocal: isoInstantToDatetimeLocalValue(r.traceModifiedAt),
+    behavior: r.behavior === 'CAPITAL_ASSET' ? 'CAPITAL_ASSET' : 'CONSUMABLE',
   }
 }
 
@@ -203,6 +211,11 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
   const [filterCategoryId, setFilterCategoryId] = useState('')
   const [filterAvailability, setFilterAvailability] =
     useState<AvailabilityFilter>('')
+  const [filterBehavior, setFilterBehavior] = useState<BehaviorFilter>('')
+  const [nameFilter, setNameFilter] = useState('')
+  const [nameFilterDebounced, setNameFilterDebounced] = useState('')
+  const [qtyEdits, setQtyEdits] = useState<Record<string, string>>({})
+  const [rowSavingId, setRowSavingId] = useState<string | null>(null)
   const [showStats, setShowStats] = useState(false)
   const [lotFilter, setLotFilter] = useState('')
   const [lotFilterDebounced, setLotFilterDebounced] = useState('')
@@ -266,8 +279,13 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
   }, [lotFilter])
 
   useEffect(() => {
+    const t = window.setTimeout(() => setNameFilterDebounced(nameFilter), 320)
+    return () => window.clearTimeout(t)
+  }, [nameFilter])
+
+  useEffect(() => {
     setPage(1)
-  }, [filterCategoryId, filterAvailability, lotFilterDebounced])
+  }, [filterCategoryId, filterAvailability, filterBehavior, lotFilterDebounced, nameFilterDebounced])
 
   const inventoryListQuery = useMemo(
     () => ({
@@ -278,8 +296,20 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
           ? filterAvailability
           : undefined,
       lot: lotFilterDebounced.trim() || undefined,
+      search: nameFilterDebounced.trim() || undefined,
+      behavior:
+        filterBehavior === 'CONSUMABLE' || filterBehavior === 'CAPITAL_ASSET'
+          ? filterBehavior
+          : undefined,
     }),
-    [filterCategoryId, filterAvailability, lotFilterDebounced, showStats],
+    [
+      filterCategoryId,
+      filterAvailability,
+      lotFilterDebounced,
+      showStats,
+      nameFilterDebounced,
+      filterBehavior,
+    ],
   )
 
   useEffect(() => {
@@ -411,6 +441,7 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
           supplier: draft.supplier.trim() || undefined,
           lot: draft.lot.trim() || undefined,
           minStock,
+          behavior: draft.behavior,
         })
       } else if (selectedId) {
         await updateInventoryItem(baseUrl, selectedId, {
@@ -422,6 +453,7 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
           supplier: draft.supplier.trim() || undefined,
           lot: draft.lot.trim() || undefined,
           minStock,
+          behavior: draft.behavior,
           traceModifiedAt: datetimeLocalValueToIsoUtcOrNull(
             draft.traceModifiedLocal,
           ),
@@ -583,20 +615,69 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
       filterCategoryId !== '' ||
       lotFilter.trim() !== '' ||
       filterAvailability !== '' ||
+      filterBehavior !== '' ||
+      nameFilter.trim() !== '' ||
       showStats,
-    [filterCategoryId, lotFilter, filterAvailability, showStats],
+    [
+      filterCategoryId,
+      lotFilter,
+      filterAvailability,
+      filterBehavior,
+      nameFilter,
+      showStats,
+    ],
   )
 
   const lotFilterInputRef = useRef<HTMLInputElement>(null)
+
+  const patchInventoryRow = useCallback(
+    async (
+      row: InventoryRow,
+      patch: { quantity?: number; behavior?: 'CONSUMABLE' | 'CAPITAL_ASSET' },
+    ) => {
+      setRowSavingId(row.id)
+      setListError(null)
+      try {
+        const updated = await updateInventoryItem(baseUrl, row.id, patch)
+        setList((prev) =>
+          prev.map((item) =>
+            item.id === row.id
+              ? {
+                  ...item,
+                  quantity: updated.quantity,
+                  behavior: updated.behavior ?? patch.behavior ?? item.behavior,
+                }
+              : item,
+          ),
+        )
+        setQtyEdits((prev) => {
+          const next = { ...prev }
+          delete next[row.id]
+          return next
+        })
+        flashSaved(row.id)
+      } catch (e) {
+        setListError((e as Error).message)
+      } finally {
+        setRowSavingId(null)
+      }
+    },
+    [baseUrl, flashSaved],
+  )
 
   return (
     <div className="products-layout">
       <div className="products-list-pane page-pane--floating-gear-dock">
         <div className="page-intro">
-          <h2 className="page-title">Productos</h2>
+          <h2 className="page-title">Inventario</h2>
           {inventorySubtitle ? (
             <p className="muted page-subtitle">{inventorySubtitle}</p>
-          ) : null}
+          ) : (
+            <p className="muted page-subtitle">
+              Tabla para actualizar stock y tipo. Las fotos de cada ítem se podrán
+              adjuntar más adelante.
+            </p>
+          )}
         </div>
 
         <MobileAwareFilterBar
@@ -620,6 +701,32 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
         >
         <div className="inventory-filter-bar">
           <div className="inventory-filter-bar__controls" role="search">
+            <label className="inventory-filter">
+              <span className="inventory-filter__label">Buscar</span>
+              <input
+                className="inventory-filter__input"
+                type="search"
+                placeholder="Insumo…"
+                value={nameFilter}
+                onChange={(e) => setNameFilter(e.target.value)}
+                aria-label="Buscar por nombre"
+              />
+            </label>
+            <label className="inventory-filter">
+              <span className="inventory-filter__label">Tipo</span>
+              <select
+                className="inventory-filter__input"
+                value={filterBehavior}
+                onChange={(e) =>
+                  setFilterBehavior(e.target.value as BehaviorFilter)
+                }
+                aria-label="Filtrar por tipo"
+              >
+                <option value="">Todos</option>
+                <option value="CONSUMABLE">Insumo</option>
+                <option value="CAPITAL_ASSET">Activo</option>
+              </select>
+            </label>
             <label className="inventory-filter">
               <span className="inventory-filter__label">Categoría</span>
               <select
@@ -684,6 +791,8 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                 setFilterCategoryId('')
                 setFilterAvailability('')
                 setLotFilter('')
+                setFilterBehavior('')
+                setNameFilter('')
               }}
             >
               Limpiar
@@ -757,6 +866,7 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
               <thead>
                 <tr>
                   <th>Insumo</th>
+                  <th>Tipo</th>
                   <th>Categoría</th>
                   <th>Lote</th>
                   <th>Fecha compra</th>
@@ -802,6 +912,29 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                           {r.name}
                         </button>
                       </td>
+                      <td>
+                        <select
+                          className="inventory-type-select"
+                          aria-label={`Tipo de ${r.name}`}
+                          title={inventoryTypeLabel(r.behavior)}
+                          disabled={rowSavingId === r.id}
+                          value={
+                            r.behavior === 'CAPITAL_ASSET'
+                              ? 'CAPITAL_ASSET'
+                              : 'CONSUMABLE'
+                          }
+                          onChange={(e) => {
+                            const next = e.target.value as
+                              | 'CONSUMABLE'
+                              | 'CAPITAL_ASSET'
+                            if (next === (r.behavior ?? 'CONSUMABLE')) return
+                            void patchInventoryRow(r, { behavior: next })
+                          }}
+                        >
+                          <option value="CONSUMABLE">Insumo</option>
+                          <option value="CAPITAL_ASSET">Activo</option>
+                        </select>
+                      </td>
                       <td className="muted" title={r.category?.name}>
                         {inventoryCategoryLabel(r.category?.name)}
                       </td>
@@ -833,7 +966,44 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                       <td className="muted">
                         {whereBought || '—'}
                       </td>
-                      <td className="num mono">{String(r.quantity)}</td>
+                      <td className="num">
+                        <input
+                          className="inventory-qty-input mono"
+                          inputMode="decimal"
+                          aria-label={`Cantidad de ${r.name}`}
+                          disabled={rowSavingId === r.id}
+                          value={qtyEdits[r.id] ?? String(r.quantity)}
+                          onChange={(e) =>
+                            setQtyEdits((prev) => ({
+                              ...prev,
+                              [r.id]: e.target.value,
+                            }))
+                          }
+                          onBlur={() => {
+                            const raw = (qtyEdits[r.id] ?? String(r.quantity))
+                              .replace(',', '.')
+                              .trim()
+                            const n = parseFloat(raw)
+                            if (!Number.isFinite(n) || n < 0) {
+                              setQtyEdits((prev) => {
+                                const next = { ...prev }
+                                delete next[r.id]
+                                return next
+                              })
+                              return
+                            }
+                            if (n === num(r.quantity)) {
+                              setQtyEdits((prev) => {
+                                const next = { ...prev }
+                                delete next[r.id]
+                                return next
+                              })
+                              return
+                            }
+                            void patchInventoryRow(r, { quantity: n })
+                          }}
+                        />
+                      </td>
                       <td>{r.unit}</td>
                       <td className="num mono">{formatCOP(r.unitCost)}</td>
                       <td className="num mono">
@@ -955,6 +1125,22 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                     {inventoryCategoryLabel(c.name)}
                   </option>
                 ))}
+              </select>
+            </label>
+
+            <label className="field">
+              <span>Tipo</span>
+              <select
+                value={draft.behavior}
+                onChange={(e) =>
+                  setDraft({
+                    ...draft,
+                    behavior: e.target.value as Draft['behavior'],
+                  })
+                }
+              >
+                <option value="CONSUMABLE">Insumo (se consume)</option>
+                <option value="CAPITAL_ASSET">Activo (equipo / utensilio)</option>
               </select>
             </label>
 

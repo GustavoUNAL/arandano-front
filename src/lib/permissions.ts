@@ -103,7 +103,37 @@ export function canAccessView(
   }
   const mod = VIEW_MODULE[view]
   if (mod == null) return true
-  return hasCompanyModule(user, mod)
+  if (!hasCompanyModule(user, mod)) return false
+  if (
+    user.role === 'owner' ||
+    user.role === 'manager' ||
+    user.role === 'admin' ||
+    user.isPlatformAdmin
+  ) {
+    return true
+  }
+  const perm = VIEW_PERMISSION[view]
+  if (!perm) return true
+  return hasPermission(user, perm)
+}
+
+/** Permiso .view exigido a roles que no son owner/manager. */
+export const VIEW_PERMISSION: Record<string, string> = {
+  products: 'products.view',
+  recipes: 'products.view',
+  inventory: 'inventory.view',
+  sales: 'sales.view',
+  pos: 'sales.view',
+  shop: 'sales.view',
+  'cash-close': 'sales.view',
+  purchases: 'purchases.view',
+  staff: 'staff.view',
+}
+
+export function canManageAllStaff(user: AuthUser | null | undefined): boolean {
+  if (!user) return false
+  if (hasPermission(user, 'staff.manage')) return true
+  return user.role === 'owner' || user.role === 'manager' || user.role === 'admin'
 }
 
 export function hasBookingModule(user: AuthUser | null | undefined): boolean {
