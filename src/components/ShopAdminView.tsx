@@ -7,6 +7,9 @@ import {
 import { openPublicShop } from '../shop/shopApi'
 import { BRAND_NAME } from '../lib/brand'
 import { ViewBootSplash } from './DataLoadingSplash'
+import { useFirstName } from '../hooks/useSessionUser'
+import { namedCopy } from '../lib/userIdentity'
+import { mobileViewClass } from './mobile/mobileView'
 
 type Props = {
   baseUrl: string
@@ -30,6 +33,7 @@ function copyText(text: string): Promise<void> {
 }
 
 export function ShopAdminView({ baseUrl, onOpenProducts, onOpenPos }: Props) {
+  const first = useFirstName()
   const [settings, setSettings] = useState<ShopSettings | null>(null)
   const [slugDraft, setSlugDraft] = useState('')
   const [loading, setLoading] = useState(true)
@@ -92,13 +96,18 @@ export function ShopAdminView({ baseUrl, onOpenProducts, onOpenPos }: Props) {
   const previewUrl = settings?.catalogUrlHash ?? null
 
   return (
-    <div className="shop-admin">
+    <div className={mobileViewClass('shop', 'shop-admin')}>
       <header className="shop-admin__hero">
         <p className="shop-admin__eyebrow muted small">{BRAND_NAME} · Tienda en línea</p>
-        <h1 className="shop-admin__title">Tienda por empresa</h1>
+        <h1 className="shop-admin__title">
+          {namedCopy(first, 'Su tienda, {name}', 'Tienda por empresa')}
+        </h1>
         <p className="shop-admin__subtitle muted">
-          Configurá la URL pública de la tienda de <strong>tu empresa</strong> en {BRAND_NAME}.
-          Los pedidos llegan al punto de venta en <strong>Pedidos web</strong>.
+          {namedCopy(
+            first,
+            '{name}, configure la URL pública de la tienda. Los pedidos llegan al punto de venta.',
+            `Configure la URL pública de la tienda de su empresa en ${BRAND_NAME}. Los pedidos llegan al punto de venta.`,
+          )}
         </p>
       </header>
 

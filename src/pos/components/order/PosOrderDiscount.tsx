@@ -102,7 +102,7 @@ export function PosOrderDiscount({
           disabled={disabled || needsReason}
           aria-expanded
           aria-label="Contraer descuento"
-          title={needsReason ? 'Completá el motivo o poné el monto en 0' : 'Contraer'}
+          title={needsReason ? 'Complete el motivo o ponga el monto en 0' : 'Contraer'}
           onClick={handleToggle}
         >
           <span className="pos-order-discount__label">Descuento</span>

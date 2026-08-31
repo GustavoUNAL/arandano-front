@@ -490,7 +490,7 @@ export async function apiFetch(
     } else if (token && companyId) {
       const msg = formatApiErrorFromBody(body, '')
       if (
-        /Seleccioná una empresa|Sin acceso a esta empresa|Contexto de empresa|X-Company-Id/i.test(
+        /Seleccione una empresa|Seleccioná una empresa|Sin acceso a esta empresa|Contexto de empresa|X-Company-Id/i.test(
           msg,
         )
       ) {
@@ -2678,7 +2678,7 @@ export async function fetchPlatformShopOrders(
 export async function updatePlatformShopOrderStatus(
   base: string,
   id: string,
-  status: 'PREPARING' | 'DELIVERED',
+  status: 'PREPARING' | 'DELIVERED' | 'CANCELLED' | 'PAID',
 ): Promise<PlatformShopOrder> {
   const res = await apiFetch(`${base}/shop-orders/${id}/status`, {
     method: 'PATCH',

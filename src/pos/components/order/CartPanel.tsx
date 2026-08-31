@@ -49,7 +49,7 @@ export function CartPanel({
 
       <ul className="pos-cart__lines">
         {lines.length === 0 ? (
-          <li className="pos-cart__empty muted">Tocá un producto para agregar</li>
+          <li className="pos-cart__empty muted">Toque un producto para agregar</li>
         ) : (
           lines.map((line) => (
             <li key={line.id} className="pos-cart-line">

@@ -49,7 +49,7 @@ export function usePosCheckout(baseUrl: string) {
     const reason = discountReason.trim()
 
     if (!staff) {
-      return { ok: false, reason: 'staff', message: 'Elegí quién atendió.' }
+      return { ok: false, reason: 'staff', message: 'Seleccione quién atendió.' }
     }
     if (discount > 0 && !reason) {
       return {

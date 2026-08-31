@@ -132,7 +132,7 @@ export function PaymentView({ baseUrl }: Props) {
   const confirmPay = async () => {
     const staff = attendedBy ?? DEFAULT_POS_STAFF
     if (!staff) {
-      setFieldError('Elegí quién atendió la orden.')
+      setFieldError('Seleccione quién atendió la orden.')
       return
     }
     const phone = customerPhone.trim()

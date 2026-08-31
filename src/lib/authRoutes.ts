@@ -200,7 +200,7 @@ const GOOGLE_AUTH_MESSAGES: Record<string, string> = {
   no_company: 'Tu usuario no tiene empresas activas.',
   access_denied: 'Cancelaste el acceso con Google.',
   not_configured: 'Inicio con Google no está configurado en el servidor.',
-  invalid_state: 'La sesión con Google expiró. Volvé a intentar.',
+  invalid_state: 'La sesión con Google expiró. Vuelva a intentar.',
   oauth_failed: 'No se pudo iniciar sesión con Google.',
 }
 

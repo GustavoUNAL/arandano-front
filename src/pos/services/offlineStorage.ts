@@ -308,7 +308,7 @@ export const localPosApi = {
       payload.number !== current.number &&
       (current.status === 'occupied' || current.status === 'closing')
     ) {
-      throw new Error('No podés cambiar el número con la mesa en uso')
+      throw new Error('No puede cambiar el número con la mesa en uso')
     }
     if (
       payload.number != null &&

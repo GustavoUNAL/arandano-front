@@ -3,6 +3,7 @@ import { fetchMe, login, setAccessToken, type AuthUser } from '../api'
 import { getLandingUrl, getRegisterUrl, navigateToGoogleSignup, storeGoogleSignupToken } from '../lib/authRoutes'
 import { BrandMark } from './BrandMark'
 import { BRAND_LOGIN_TITLE } from '../lib/brand'
+import { readRememberedFirstName } from '../lib/userIdentity'
 import { GoogleSignInButton } from './GoogleSignInButton'
 import { LandingSalesChat } from './landing/LandingSalesChat'
 import { PublicThemeSwitch } from './PublicThemeSwitch'
@@ -24,6 +25,7 @@ export function LoginView({ baseUrl, onLogin, initialMessage }: Props) {
   const [showPassword, setShowPassword] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const rememberedName = readRememberedFirstName()
   const { theme, toggleTheme } = usePublicTheme()
 
   useEffect(() => {
@@ -87,8 +89,14 @@ export function LoginView({ baseUrl, onLogin, initialMessage }: Props) {
           <form className="public-auth__form" onSubmit={handleSubmit}>
             <header className="public-auth__head">
               <BrandMark size="sm" />
-              <h1 className="public-auth__title">Iniciar sesión</h1>
-              <p className="public-auth__subtitle">Entrá al panel de tu negocio.</p>
+              <h1 className="public-auth__title">
+                {rememberedName ? `Hola de nuevo, ${rememberedName}` : 'Iniciar sesión'}
+              </h1>
+              <p className="public-auth__subtitle">
+                {rememberedName
+                  ? 'Ingrese de nuevo al panel de su negocio.'
+                  : 'Ingrese al panel de su negocio.'}
+              </p>
             </header>
 
             {initialMessage ? (

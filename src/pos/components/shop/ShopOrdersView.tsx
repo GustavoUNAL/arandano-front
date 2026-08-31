@@ -157,6 +157,21 @@ export function ShopOrdersView({ baseUrl, onBack }: Props) {
                   Cobrar y facturar
                 </button>
               ) : null}
+              {o.status === 'PENDING' || o.status === 'PREPARING' || o.status === 'DELIVERED' ? (
+                <button
+                  type="button"
+                  className="pos-btn pos-btn--ghost"
+                  disabled={busyId === o.id}
+                  onClick={() => {
+                    if (!window.confirm(`¿Cancelar el pedido ${o.orderCode}?`)) return
+                    void run(o.id, async () => {
+                      await updatePlatformShopOrderStatus(baseUrl, o.id, 'CANCELLED')
+                    })
+                  }}
+                >
+                  Cancelar
+                </button>
+              ) : null}
             </div>
           </li>
         ))}

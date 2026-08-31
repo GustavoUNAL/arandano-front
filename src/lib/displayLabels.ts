@@ -23,7 +23,9 @@ export function displayUserRole(role: string | null | undefined): string {
   const normalized = role.replace(/\bdemo\b/gi, '').trim()
   const slug = normalized.toLowerCase()
   if (slug === 'owner' || slug === 'propietario') return 'Propietario'
-  if (slug === 'member' || slug === 'miembro') return 'Miembro'
+  if (slug === 'member' || slug === 'miembro') return 'Equipo'
   if (slug === 'admin') return 'Administrador'
+  if (slug === 'crew') return 'Operación'
+  if (slug === 'manager') return 'Gerencia'
   return normalized
 }

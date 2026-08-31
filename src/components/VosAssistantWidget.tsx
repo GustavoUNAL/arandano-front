@@ -8,6 +8,7 @@ import {
 } from 'react'
 import { askBusinessAssistant, type AssistantHistoryItem } from '../api'
 import { BRAND_NAME } from '../lib/brand'
+import { useFirstName } from '../hooks/useSessionUser'
 import { useMobileChatKeyboard } from '../hooks/useMobileChatKeyboard'
 import './VosAssistantWidget.css'
 
@@ -56,7 +57,7 @@ const WELCOME_SUGGESTIONS: SuggestionItem[] = [
     icon: '🚨',
     label: 'Alertas hoy',
     prompt:
-      '¿Qué riesgos ves hoy en stock, pedidos web o tareas pendientes?',
+      '¿Qué riesgos ve hoy en stock, pedidos web o tareas pendientes?',
   },
 ]
 
@@ -95,12 +96,15 @@ const FOLLOW_UP_SUGGESTIONS: SuggestionItem[] = [
     icon: '✨',
     label: 'Oportunidad',
     prompt:
-      '¿Qué oportunidad de crecimiento ves en mi negocio con los números de ahora?',
+      '¿Qué oportunidad de crecimiento ve en mi negocio con los números de ahora?',
   },
 ]
 
-const FALLBACK_WELCOME =
-  `¡Hola! Soy **${BRAND_NAME}**, tu gerente digital.\n\nPuedo contarte ventas en vivo, inventario, compras, personal, pedidos web y tareas del día.\n\n¿Qué querés revisar?`
+function fallbackWelcome(name?: string) {
+  const first = name?.trim()
+  const hello = first ? `¡Hola, **${first}**!` : '¡Hola!'
+  return `${hello} Soy **${BRAND_NAME}**, su gerente digital.\n\nPuedo contarle ventas en vivo, inventario, compras, personal, pedidos web y tareas del día.\n\n¿En qué puedo ayudarle?`
+}
 
 function RobotIcon() {
   return (
@@ -368,6 +372,7 @@ export function VosAssistantWidget({
   const [inputFocused, setInputFocused] = useState(false)
   const [suggestionsVisible, setSuggestionsVisible] = useState(false)
   const [suggestionWave, setSuggestionWave] = useState(0)
+  const first = useFirstName()
   const isAnimating = messages.some((m) => m.animate)
   const conversationStarted = messages.some((m) => m.role === 'user')
   const suggestionItems = conversationStarted ? FOLLOW_UP_SUGGESTIONS : WELCOME_SUGGESTIONS
@@ -398,14 +403,14 @@ export function VosAssistantWidget({
         {
           id: 'welcome',
           role: 'assistant',
-          text: FALLBACK_WELCOME,
+          text: fallbackWelcome(first),
           animate: true,
         },
       ])
     } finally {
       setGreetingBusy(false)
     }
-  }, [baseUrl])
+  }, [baseUrl, first])
 
   useEffect(() => {
     if (!open) {

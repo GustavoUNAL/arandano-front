@@ -782,7 +782,7 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
                     </ul>
                   </>
                 ) : (
-                  <p>Seleccioná una empresa.</p>
+                  <p>Seleccione una empresa.</p>
                 )}
               </div>
             </section>
@@ -1045,7 +1045,7 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
                     )}
                   </>
                 ) : (
-                  <p>Seleccioná un usuario.</p>
+                  <p>Seleccione un usuario.</p>
                 )}
               </div>
             </section>
@@ -1055,7 +1055,7 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
             <section className="platform-admin__panel">
               <h1>Solicitudes y planes</h1>
               <p className="platform-admin__hint">
-                Acá llegan los registros y los pedidos de Pro o Empresa. Te avisamos también por Telegram
+                Aquí llegan los registros y los pedidos de Pro o Empresa. También le avisamos por Telegram
                 si el bot está vinculado.
               </p>
               <div className="platform-admin__table-wrap">

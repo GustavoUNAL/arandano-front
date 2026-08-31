@@ -26,7 +26,7 @@ export const PRIVACY_PAGE: LegalPageContent = {
       title: '1. Responsable del tratamiento',
       paragraphs: [
         `${BRAND_NAME} es el responsable del tratamiento de los datos personales que nos proporcionás al usar el sitio web, solicitar acceso o utilizar la plataforma.`,
-        `Para consultas sobre privacidad podés escribir a ${SITE_EMAIL}.`,
+        `Para consultas sobre privacidad puede escribir a ${SITE_EMAIL}.`,
       ],
     },
     {

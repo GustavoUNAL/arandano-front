@@ -5,6 +5,7 @@ import { PLATFORM_MODE, SALES_FLOOR_ONLY } from '../appScope'
 import { canAccessView } from '../lib/permissions'
 import { BRAND_NAME } from '../lib/brand'
 import { displayCompanyName } from '../lib/displayLabels'
+import { greetUser, namedCopy } from '../lib/userIdentity'
 import { navigateToSelectCompany } from '../lib/authRoutes'
 import { userNeedsCompanyPicker } from '../lib/companySelect'
 import { cn } from '../lib/utils'
@@ -235,7 +236,8 @@ export function MobileAppChrome({
   const brandLine = companyLabel
     ? `${BRAND_NAME} · ${companyLabel}`
     : BRAND_NAME
-  const headerTitle = isHomeScreen ? brandLine : SCREEN_TITLE[view]
+  const homeTitle = user?.name ? greetUser(user.name) : brandLine
+  const headerTitle = isHomeScreen ? homeTitle : SCREEN_TITLE[view]
 
   useEffect(() => {
     if (!sheetOpen) return
@@ -431,7 +433,7 @@ export function MobileAppChrome({
           >
             <header className="vos-sheet__head">
               <h2 id="mobile-sheet-title" className="vos-sheet__title">
-                {companyLabel || 'Menú'}
+            {namedCopy(user?.name, 'Hola, {name}', companyLabel || 'Menú')}
               </h2>
               <Button
                 type="button"

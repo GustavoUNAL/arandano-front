@@ -29,10 +29,7 @@
   font-weight: 750;
   letter-spacing: -0.03em;
   line-height: 1.1;
-  background: linear-gradient(110deg, var(--heading) 12%, var(--berry-light) 52%, var(--accent) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--heading);
 }
 
 .health-login__lead {

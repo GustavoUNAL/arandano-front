@@ -58,7 +58,7 @@ export function TableCloseConfirmModal({
               {hasTotal ? (
                 <>
                   La cuenta tiene un total de <strong>{formatCOP(table.totalCOP)}</strong>.
-                  ¿Qué querés hacer?
+                  ¿Qué desea hacer?
                 </>
               ) : (
                 <>¿Querés liberar la mesa o ir al cobro?</>

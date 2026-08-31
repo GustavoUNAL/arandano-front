@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useMatchMedia } from './hooks/useMatchMedia'
+import { SessionUserContext } from './hooks/useSessionUser'
+import { rememberSignedInName, firstName } from './lib/userIdentity'
+import { displayCompanyName } from './lib/displayLabels'
+import { BRAND_NAME } from './lib/brand'
 import { AccessRequestView } from './components/AccessRequestView'
 import { PlatformAdminView } from './components/PlatformAdminView'
 import {
@@ -15,7 +19,12 @@ import {
   type CompanyUsage,
 } from './api'
 import { inaugurationDateForUser } from './config/systemSettings'
-import { setThemeColor, themeColorForScheme } from './lib/themeColor'
+import {
+  persistTheme,
+  readStoredTheme,
+  setThemeColor,
+  themeColorForScheme,
+} from './lib/themeColor'
 import { ProductsManager } from './components/ProductsManager'
 import { ShopAdminView } from './components/ShopAdminView'
 import { StaffManager } from './components/StaffManager'
@@ -58,6 +67,7 @@ import {
 import { DesktopAppHeader } from './components/DesktopAppHeader'
 import { OdooHomeScreen } from './components/OdooHomeScreen'
 import { VosAssistantWidget } from './components/VosAssistantWidget'
+import { SessionWelcome } from './components/SessionWelcome'
 import {
   setPendingPurchasesDate,
   setPendingSalesDate,
@@ -165,14 +175,7 @@ export default function App() {
       return SALES_FLOOR_ONLY ? SALES_FLOOR_DEFAULT_VIEW : 'menu'
     }
   })
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    try {
-      const t = window.localStorage.getItem('vos_theme')
-      return t === 'light' ? 'light' : 'dark'
-    } catch {
-      return 'dark'
-    }
-  })
+  const [theme, setTheme] = useState<'dark' | 'light'>(readStoredTheme)
 
   const [user, setUser] = useState<AuthUser | null>(null)
   const [authError, setAuthError] = useState<string | null>(
@@ -189,6 +192,16 @@ export default function App() {
   const [assistantOpen, setAssistantOpen] = useState(false)
   const [trialPaywallOpen, setTrialPaywallOpen] = useState(false)
   const [trialPaywallUsage, setTrialPaywallUsage] = useState<CompanyUsage | null>(null)
+
+  useEffect(() => {
+    if (!user) return
+    rememberSignedInName(user.name)
+    const first = firstName(user.name)
+    const company = displayCompanyName(user.companyName)
+    document.title = first
+      ? `${first} · ${company || BRAND_NAME}`
+      : company || BRAND_NAME
+  }, [user])
 
   useEffect(() => {
     if (!user) return
@@ -232,11 +245,7 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = theme
     setThemeColor(themeColorForScheme(theme))
-    try {
-      window.localStorage.setItem('vos_theme', theme)
-    } catch {
-      /* ignore */
-    }
+    persistTheme(theme)
   }, [theme])
 
   useEffect(() => {
@@ -306,7 +315,7 @@ export default function App() {
       const msg = detail?.message?.trim()
       setAuthError(
         msg ||
-          'Sin acceso a esta empresa. Volvé a iniciar sesión o elegí la empresa desde el panel admin.',
+          'Sin acceso a esta empresa. Vuelva a iniciar sesión o seleccione la empresa desde el panel de administración.',
       )
       if (user?.isPlatformAdmin) {
         void exitToPlatformAdmin(baseUrl)
@@ -610,7 +619,8 @@ export default function App() {
             </button>
           </div>
         ) : null}
-        <DentalClinicApp
+        <SessionUserContext.Provider value={user}>
+          <DentalClinicApp
           user={user}
           baseUrl={baseUrl}
           view={dentalView}
@@ -627,11 +637,13 @@ export default function App() {
           inventorySlot={<InventoryManager baseUrl={baseUrl} />}
           analyticsSlot={<FinanceAnalyticsView baseUrl={baseUrl} />}
         />
+        </SessionUserContext.Provider>
       </>
     )
   }
 
   return (
+    <SessionUserContext.Provider value={user}>
     <div
       className={`app-shell${isMobileNav ? ' app-shell--mobile-dock' : ' app-shell--desktop-header'}${!isMobileNav && isOdooHomeView(view) ? ' app-shell--odoo-home' : ''}`}
     >
@@ -644,6 +656,7 @@ export default function App() {
         </div>
       )}
       {trialChrome}
+      <SessionWelcome user={user} />
       {user.isPlatformAdmin && !user.platformView ? (
         <div className="app-banner app-banner--platform" role="status">
           <span>
@@ -840,5 +853,6 @@ export default function App() {
         />
       ) : null}
     </div>
+    </SessionUserContext.Provider>
   )
 }

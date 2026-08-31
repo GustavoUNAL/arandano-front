@@ -18,10 +18,13 @@ import { TableEditModal } from './TableEditModal'
 import { useShopOrdersFeed } from '../../hooks/useShopOrdersFeed'
 import { PosShopOrderToast } from '../shop/PosShopOrderToast'
 import { PosPaymentSuccess } from '../payment/PosPaymentSuccess'
+import { useFirstName } from '../../../hooks/useSessionUser'
+import { namedCopy } from '../../../lib/userIdentity'
 
 type Props = { baseUrl: string }
 
 export function TablesDashboard({ baseUrl }: Props) {
+  const first = useFirstName()
   const { state, navigate, setCheckoutSuccess } = usePosStore()
   const {
     tables,
@@ -110,7 +113,9 @@ export function TablesDashboard({ baseUrl }: Props) {
       ) : (
         <header className="pos-topbar">
           <div>
-            <h1 className="pos-topbar__title">Mesas</h1>
+            <h1 className="pos-topbar__title">
+              {namedCopy(first, 'Sus mesas, {name}', 'Mesas')}
+            </h1>
             <p className="pos-topbar__sub muted">
               {tables.length} mesa{tables.length === 1 ? '' : 's'}
               {occupied > 0 && ` · ${occupied} ocupada${occupied === 1 ? '' : 's'}`}
@@ -178,7 +183,7 @@ export function TablesDashboard({ baseUrl }: Props) {
       ) : tables.length === 0 ? (
         <PosEmpty
           title="No hay mesas configuradas"
-          hint="Creá la primera mesa con el botón + Mesa"
+          hint="Cree la primera mesa con el botón + Mesa"
           action={
             <button
               type="button"
@@ -209,7 +214,7 @@ export function TablesDashboard({ baseUrl }: Props) {
           ))}
         </div>
           <p className="pos-tables-hint muted small">
-            Tocá el nombre para renombrar · <strong>+ Mesa</strong> si necesitás otra
+            Toque el nombre para renombrar · <strong>+ Mesa</strong> si necesita otra
           </p>
         </>
       )}

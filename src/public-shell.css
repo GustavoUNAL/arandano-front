@@ -27,7 +27,7 @@ html[data-shell='public'] #root {
     radial-gradient(ellipse 90% 60% at 0% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 50%),
     radial-gradient(ellipse 70% 50% at 100% 10%, color-mix(in srgb, var(--berry) 16%, transparent), transparent 48%),
     radial-gradient(ellipse 80% 55% at 50% 100%, color-mix(in srgb, var(--tan) 8%, transparent), transparent 52%),
-    var(--surface, #161114);
+    var(--surface, #f6f6f4);
   font-family: var(--sans);
   isolation: isolate;
 }

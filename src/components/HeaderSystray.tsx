@@ -10,7 +10,8 @@ import {
 import type { AuthUser } from '../api'
 import { buildHeaderNotifications } from '../lib/headerNotifications'
 import { ThemeSwitch } from './ThemeSwitch'
-import { UserProfileCard } from './UserProfileCard'
+import { ProfilePopup } from './ProfilePopup'
+import { firstName } from '../lib/userIdentity'
 
 type SystrayPanelId = 'notifications' | 'settings' | 'profile'
 
@@ -80,6 +81,7 @@ export function HeaderSystray({
     [backendDown, onRetryApi],
   )
   const notificationCount = notifications.length
+  const hello = firstName(user.name)
 
   const closePanel = useCallback(() => setOpenPanel(null), [])
 
@@ -89,6 +91,7 @@ export function HeaderSystray({
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
+      if (openPanel === 'profile') return
       if (!rootRef.current?.contains(e.target as Node)) closePanel()
     }
     const onKey = (e: KeyboardEvent) => {
@@ -100,7 +103,7 @@ export function HeaderSystray({
       document.removeEventListener('mousedown', onDoc)
       document.removeEventListener('keydown', onKey)
     }
-  }, [closePanel])
+  }, [closePanel, openPanel])
 
   return (
     <div
@@ -213,29 +216,29 @@ export function HeaderSystray({
           className={`header-systray__btn header-systray__btn--profile${openPanel === 'profile' ? ' header-systray__btn--active' : ''}`}
           aria-expanded={openPanel === 'profile'}
           aria-controls="header-systray-profile"
-          title="Mi perfil"
+          title={hello ? `Perfil de ${hello}` : 'Mi perfil'}
           onClick={() => togglePanel('profile')}
         >
           <span className="header-systray__avatar" aria-hidden>
             {userInitials(user.name)}
           </span>
+          {hello ? <span className="header-systray__hello">{hello}</span> : null}
           <User className="header-systray__icon header-systray__icon--profile-fallback" strokeWidth={2} aria-hidden />
-          <span className="sr-only">Perfil</span>
+          <span className="sr-only">Perfil de {user.name}</span>
         </button>
-        {openPanel === 'profile' ? (
-          <SystrayPanel id="header-systray-profile" title="Mi cuenta">
-            <UserProfileCard
-              user={user}
-              baseUrl={baseUrl}
-              onSwitchCompany={onSwitchCompany}
-              onLogout={() => {
-                closePanel()
-                onLogout()
-              }}
-            />
-          </SystrayPanel>
-        ) : null}
       </div>
+      {openPanel === 'profile' ? (
+        <ProfilePopup
+          user={user}
+          baseUrl={baseUrl}
+          onClose={closePanel}
+          onSwitchCompany={onSwitchCompany}
+          onLogout={() => {
+            closePanel()
+            onLogout()
+          }}
+        />
+      ) : null}
     </div>
   )
 }

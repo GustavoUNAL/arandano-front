@@ -594,7 +594,7 @@
 }
 
 .app-sidebar__icon-btn--home {
-  --rail-accent: var(--berry, #8b2942);
+  --rail-accent: var(--accent);
 }
 
 .app-nav-home .app-nav-list button.active {
@@ -684,7 +684,7 @@
 }
 
 .app-nav-group--booking {
-  --nav-accent: #8b2942;
+  --nav-accent: #1c1d1f;
 }
 
 .app-nav-group--active {
@@ -825,7 +825,7 @@
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 
@@ -978,7 +978,7 @@
 }
 
 .app-launcher-tile--booking {
-  --launcher-accent: #8b2942;
+  --launcher-accent: #1c1d1f;
 }
 
 .home-dashboard .app-launcher {
@@ -1598,13 +1598,13 @@
   padding: 0.55rem 1rem;
   border: none;
   border-radius: 10px;
-  background: linear-gradient(180deg, var(--berry), var(--berry-dark));
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-text);
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
   font-family: var(--sans);
-  box-shadow: 0 2px 8px var(--berry-glow);
+  box-shadow: 0 1px 2px var(--shadow-soft);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -1712,19 +1712,36 @@
 }
 
 .brand-mark__vos {
-  color: var(--heading, #f4f0f8);
+  color: var(--heading);
 }
 
 .brand-mark__dot {
-  color: var(--muted, #9a8fa8);
+  color: var(--muted);
   font-weight: 700;
 }
 
 .brand-mark__ia {
-  background: linear-gradient(135deg, var(--berry-light) 0%, var(--berry) 48%, var(--tan) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--tan);
+  font-weight: 800;
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+}
+
+html[data-theme='dark'] .brand-mark__vos {
+  color: #f6f6f4;
+}
+
+html[data-theme='dark'] .brand-mark__ia {
+  color: #e8c4a0;
+}
+
+html[data-theme='light'] .brand-mark__vos {
+  color: #1c1d1f;
+}
+
+html[data-theme='light'] .brand-mark__ia {
+  color: #c2410c;
 }
 
 .brand-mark__tagline {
@@ -1785,7 +1802,7 @@
   padding: 1.5rem;
   background:
     radial-gradient(ellipse 80% 60% at 50% -10%, rgba(122, 78, 170, 0.22), transparent),
-    var(--bg, #0f0d12);
+    var(--bg);
 }
 
 .app-initial-boot .brand-mark--splash {
@@ -1859,7 +1876,7 @@
   padding: 1.5rem;
   background:
     radial-gradient(ellipse 80% 60% at 50% -10%, rgba(122, 78, 170, 0.22), transparent),
-    var(--bg, #0f0d12);
+    var(--bg);
 }
 
 .login-form {
@@ -2058,16 +2075,16 @@
   }
 
   .modal.modal--product-editor.modal--config {
-    width: min(1120px, calc(100vw - 2.5rem));
-    max-width: min(1120px, calc(100vw - 2.5rem));
-    height: min(calc(100dvh - 2.5rem), 920px);
-    max-height: min(calc(100dvh - 2.5rem), 920px);
+    width: min(880px, calc(100vw - 3rem));
+    max-width: min(880px, calc(100vw - 3rem));
+    height: auto;
+    max-height: min(88dvh, 820px);
     min-height: 0;
     border-radius: 18px;
     margin: 0;
     box-shadow:
-      0 4px 24px color-mix(in srgb, #000 18%, transparent),
-      0 28px 90px color-mix(in srgb, #000 22%, transparent);
+      0 4px 24px color-mix(in srgb, #000 14%, transparent),
+      0 24px 70px color-mix(in srgb, #000 16%, transparent);
   }
 
   .modal.modal--product-editor.modal--config .modal-head--product-editor {
@@ -2088,7 +2105,7 @@
   .modal-body--product-editor .product-editor-fields {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.85rem 2.25rem;
+    gap: 0.85rem 1.15rem;
   }
 
   .modal-body--product-editor .product-editor-fields > :first-child,
@@ -2894,15 +2911,57 @@
 .inventory-qty-input {
   width: 5.75rem;
   max-width: 100%;
-  padding: 0.28rem 0.4rem;
+  padding: 0.38rem 0.5rem;
   font-variant-numeric: tabular-nums;
   text-align: right;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.82rem;
+}
+
+.inventory-qty-input:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  outline-offset: 1px;
+  border-color: var(--accent-border);
 }
 
 .inventory-type-select {
-  max-width: 8.5rem;
-  padding: 0.28rem 0.35rem;
-  font-size: 0.82rem;
+  max-width: 8.75rem;
+  padding: 0.32rem 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--input-bg);
+  color: var(--heading);
+  font-family: var(--sans);
+}
+
+.inventory-table-wrap {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface-elevated);
+  box-shadow: 0 1px 2px var(--shadow-soft);
+  overflow: auto;
+}
+
+.inventory-table .inventory-th-name,
+.inventory-table .inventory-td-name {
+  min-width: 11rem;
+}
+
+.inventory-table .inventory-td-name .table-link {
+  font-weight: 650;
+  color: var(--heading);
+  text-align: left;
+}
+
+.inventory-table .inventory-td-name .table-link:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .inventory-table-lot-cell {
@@ -2939,7 +2998,7 @@
 }
 
 .section-summary-bar--inventory {
-  border-left-color: #0ea5e9;
+  border-left-color: var(--accent);
 }
 
 .section-summary-bar--sales {
@@ -3939,10 +3998,10 @@
   padding: 0;
   border: none;
   border-radius: 10px;
-  background: linear-gradient(180deg, var(--berry), var(--berry-dark));
-  color: #fff;
+  background: var(--accent);
+  color: var(--accent-text);
   cursor: pointer;
-  box-shadow: 0 2px 8px var(--berry-glow);
+  box-shadow: 0 1px 2px var(--shadow-soft);
   flex-shrink: 0;
   touch-action: manipulation;
 }
@@ -4883,10 +4942,20 @@ html[data-theme='light'] .products-catalog-grid__rank--3 {
 }
 
 @media (prefers-color-scheme: dark) {
-  .badge-ok {
+  html:not([data-theme='light']) .badge-ok {
     background: rgba(34, 197, 94, 0.18);
     color: #86efac;
   }
+}
+
+html[data-theme='dark'] .badge-ok {
+  background: rgba(157, 204, 157, 0.18);
+  color: #9dcc9d;
+}
+
+html[data-theme='light'] .badge-ok {
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
 }
 
 .editor-panel {
@@ -4914,34 +4983,34 @@ html[data-theme='light'] .products-catalog-grid__rank--3 {
     position: fixed;
     inset: 0;
     z-index: 54;
-    background: rgba(0, 0, 0, 0.35);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: color-mix(in srgb, #111213 48%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     -webkit-tap-highlight-color: transparent;
   }
 
   .editor-panel.editor-panel--modal-mobile {
     position: fixed;
-    inset: 0;
+    inset: max(0.7rem, env(safe-area-inset-top, 0px))
+      max(0.7rem, env(safe-area-inset-right, 0px))
+      max(0.7rem, env(safe-area-inset-bottom, 0px))
+      max(0.7rem, env(safe-area-inset-left, 0px));
     z-index: 55;
     margin: 0;
-    width: 100%;
+    width: auto;
     max-width: none;
     max-height: none;
-    min-height: 100%;
-    min-height: 100dvh;
+    min-height: 0;
     height: auto;
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
+    border-radius: 18px;
+    border: 1px solid var(--border);
     box-sizing: border-box;
-    padding-top: env(safe-area-inset-top, 0px);
-    padding-bottom: env(safe-area-inset-bottom, 0px);
-    padding-left: env(safe-area-inset-left, 0px);
-    padding-right: env(safe-area-inset-right, 0px);
+    overflow: hidden;
+    box-shadow:
+      0 4px 24px color-mix(in srgb, #000 16%, transparent),
+      0 28px 80px color-mix(in srgb, #000 20%, transparent);
     display: flex;
     flex-direction: column;
-    box-shadow: none;
   }
 
   .editor-panel.editor-panel--modal-mobile .editor-panel-head {
@@ -6038,6 +6107,29 @@ table.data-table.purchase-lot-line-items-table--cols3 {
   min-height: 72px;
 }
 
+.field-stack input,
+.field-stack select,
+.field-stack textarea {
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 0.9rem;
+  font-family: var(--sans);
+}
+
+.modal input,
+.modal select,
+.modal textarea,
+.editor-panel input,
+.editor-panel select,
+.editor-panel textarea {
+  background: var(--input-bg);
+  color: var(--text);
+  border-color: var(--border);
+}
+
 .checkbox-field {
   flex-direction: row;
   align-items: center;
@@ -6547,6 +6639,10 @@ table.data-table {
   font-size: 0.76rem;
   line-height: 1.25;
   font-family: var(--sans);
+}
+
+table.data-table.inventory-table:not(.inventory-table--detail) {
+  min-width: 38rem;
 }
 
 .data-table th,
@@ -7277,16 +7373,17 @@ table.data-table--sales-list {
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: color-mix(in srgb, #111213 42%, transparent);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  z-index: 50;
+  z-index: 210;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
     env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
   box-sizing: border-box;
+  animation: backdrop-fade-in 140ms ease-out;
 }
 
 .modal {
@@ -7301,6 +7398,7 @@ table.data-table--sales-list {
   display: flex;
   flex-direction: column;
   max-height: min(92svh, 880px);
+  height: min(max-content, min(92svh, 880px));
   min-height: 0;
   animation: modal-fade-in 140ms ease-out;
 }
@@ -7309,8 +7407,9 @@ table.data-table--sales-list {
   animation: modal-fade-in 140ms ease-out;
 }
 
-.modal-backdrop {
-  animation: backdrop-fade-in 140ms ease-out;
+html[data-theme='dark'] .modal-backdrop,
+html[data-theme='dark'] .editor-panel-backdrop {
+  background: color-mix(in srgb, #000 58%, transparent);
 }
 
 @keyframes backdrop-fade-in {
@@ -7365,7 +7464,10 @@ table.data-table--sales-list {
   isolation: isolate;
   width: min(var(--config-modal-width), calc(100vw - 2.5rem));
   max-height: min(var(--config-modal-max-height), calc(100dvh - 2.5rem));
-  height: auto;
+  height: min(
+    max-content,
+    min(var(--config-modal-max-height), calc(100dvh - 2.5rem))
+  );
   min-height: 0;
   margin: 0;
   border-radius: 18px;
@@ -7388,11 +7490,59 @@ table.data-table--sales-list {
 }
 
 .modal--config-full {
-  --config-modal-width: min(1120px, calc(100vw - 2.5rem));
-  --config-modal-max-height: min(calc(100dvh - 2.5rem), 920px);
-  width: min(1120px, calc(100vw - 2.5rem));
-  height: min(calc(100dvh - 2.5rem), 920px);
-  max-height: min(calc(100dvh - 2.5rem), 920px);
+  --config-modal-width: min(880px, calc(100vw - 2.5rem));
+  --config-modal-max-height: min(88dvh, 800px);
+  width: min(var(--config-modal-width), calc(100vw - 2.5rem));
+  height: min(
+    max-content,
+    min(var(--config-modal-max-height), calc(100dvh - 2.5rem))
+  );
+  max-height: min(var(--config-modal-max-height), calc(100dvh - 2.5rem));
+}
+
+.modal-foot,
+.modal-foot--config {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.55rem;
+  padding: 0.85rem 1.35rem max(0.9rem, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.modal-head--config {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.modal-head--config h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--heading);
+}
+
+.modal-close {
+  flex-shrink: 0;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-elevated);
+  color: var(--heading);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.modal-close:hover {
+  background: var(--hover);
 }
 
 .modal-head--config {
@@ -7401,10 +7551,33 @@ table.data-table--sales-list {
 }
 
 .modal-body--config {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 1rem 1.35rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.modal-body--config .field-stack,
+.modal-body--config .field-row-2 {
+  min-width: 0;
+}
+
+.modal-body--config input,
+.modal-body--config select,
+.modal-body--config textarea {
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.modal-body--config input[type='datetime-local'] {
+  width: 100%;
 }
 
 .modal-footer--config {
@@ -7428,7 +7601,7 @@ table.data-table--sales-list {
   isolation: isolate;
   width: min(480px, calc(100vw - 1.25rem));
   max-height: min(90dvh, 800px);
-  height: auto;
+  height: min(max-content, min(90dvh, 800px));
   margin: 0;
   border-radius: 16px;
   overflow: hidden;
@@ -7485,7 +7658,7 @@ table.data-table--sales-list {
   isolation: isolate;
   width: min(520px, calc(100vw - 1.25rem));
   max-height: min(78dvh, 660px);
-  height: auto;
+  height: min(max-content, min(78dvh, 660px));
   margin: 0;
   border-radius: 16px;
   overflow: hidden;
@@ -7756,7 +7929,7 @@ table.data-table--sales-list {
   isolation: isolate;
   width: min(940px, calc(100vw - 1rem));
   max-height: min(94dvh, 920px);
-  height: auto;
+  height: min(max-content, min(94dvh, 920px));
   margin: 0;
   border-radius: 16px;
   overflow: hidden;
@@ -8439,9 +8612,9 @@ table.data-table--sales-list {
 }
 
 .sales-editor-btn--add {
-  background: linear-gradient(180deg, var(--berry), var(--berry-dark));
-  color: #fff;
-  box-shadow: 0 2px 10px var(--berry-glow);
+  background: var(--accent);
+  color: var(--accent-text);
+  box-shadow: 0 1px 2px var(--shadow-soft);
 }
 
 .sales-editor-btn--add:hover {
@@ -8757,10 +8930,10 @@ table.data-table--sales-list {
   width: 2.25rem;
   height: 2.25rem;
   padding: 0;
-  border: 1px solid color-mix(in srgb, var(--border) 90%, transparent);
-  border-radius: 9px;
-  background: color-mix(in srgb, var(--surface) 92%, var(--heading));
-  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-elevated);
+  color: var(--heading);
   cursor: pointer;
   font-family: var(--sans);
   transition:
@@ -8957,9 +9130,9 @@ table.data-table--sales-list {
 .product-editor-btn--primary {
   width: 100%;
   border: none;
-  background: linear-gradient(180deg, var(--berry), var(--berry-dark));
-  color: #fff;
-  box-shadow: 0 2px 8px var(--berry-glow);
+  background: var(--accent);
+  color: var(--accent-text);
+  box-shadow: 0 1px 2px var(--shadow-soft);
 }
 
 .product-editor-btn--primary:hover:not(:disabled) {
@@ -9016,9 +9189,9 @@ table.data-table--sales-list {
 .product-editor-footer {
   flex-shrink: 0;
   margin: 0;
-  padding: 0.55rem 1rem max(0.65rem, env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid color-mix(in srgb, var(--border) 88%, transparent);
-  background: color-mix(in srgb, var(--surface-elevated) 94%, var(--heading));
+  padding: 0.75rem 1.15rem max(0.85rem, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .product-editor-footer--confirm {
@@ -10138,8 +10311,9 @@ table.data-table--sales-list {
 
 .modal-body {
   padding: 1rem 1.15rem 1.35rem;
-  overflow: auto;
-  flex: 1;
+  overflow-x: hidden;
+  overflow-y: auto;
+  flex: 1 1 auto;
   min-height: 0;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
@@ -10206,10 +10380,30 @@ table.data-table--sales-list {
   }
 
   .modal.modal--product-editor {
-    width: min(calc(100vw - 1.25rem), 440px);
-    max-height: min(90dvh, 720px);
+    width: min(calc(100vw - 1.4rem), 720px);
+    max-height: min(92dvh, 820px);
     min-height: 0;
     border-radius: 16px;
+  }
+
+  .modal-backdrop.modal-backdrop--config,
+  .modal-backdrop.modal-backdrop--sales-editor,
+  .modal-backdrop.modal-backdrop--product-submodal {
+    padding: max(0.7rem, env(safe-area-inset-top, 0px))
+      max(0.7rem, env(safe-area-inset-right, 0px))
+      max(0.7rem, env(safe-area-inset-bottom, 0px))
+      max(0.7rem, env(safe-area-inset-left, 0px));
+    align-items: center;
+    justify-content: center;
+  }
+
+  .modal.modal--config {
+    width: min(var(--config-modal-width, 640px), 100%);
+    max-height: calc(100dvh - 1.4rem);
+    height: min(max-content, calc(100dvh - 1.4rem));
+    min-height: 0;
+    border-radius: 18px;
+    margin: 0;
   }
 }
 
@@ -13337,16 +13531,16 @@ html.app--chat-sheet-open body {
   .modal.modal--sales-editor.modal--config,
   .modal.modal--product-submodal.modal--config,
   .modal.modal--config.modal--config-full {
-    width: min(1120px, calc(100vw - 2.5rem));
-    max-width: min(1120px, calc(100vw - 2.5rem));
-    height: min(calc(100dvh - 2.5rem), 920px);
-    max-height: min(calc(100dvh - 2.5rem), 920px);
+    width: min(880px, calc(100vw - 3rem));
+    max-width: min(880px, calc(100vw - 3rem));
+    height: auto;
+    max-height: min(88dvh, 820px);
     min-height: 0;
     border-radius: 18px;
     margin: 0;
     box-shadow:
-      0 4px 24px color-mix(in srgb, #000 18%, transparent),
-      0 28px 90px color-mix(in srgb, #000 22%, transparent);
+      0 4px 24px color-mix(in srgb, #000 14%, transparent),
+      0 24px 70px color-mix(in srgb, #000 16%, transparent);
   }
 
   .modal.modal--product-submodal.modal--config-xl {
@@ -13358,10 +13552,10 @@ html.app--chat-sheet-open body {
   }
 
   .modal.modal--fullscreen {
-    width: min(1120px, calc(100vw - 2.5rem));
-    max-width: min(1120px, calc(100vw - 2.5rem));
-    height: min(calc(100dvh - 2.5rem), 920px);
-    max-height: min(calc(100dvh - 2.5rem), 920px);
+    width: min(880px, calc(100vw - 3rem));
+    max-width: min(880px, calc(100vw - 3rem));
+    height: auto;
+    max-height: min(88dvh, 820px);
     min-height: 0;
     border-radius: 18px;
   }
@@ -13498,8 +13692,8 @@ html.app--chat-sheet-open body {
   }
 
   .purchase-lot-item-edit-modal {
-    width: min(1120px, calc(100vw - 3rem));
-    max-height: min(94dvh, 940px);
+    width: min(880px, calc(100vw - 3rem));
+    max-height: min(92dvh, 860px);
     border-radius: 18px;
   }
 
@@ -13632,8 +13826,8 @@ html.app--chat-sheet-open body {
 .staff-manager__panel {
   padding: 0.85rem 0.9rem 1rem;
   border-radius: 14px;
-  border: 1px solid color-mix(in srgb, var(--border) 86%, transparent);
-  background: color-mix(in srgb, var(--surface-elevated) 92%, var(--heading));
+  border: 1px solid var(--border);
+  background: var(--surface-elevated);
 }
 
 .staff-manager__panel-head {
@@ -13687,6 +13881,9 @@ html.app--chat-sheet-open body {
 .staff-manager .field-stack select,
 .staff-manager .field-stack textarea {
   width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .staff-manager .field-check {
@@ -13695,6 +13892,314 @@ html.app--chat-sheet-open body {
   gap: 0.45rem;
   margin-bottom: 0.75rem;
   font-size: 0.9rem;
+}
+
+.staff-manager .modal-body--config .field-stack,
+.staff-manager .modal-body--config .field-check {
+  margin-bottom: 0;
+}
+
+.staff-profile-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 1.1rem 1.35rem;
+  align-items: start;
+}
+
+.staff-profile-card__main {
+  min-width: 0;
+}
+
+.staff-profile-card__avatar {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 1.35rem;
+  font-weight: 800;
+  background: var(--accent-soft);
+  color: var(--heading);
+  border: 1px solid var(--border);
+}
+
+.staff-profile-card__name {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--heading);
+}
+
+.staff-profile-card__role {
+  margin: 0.2rem 0 0.9rem;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.staff-profile-card__dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem 1.25rem;
+  margin: 0;
+}
+
+.staff-profile-card__dl dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.staff-profile-card__dl dd {
+  margin: 0.2rem 0 0;
+  color: var(--heading);
+  font-weight: 600;
+  word-break: break-word;
+}
+
+.staff-profile-card__notes {
+  grid-column: 1 / -1;
+  margin: 0.25rem 0 0;
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+@media (max-width: 560px) {
+  .staff-profile-card {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-profile-card__dl {
+    grid-template-columns: 1fr;
+  }
+}
+
+.staff-profile-card--compact {
+  gap: 0.85rem 1rem;
+}
+
+.staff-profile-card--compact .staff-profile-card__avatar {
+  width: 2.85rem;
+  height: 2.85rem;
+  font-size: 0.85rem;
+  border-radius: 12px;
+}
+
+.staff-profile-card--compact .staff-profile-card__name {
+  font-size: 1.08rem;
+}
+
+.staff-profile-card--compact .staff-profile-card__dl {
+  grid-template-columns: 1fr 1fr;
+}
+
+.modal.modal--shift {
+  --config-modal-width: 440px;
+  --config-modal-max-height: min(88dvh, calc(100dvh - 2.5rem));
+  --staff-accent: #5eead4;
+  --staff-accent-strong: #0e7490;
+}
+
+.modal.modal--shift .modal-body--config {
+  display: flex;
+  flex-direction: column;
+  grid-template-columns: none;
+}
+
+.modal--shift .field-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.modal--shift .field-stack span {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.modal--shift .field-stack input,
+.modal--shift .field-stack select,
+.modal--shift .field-stack textarea {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.modal--shift .btn-primary {
+  background: var(--staff-accent-strong);
+  border-color: var(--staff-accent-strong);
+  color: #fff;
+}
+
+.modal--shift .btn-primary:hover {
+  filter: brightness(1.06);
+}
+
+.staff-shift-modal__kicker {
+  margin: 0 0 0.15rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.staff-shift-modal__body {
+  gap: 0.75rem;
+}
+
+.staff-shift-who {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--border) 85%, transparent);
+  background: color-mix(in srgb, #5eead4 18%, var(--surface));
+}
+
+.staff-shift-who__avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: linear-gradient(145deg, #5eead4, #0e7490);
+}
+
+.staff-shift-who__copy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+}
+
+.staff-shift-who__copy strong {
+  font-size: 0.98rem;
+  color: var(--heading);
+}
+
+.staff-shift-who__copy span {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.staff-shift-times {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.85rem;
+}
+
+@media (min-width: 520px) {
+  .staff-shift-times {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.staff-shift-times__hint {
+  margin: 0.15rem 0 0;
+  font-size: 0.72rem;
+  font-style: normal;
+  color: var(--muted);
+}
+
+.staff-shift-modal input[type='datetime-local'] {
+  min-height: 2.65rem;
+  font-size: 0.88rem;
+}
+
+.staff-shift-status {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  gap: 0.4rem;
+}
+
+.staff-shift-status__btn {
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--heading);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.staff-shift-status__btn:hover {
+  background: color-mix(in srgb, var(--heading) 5%, var(--surface));
+}
+
+.staff-shift-status__btn.is-on {
+  border-color: color-mix(in srgb, #0e7490 50%, var(--border));
+  background: color-mix(in srgb, #5eead4 28%, var(--surface));
+  color: #134e4a;
+}
+
+.staff-shift-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  color: var(--heading);
+}
+
+.staff-shift-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 14px;
+  background: color-mix(in srgb, #5eead4 22%, var(--surface));
+  border: 1px solid color-mix(in srgb, #0e7490 22%, var(--border));
+}
+
+.staff-shift-preview span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.staff-shift-preview strong {
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+  color: var(--heading);
+}
+
+@media (min-width: 720px) {
+  .modal--config-lg .modal-body--config {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-content: start;
+    gap: 0.85rem 1.15rem;
+  }
+
+  .modal--config-lg .modal-body--config > .field:first-of-type,
+  .modal--config-lg .modal-body--config > .field-row-2,
+  .modal--config-lg .modal-body--config > .panel-lot-meta,
+  .modal--config-lg .modal-body--config > .panel-stats-block,
+  .modal--config-lg .modal-body--config > .error,
+  .modal--config-lg .modal-body--config > p {
+    grid-column: 1 / -1;
+  }
 }
 
 /* ——— Responsive: módulos plataforma ——— */
@@ -13747,8 +14252,7 @@ html.app--chat-sheet-open body {
   }
 
   .editor-panel--modal-mobile {
-    margin-inline: max(0.35rem, env(safe-area-inset-left, 0px))
-      max(0.35rem, env(safe-area-inset-right, 0px));
+    margin-inline: 0;
   }
 
   .home-dashboard {
@@ -13813,43 +14317,37 @@ html.app--chat-sheet-open body {
     width: 100%;
   }
 
-  .staff-manager .data-table-wrap {
-    margin-inline: -0.35rem;
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .staff-manager .data-table {
-    min-width: 640px;
-  }
-
-  .staff-manager__row-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .staff-manager__row-actions .btn-compact {
+  .modal.modal--shift,
+  .modal.modal--config:not(.modal--product-editor):not(.modal--sales-editor):not(.modal--product-submodal) {
     width: 100%;
+    max-width: none;
+    max-height: calc(100svh - 1rem);
+    height: min(max-content, calc(100svh - 1rem));
+    margin: 0;
+    border-radius: 16px;
   }
 
-  .staff-manager .modal--config {
-    width: min(100%, 100vw - 1rem);
-    max-height: min(92vh, 100dvh);
-    margin: 0.5rem;
+  .modal--shift input[type='datetime-local'],
+  .modal--shift input,
+  .modal--shift select,
+  .modal--shift textarea,
+  .modal.modal--config:not(.modal--product-editor):not(.modal--sales-editor) input,
+  .modal.modal--config:not(.modal--product-editor):not(.modal--sales-editor) select,
+  .modal.modal--config:not(.modal--product-editor):not(.modal--sales-editor) textarea {
+    font-size: 16px;
   }
 
-  .staff-manager .modal-foot--config {
+  .modal-foot--config {
     flex-wrap: wrap;
     gap: 0.45rem;
+    padding-bottom: max(0.85rem, env(safe-area-inset-bottom, 0px));
   }
 
-  .staff-manager .modal-foot--config .btn-primary,
-  .staff-manager .modal-foot--config .btn-secondary {
+  .modal-foot--config .btn-primary,
+  .modal-foot--config .btn-secondary {
     flex: 1 1 calc(50% - 0.25rem);
     min-width: 7rem;
+    min-height: 2.65rem;
   }
 
   .sales-page-intro__head,
@@ -13892,9 +14390,12 @@ html.app--chat-sheet-open body {
   }
 
   .home-dashboard__kpi-grid,
-  .staff-manager__kpi-grid,
   .finance-analytics__kpi-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .staff-manager__kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 

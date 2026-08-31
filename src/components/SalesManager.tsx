@@ -23,6 +23,7 @@ import {
 } from '../api'
 import { canDeleteSales } from '../lib/permissions'
 import { displaySaleSource } from '../lib/displayLabels'
+import { namedCopy } from '../lib/userIdentity'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import { useEntityActionAnimation } from '../hooks/useEntityActionAnimation'
 import {
@@ -1078,8 +1079,11 @@ export function SalesManager({
               <div>
                 <h2 className="page-title">Ventas</h2>
                 <p className="muted small">
-                  Calendario mensual: elegí un día para ver todas las comandas, su
-                  detalle y editarlas.
+                  {namedCopy(
+                    user?.name,
+                    '{name}, seleccione un día para ver las comandas y su detalle.',
+                    'Calendario mensual: seleccione un día para ver las comandas y su detalle.',
+                  )}
                 </p>
               </div>
             ) : null}
@@ -1346,7 +1350,7 @@ export function SalesManager({
 
           {!isMobileFilters ? (
             <p className="muted small month-calendar-hint">
-              Hacé clic en un día del calendario para abrir un popup con todas las
+              Haga clic en un día del calendario para abrir un popup con todas las
               ventas, editarlas o crear una nueva.
             </p>
           ) : null}

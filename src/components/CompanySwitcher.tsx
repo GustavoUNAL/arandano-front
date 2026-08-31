@@ -50,7 +50,7 @@ export function CompanySwitcher({
     >
       <div className="company-switcher__head">
         <Building2 className="company-switcher__head-icon" strokeWidth={2} aria-hidden />
-        <span className="company-switcher__head-label">Tus empresas</span>
+        <span className="company-switcher__head-label">Sus empresas</span>
       </div>
 
       {error ? (

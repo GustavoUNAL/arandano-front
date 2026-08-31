@@ -89,17 +89,17 @@ export function GoogleSignupView({ baseUrl, onCreated }: Props) {
         <aside className="public-auth__visual">
           <BrandMark size="md" showTagline />
           <div>
-            <h2>Tu cuenta de Google es nueva en {BRAND_NAME}</h2>
+            <h2>Su cuenta de Google es nueva en {BRAND_NAME}</h2>
             <p>
-              Antes de crear el espacio, confirmamos tu identidad y el tratamiento de los datos
-              de tu negocio. Esto queda registrado para operar de forma segura y conforme a la ley.
+              Antes de crear el espacio, confirmamos su identidad y el tratamiento de los datos
+              de su negocio. Esto queda registrado para operar de forma segura y conforme a la ley.
             </p>
           </div>
           <ul className="public-auth__bullets">
             <li>Datos aislados por empresa</li>
             <li>Tratamiento según Ley 1581 de 2012</li>
             <li>Sin vender información a terceros</li>
-            <li>Podés pedir corrección o eliminación</li>
+            <li>Puede pedir corrección o eliminación</li>
           </ul>
         </aside>
 
@@ -107,9 +107,9 @@ export function GoogleSignupView({ baseUrl, onCreated }: Props) {
           <form className="public-auth__form google-signup__form" onSubmit={handleSubmit}>
             <header className="public-auth__head">
               <p className="google-signup__kicker">Registro con Google</p>
-              <h1 className="public-auth__title">Crear tu espacio</h1>
+              <h1 className="public-auth__title">Crear su espacio</h1>
               <p className="public-auth__subtitle">
-                Revisá los acuerdos y nombrá tu empresa para activar el panel.
+                Revise los acuerdos y indique el nombre de su empresa para activar el panel.
               </p>
             </header>
 

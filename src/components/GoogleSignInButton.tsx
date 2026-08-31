@@ -193,7 +193,7 @@ export function GoogleSignInButton({
         await onSignup?.(result.signupToken)
         if (!onSignup) {
           onError?.(
-            'Tu cuenta de Google es nueva. Completá el registro para continuar.',
+            'Su cuenta de Google es nueva. Complete el registro para continuar.',
           )
         }
         return
@@ -220,7 +220,7 @@ export function GoogleSignInButton({
       </button>
       {waiting ? (
         <div className="public-auth__google-wait" role="status">
-          Completá el acceso en la ventana de Google.
+          Complete el acceso en la ventana de Google.
         </div>
       ) : null}
     </>

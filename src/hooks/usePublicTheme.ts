@@ -1,23 +1,14 @@
 import { useEffect, useState } from 'react'
+import { persistTheme, readStoredTheme } from '../lib/themeColor'
 
 /** Sincroniza tema claro/oscuro en landing, login y registro. */
 export function usePublicTheme() {
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    try {
-      return window.localStorage.getItem('vos_theme') === 'light' ? 'light' : 'dark'
-    } catch {
-      return 'dark'
-    }
-  })
+  const [theme, setTheme] = useState<'dark' | 'light'>(readStoredTheme)
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme
     document.documentElement.dataset.shell = 'public'
-    try {
-      window.localStorage.setItem('vos_theme', theme)
-    } catch {
-      /* ignore */
-    }
+    persistTheme(theme)
     return () => {
       delete document.documentElement.dataset.shell
     }

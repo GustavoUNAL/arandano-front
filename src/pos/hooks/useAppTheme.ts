@@ -3,8 +3,8 @@ import { useEffect, useState } from 'react'
 export type AppTheme = 'dark' | 'light'
 
 function readTheme(): AppTheme {
-  if (typeof document === 'undefined') return 'dark'
-  return document.documentElement.dataset.theme === 'light' ? 'light' : 'dark'
+  if (typeof document === 'undefined') return 'light'
+  return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light'
 }
 
 /** Sincroniza el POS con el interruptor de tema global (sidebar). */

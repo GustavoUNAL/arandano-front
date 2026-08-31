@@ -28,6 +28,8 @@ import {
 } from '../api'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import { useEntityActionAnimation } from '../hooks/useEntityActionAnimation'
+import { useFirstName } from '../hooks/useSessionUser'
+import { namedCopy } from '../lib/userIdentity'
 import { invalidateApiCache } from '../lib/apiCache'
 import { POS_ACTIVE_CATALOG_CACHE_KEY } from '../lib/posCatalogLoader'
 import { ProductRecipePopup } from './ProductRecipePopup'
@@ -421,6 +423,7 @@ function ProductGridCard({
 }
 
 export function ProductsManager({ baseUrl }: { baseUrl: string }) {
+  const first = useFirstName()
   const isMobile = useMatchMedia(MOBILE_FILTER_BREAKPOINT)
   const { panelClass, runPanelRemove, flashSaved } = useEntityActionAnimation()
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -1216,7 +1219,11 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
           <div className="products-page-head">
             <div className="products-page-intro">
               <p className="products-dashboard-lead muted">
-                Productos a la venta para carta y tickets.
+                {namedCopy(
+                  first,
+                  '{name}, este es el catálogo para carta y tickets.',
+                  'Productos a la venta para carta y tickets.',
+                )}
                 {catalogViewMode === 'grid' ? (
                   <>
                     {' '}
@@ -2300,11 +2307,11 @@ export function ProductsManager({ baseUrl }: { baseUrl: string }) {
                     className="product-editor-confirm__desc"
                   >
                     <strong>{draft.name?.trim() || 'Sin nombre'}</strong> no
-                    tiene costo unitario definido. Sin costo no podés calcular
+                    tiene costo unitario definido. Sin costo no puede calcular
                     márgenes ni utilidades reales.
                     {draft.costMode === 'recipe'
-                      ? ' Revisá la receta o ingresá un costo manual.'
-                      : ' Ingresá un costo manual o configurá la receta.'}
+                      ? ' Revise la receta o ingrese un costo manual.'
+                      : ' Ingrese un costo manual o configure la receta.'}
                   </p>
                   <div className="product-editor-confirm__actions">
                     <button

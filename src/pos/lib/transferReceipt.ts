@@ -39,10 +39,10 @@ async function compressDataUrl(dataUrl: string): Promise<string> {
 
 export async function processTransferReceiptFile(file: File): Promise<string> {
   if (!file.type.startsWith('image/')) {
-    throw new Error('Elegí una imagen (JPG, PNG, etc.).')
+    throw new Error('Seleccione una imagen (JPG, PNG, etc.).')
   }
   if (file.size > MAX_INPUT_BYTES) {
-    throw new Error('La imagen es muy pesada. Probá otra más liviana.')
+    throw new Error('La imagen es muy pesada. Pruebe otra más liviana.')
   }
   const raw = await readFileAsDataUrl(file)
   return compressDataUrl(raw)

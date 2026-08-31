@@ -1,5 +1,6 @@
 import { type CSSProperties, useEffect } from 'react'
 import { buildLauncherApps } from '../lib/appLauncher'
+import { namedCopy } from '../lib/userIdentity'
 import { AppLauncherIcon, LAUNCHER_GROUP_CLASS } from './AppLauncherIcon'
 
 export function AppMenuOverlay({
@@ -42,7 +43,9 @@ export function AppMenuOverlay({
     >
       <div className="odoo-app-menu__panel">
         <header className="odoo-app-menu__head">
-          <h2 className="odoo-app-menu__title">Aplicaciones</h2>
+          <h2 className="odoo-app-menu__title">
+            {namedCopy(user?.name, 'Sus aplicaciones, {name}', 'Aplicaciones')}
+          </h2>
           <button
             type="button"
             className="odoo-app-menu__close btn-secondary btn-compact"

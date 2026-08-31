@@ -21,6 +21,8 @@ import {
 } from '../api'
 import { useNavigation } from '../NavigationContext'
 import { useMatchMedia } from '../hooks/useMatchMedia'
+import { useFirstName } from '../hooks/useSessionUser'
+import { namedCopy } from '../lib/userIdentity'
 import { useEntityActionAnimation } from '../hooks/useEntityActionAnimation'
 import {
   MobileAwareFilterBar,
@@ -190,12 +192,10 @@ function rowToDraft(r: InventoryRow): Draft {
   }
 }
 
-const INVENTORY_EDITOR_MOBILE_MQ = '(max-width: 959px)'
-
 export function InventoryManager({ baseUrl }: { baseUrl: string }) {
+  const first = useFirstName()
   const { inventorySubtitle } = useNavigation()
   const isMobileFilters = useMatchMedia(MOBILE_FILTER_BREAKPOINT)
-  const inventoryEditorMobile = useMatchMedia(INVENTORY_EDITOR_MOBILE_MQ)
   const { rowClass, panelClass, runPanelRemove, flashSaved } = useEntityActionAnimation()
   const [categories, setCategories] = useState<CategoryRef[]>([])
   const [catError, setCatError] = useState<string | null>(null)
@@ -670,14 +670,15 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
       <div className="products-list-pane page-pane--floating-gear-dock">
         <div className="page-intro">
           <h2 className="page-title">Inventario</h2>
-          {inventorySubtitle ? (
-            <p className="muted page-subtitle">{inventorySubtitle}</p>
-          ) : (
             <p className="muted page-subtitle">
-              Tabla para actualizar stock y tipo. Las fotos de cada ítem se podrán
-              adjuntar más adelante.
+              {inventorySubtitle
+                ? namedCopy(first, `{name}, ${inventorySubtitle}`, inventorySubtitle)
+                : namedCopy(
+                    first,
+                    '{name}, aquí puede consultar el stock por ítem y actualizar tipo y cantidad.',
+                    'Stock por ítem: puede cambiar tipo y cantidad en la tabla. Toque el nombre para ver el detalle.',
+                  )}
             </p>
-          )}
         </div>
 
         <MobileAwareFilterBar
@@ -778,8 +779,8 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                 onChange={(e) => setShowStats(e.target.value === 'on')}
                 aria-label="Cargar estadísticas de movimientos"
               >
-                <option value="off">Ligero</option>
-                <option value="on">Completo</option>
+                <option value="off">Resumen</option>
+                <option value="on">Detalle</option>
               </select>
             </label>
           </div>
@@ -862,20 +863,28 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
 
         {!loading && list.length > 0 && (
           <div className="data-table-wrap data-table-elevated inventory-table-wrap">
-            <table className="data-table data-table-striped">
+            <table className={`data-table data-table-striped inventory-table${showStats ? ' inventory-table--detail' : ''}`}>
               <thead>
                 <tr>
-                  <th>Insumo</th>
+                  <th className="inventory-th-name">Ítem</th>
                   <th>Tipo</th>
                   <th>Categoría</th>
-                  <th>Lote</th>
-                  <th>Fecha compra</th>
-                  <th>Compra en</th>
+                  {showStats ? (
+                    <>
+                      <th>Lote</th>
+                      <th>Fecha compra</th>
+                      <th>Compra en</th>
+                    </>
+                  ) : null}
                   <th className="num">Cantidad</th>
                   <th>Unidad</th>
-                  <th className="num">Costo u.</th>
-                  <th className="num">Mín.</th>
-                  <th className="inventory-th-mov">Movimientos</th>
+                  {showStats ? (
+                    <>
+                      <th className="num">Costo u.</th>
+                      <th className="num">Mín.</th>
+                      <th className="inventory-th-mov">Movimientos</th>
+                    </>
+                  ) : null}
                   <th>Estado</th>
                   <th aria-label="Alertas" />
                 </tr>
@@ -903,7 +912,7 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                             : '',
                       )}
                     >
-                      <td>
+                      <td className="inventory-td-name">
                         <button
                           type="button"
                           className="table-link"
@@ -938,6 +947,8 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                       <td className="muted" title={r.category?.name}>
                         {inventoryCategoryLabel(r.category?.name)}
                       </td>
+                      {showStats ? (
+                        <>
                       <td>
                         {lotCode ? (
                           <a
@@ -966,6 +977,8 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                       <td className="muted">
                         {whereBought || '—'}
                       </td>
+                        </>
+                      ) : null}
                       <td className="num">
                         <input
                           className="inventory-qty-input mono"
@@ -1005,6 +1018,8 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                         />
                       </td>
                       <td>{r.unit}</td>
+                      {showStats ? (
+                        <>
                       <td className="num mono">{formatCOP(r.unitCost)}</td>
                       <td className="num mono">
                         {r.minStock != null ? String(r.minStock) : '—'}
@@ -1012,6 +1027,8 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                       <td className="inventory-td-mov">
                         <MovementSummaryCell st={r.stats?.movements} />
                       </td>
+                        </>
+                      ) : null}
                       <td>
                         {available ? (
                           <span className="badge badge-ok">Disponible</span>
@@ -1072,35 +1089,33 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
       </div>
 
       {panelOpen && draft && (
-        <>
-          {inventoryEditorMobile && (
-            <div
-              className="editor-panel-backdrop"
-              role="presentation"
-              onMouseDown={(e) => {
-                if (e.target === e.currentTarget) closePanel()
-              }}
-            />
-          )}
-          <aside
-            className={panelClass(
-              inventoryEditorMobile
-                ? 'editor-panel editor-panel--modal-mobile'
-                : 'editor-panel',
-            )}
-            aria-label="Editor de inventario"
+        <div
+          className="modal-backdrop modal-backdrop--config"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget && !saving) closePanel()
+          }}
+        >
+          <section
+            className={panelClass('modal', 'modal--config', 'modal--config-lg')}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="inventory-editor-title"
           >
-          <div className="editor-panel-head">
-            <h2>{creating ? 'Nuevo ítem' : 'Editar inventario'}</h2>
-            <button
-              type="button"
-              className="btn-ghost icon-close"
-              onClick={closePanel}
-              aria-label="Cerrar"
-            />
-          </div>
-
-          <div className="editor-panel-body">
+            <header className="modal-head modal-head--config">
+              <h2 id="inventory-editor-title">
+                {creating ? 'Nuevo ítem' : 'Editar inventario'}
+              </h2>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={closePanel}
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </header>
+            <div className="modal-body modal-body--config">
             <label className="field">
               <span>Nombre</span>
               <input
@@ -1332,8 +1347,8 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
                 {saveError}
               </p>
             )}
-
-            <div className="editor-actions">
+            </div>
+            <footer className="modal-foot modal-foot--config">
               <button
                 type="button"
                 className="btn-secondary"
@@ -1360,10 +1375,9 @@ export function InventoryManager({ baseUrl }: { baseUrl: string }) {
               >
                 {saving ? 'Guardando…' : 'Guardar'}
               </button>
-            </div>
-          </div>
-        </aside>
-        </>
+            </footer>
+          </section>
+        </div>
       )}
 
       <ViewBootSplash ready={!loading} label="Cargando inventario…" />

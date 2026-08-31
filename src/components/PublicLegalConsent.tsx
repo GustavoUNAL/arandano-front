@@ -33,14 +33,14 @@ export function PublicLegalConsent({
           <p>Actualizado el {PRIVACY_PAGE.updated}</p>
         </header>
         <p>
-          Al crear tu espacio, {BRAND_NAME} actuará como responsable del tratamiento de tus
-          datos personales y de la información de tu negocio, conforme a la Ley 1581 de 2012
+          Al crear su espacio, {BRAND_NAME} actuará como responsable del tratamiento de sus
+          datos personales y de la información de su negocio, conforme a la Ley 1581 de 2012
           y demás normas aplicables en Colombia.
         </p>
         <ul>
           <li>
             <strong>Datos.</strong> {identityLabel}, nombre de la empresa e información
-            operativa que cargues: ventas, inventario, citas, equipo y finanzas.
+            operativa que cargue: ventas, inventario, citas, equipo y finanzas.
           </li>
           <li>
             <strong>Finalidad.</strong> Prestar el servicio, autenticar el acceso, dar soporte
@@ -48,7 +48,7 @@ export function PublicLegalConsent({
           </li>
           <li>
             <strong>Conservación y derechos.</strong> Los datos se conservan mientras la cuenta
-            esté activa. Podés pedir acceso, corrección, actualización o eliminación en{' '}
+            esté activa. Puede pedir acceso, corrección, actualización o eliminación en{' '}
             <a href={`mailto:${SITE_EMAIL}`}>{SITE_EMAIL}</a>.
           </li>
         </ul>

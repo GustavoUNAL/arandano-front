@@ -42,7 +42,7 @@ export function RegisterView({ baseUrl, onCreated }: Props) {
     e.preventDefault()
     if (submitting) return
     if (!companyName.trim() || !name.trim() || !email.trim() || !password) {
-      setError('Completá empresa, nombre, email y contraseña.')
+      setError('Complete empresa, nombre, email y contraseña.')
       return
     }
     if (password.length < 8) {
@@ -50,7 +50,7 @@ export function RegisterView({ baseUrl, onCreated }: Props) {
       return
     }
     if (!acceptTerms || !acceptPrivacy) {
-      setError('Para continuar, aceptá los términos y el tratamiento de datos.')
+      setError('Para continuar, acepte los términos y el tratamiento de datos.')
       return
     }
     setError(null)
@@ -103,14 +103,14 @@ export function RegisterView({ baseUrl, onCreated }: Props) {
         <aside className="public-auth__visual">
           <BrandMark size="md" showTagline />
           <div>
-            <h2>Creá tu espacio en {BRAND_NAME}</h2>
+            <h2>Cree su espacio en {BRAND_NAME}</h2>
             <p>
-              Registrate con Google o con el formulario. En ambos casos aceptás el tratamiento
-              de datos de tu negocio antes de activar el panel.
+              Regístrese con Google o con el formulario. En ambos casos acepta el tratamiento
+              de datos de su negocio antes de activar el panel.
             </p>
           </div>
           <ul className="public-auth__bullets">
-            <li>Entrá al panel en el momento</li>
+            <li>Ingrese al panel en el momento</li>
             <li>Datos aislados por empresa</li>
             <li>Tratamiento según Ley 1581 de 2012</li>
             <li>Sin vender información a terceros</li>
@@ -121,9 +121,9 @@ export function RegisterView({ baseUrl, onCreated }: Props) {
           <form className="public-auth__form google-signup__form" onSubmit={handleSubmit}>
             <header className="public-auth__head">
               <p className="google-signup__kicker">Registro</p>
-              <h1 className="public-auth__title">Crear tu cuenta</h1>
+              <h1 className="public-auth__title">Crear su cuenta</h1>
               <p className="public-auth__subtitle">
-                Elegí Google o completá tus datos. El espacio queda listo para operar.
+                Use Google o complete sus datos. El espacio queda listo para operar.
               </p>
             </header>
 

@@ -30,7 +30,7 @@ export function GoogleAuthPopupView() {
       <div className="google-auth-popup__card">
         <BrandMark size="sm" />
         <p className="google-auth-popup__text">
-          {stuck ? 'Ya podés cerrar esta ventana.' : 'Listo. Cerrando…'}
+          {stuck ? 'Ya puede cerrar esta ventana.' : 'Listo. Cerrando…'}
         </p>
       </div>
     </div>

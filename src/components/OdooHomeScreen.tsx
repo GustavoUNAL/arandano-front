@@ -1,9 +1,12 @@
 import { PLATFORM_MODE } from '../appScope'
 import { BRAND_NAME } from '../lib/brand'
+import { displayCompanyName } from '../lib/displayLabels'
+import { greetUser, namedCopy } from '../lib/userIdentity'
 import { buildLauncherApps } from '../lib/appLauncher'
 import { AppLauncherIcon, LAUNCHER_GROUP_CLASS } from './AppLauncherIcon'
 import { mobileViewClass } from './mobile/mobileView'
 import { type CSSProperties } from 'react'
+import { useSessionUser } from '../hooks/useSessionUser'
 
 export function OdooHomeScreen({
   onOpenApp,
@@ -18,19 +21,29 @@ export function OdooHomeScreen({
   canViewTasks?: boolean
   companyName?: string | null
 }) {
-  const apps = buildLauncherApps({ user, canViewFinance, canViewTasks })
+  const sessionUser = useSessionUser()
+  const who = user ?? sessionUser
+  const apps = buildLauncherApps({ user: who, canViewFinance, canViewTasks })
+  const hello = greetUser(who?.name)
+  const company = displayCompanyName(companyName ?? who?.companyName)
 
   return (
     <div className={mobileViewClass('home', 'odoo-home')}>
       <header className="odoo-home__hero">
         <p className="odoo-home__brand muted small">
-          {companyName ? `${BRAND_NAME} · ${companyName}` : BRAND_NAME}
+          {company ? `${BRAND_NAME} · ${company}` : BRAND_NAME}
         </p>
-        <h1 className="odoo-home__title">Aplicaciones</h1>
+        <h1 className="odoo-home__title">{hello}</h1>
         <p className="odoo-home__lead muted">
-          {PLATFORM_MODE
-            ? 'Selecciona un módulo para comenzar'
-            : 'Tu espacio de trabajo — como en Odoo'}
+          {namedCopy(
+            who?.name,
+            PLATFORM_MODE
+              ? '{name}, seleccione un módulo para comenzar el día.'
+              : '{name}, este es su espacio de trabajo.',
+            PLATFORM_MODE
+              ? 'Seleccione un módulo para comenzar.'
+              : 'Su espacio de trabajo.',
+          )}
         </p>
       </header>
       <ul className="odoo-home__grid">

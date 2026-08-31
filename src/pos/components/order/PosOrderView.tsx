@@ -96,7 +96,7 @@ export function PosOrderView({ baseUrl }: Props) {
 
     const paymentMethod: PaymentMethod | null = meta.paymentMethod ?? order.paymentMethod ?? null
     if (!paymentMethod) {
-      setConfirmError('Elegí efectivo o transferencia.')
+      setConfirmError('Seleccione efectivo o transferencia.')
       return
     }
 

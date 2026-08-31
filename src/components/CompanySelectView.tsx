@@ -26,7 +26,7 @@ export function CompanySelectView({ baseUrl, user, onSelect, onLogout, onCancel 
   const { theme, toggleTheme } = usePublicTheme()
 
   useEffect(() => {
-    document.title = `Elegir empresa · ${BRAND_NAME}`
+    document.title = `Seleccionar empresa · ${BRAND_NAME}`
   }, [])
 
   async function handleSelect(companyId: string) {
@@ -59,10 +59,10 @@ export function CompanySelectView({ baseUrl, user, onSelect, onLogout, onCancel 
         <header className="public-company-select__head">
           <BrandMark size="md" />
           <div>
-            <h1>Elegí tu empresa</h1>
+            <h1>Seleccione su empresa</h1>
             <p>
-              Hola, <strong>{user.name || user.email}</strong>. Tenés acceso a{' '}
-              {companies.length} empresas. Seleccioná una para continuar.
+              Hola, <strong>{user.name || user.email}</strong>. Tiene acceso a{' '}
+              {companies.length} empresas. Seleccione una para continuar.
             </p>
           </div>
         </header>

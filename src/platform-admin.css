@@ -406,7 +406,7 @@
   padding: 0.85rem;
   border-radius: 12px;
   border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
-  background: color-mix(in srgb, var(--bg, #0f0d14) 65%, transparent);
+  background: color-mix(in srgb, var(--bg) 65%, transparent);
   color: inherit;
   cursor: pointer;
   font: inherit;

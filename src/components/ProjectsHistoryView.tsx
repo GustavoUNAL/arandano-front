@@ -11,6 +11,7 @@ import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { ViewBootSplash } from './DataLoadingSplash'
+import { mobileViewClass } from './mobile/mobileView'
 import './ProjectsHistoryView.css'
 
 type Props = { baseUrl: string }
@@ -101,7 +102,7 @@ export function ProjectsHistoryView({ baseUrl }: Props) {
     if (saving) return
     const chargedAmount = Number(String(form.chargedAmount).replace(/[^\d.]/g, ''))
     if (!form.name.trim() || !form.address.trim() || !Number.isFinite(chargedAmount)) {
-      setError('Completá nombre, dirección y el valor cobrado.')
+      setError('Complete nombre, dirección y el valor cobrado.')
       return
     }
     setSaving(true)
@@ -146,7 +147,7 @@ export function ProjectsHistoryView({ baseUrl }: Props) {
   }
 
   return (
-    <div className="page-pane projects-history">
+    <div className={mobileViewClass('projects', 'page-pane projects-history')}>
       <header className="projects-history__head">
         <div>
           <h1>Historial de proyectos</h1>

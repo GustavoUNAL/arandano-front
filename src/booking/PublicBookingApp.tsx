@@ -359,7 +359,7 @@ export function PublicBookingApp() {
         </fieldset>
 
         <fieldset className="bk-public__fieldset">
-          <legend>Tus datos</legend>
+          <legend>Sus datos</legend>
           <label className="bk__field">
             Nombre
             <input value={name} onChange={(e) => setName(e.target.value)} required autoComplete="name" />

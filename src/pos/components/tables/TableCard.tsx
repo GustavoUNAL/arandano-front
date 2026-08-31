@@ -105,7 +105,7 @@ export function TableCard({
           type="button"
           className="pos-table-card__name-btn"
           disabled={busy}
-          title="Tocá para cambiar el nombre"
+          title="Toque para cambiar el nombre"
           onClick={() => setEditingName(true)}
         >
           {table.name}

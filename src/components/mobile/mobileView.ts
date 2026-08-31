@@ -8,6 +8,11 @@ export type MobileViewModule =
   | 'purchases'
   | 'tasks'
   | 'pos'
+  | 'staff'
+  | 'finance'
+  | 'cash-close'
+  | 'shop'
+  | 'projects'
 
 /** Clases del sistema móvil unificado (.mobile-view + modificador por módulo). */
 export function mobileViewClass(

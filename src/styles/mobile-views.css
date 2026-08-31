@@ -1,5 +1,5 @@
 /**
- * Sistema móvil unificado (Inicio, Productos, Ventas, POS, Compras).
+ * Sistema móvil unificado (Inicio, Productos, Ventas, POS, Compras, Personal, Finanzas).
  * Usa tokens de espaciado y tarjetas consistentes en pantallas ≤720px.
  * Se activa con la clase .mobile-view en cada vista raíz.
  */
@@ -56,9 +56,9 @@
     box-sizing: border-box;
   }
 
-  .app-shell--mobile-dock .app-main > .mobile-view {
+  .app-shell--mobile-dock .app-main > .mobile-view:not(.mobile-view--pos),
+  .app-shell--mobile-dock .app-main .app-view-enter > .mobile-view:not(.mobile-view--pos) {
     padding-inline: var(--mv-pad-x);
-    padding-bottom: var(--mv-pad-bottom);
   }
 
   .mobile-view .page-pane--floating-gear-dock {
@@ -457,6 +457,216 @@
 
   .mobile-view--tasks .tasks-view__composer {
     flex-direction: column;
+  }
+
+  .mobile-view--staff {
+    gap: var(--mv-gap);
+    padding-top: 0.15rem;
+  }
+
+  .app-shell--mobile-dock .mobile-view--staff .staff-manager__title,
+  .app-shell--mobile-dock .mobile-view--staff .staff-manager__lead,
+  .app-shell--mobile-dock .mobile-view--finance .finance-analytics__title,
+  .app-shell--mobile-dock .mobile-view--finance .finance-analytics__lead,
+  .app-shell--mobile-dock .mobile-view--cash-close .cash-close-manager__title,
+  .app-shell--mobile-dock .mobile-view--cash-close .cash-close-manager__lead,
+  .app-shell--mobile-dock .mobile-view--shop .shop-admin__title,
+  .app-shell--mobile-dock .mobile-view--shop .shop-admin__subtitle,
+  .app-shell--mobile-dock .mobile-view--projects .projects-history__head h1,
+  .app-shell--mobile-dock .mobile-view--projects .projects-history__head p {
+    display: none;
+  }
+
+  .app-shell--mobile-dock .mobile-view--staff .staff-manager__head:not(:has(.view-toggle)) {
+    display: none;
+  }
+
+  .app-shell--mobile-dock .mobile-view--staff .staff-manager__head {
+    margin-bottom: 0.15rem;
+  }
+
+  .mobile-view--staff .staff-manager__period-bar {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .mobile-view--staff .staff-manager__period-label {
+    min-width: 0;
+    flex: 1;
+    font-size: 0.88rem;
+  }
+
+  .mobile-view--staff .staff-manager__period-btn {
+    min-width: 2.65rem;
+    min-height: 2.65rem;
+  }
+
+  .mobile-view--staff .staff-manager__kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--mv-gap);
+  }
+
+  .mobile-view--staff .staff-manager__kpi {
+    padding: 0.65rem 0.7rem;
+    border-radius: var(--mv-card-radius);
+  }
+
+  .mobile-view--staff .staff-manager__kpi strong {
+    font-size: 1.02rem;
+  }
+
+  .mobile-view--staff .staff-manager__panel {
+    padding: var(--mv-card-pad);
+    border-radius: var(--mv-card-radius);
+  }
+
+  .mobile-view--staff .data-table-wrap {
+    margin: 0;
+    overflow: visible;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    border-radius: 0;
+  }
+
+  .mobile-view--staff .data-table {
+    display: block;
+    min-width: 0 !important;
+    width: 100%;
+  }
+
+  .mobile-view--staff .data-table thead {
+    display: none;
+  }
+
+  .mobile-view--staff .data-table tbody {
+    display: flex;
+    flex-direction: column;
+    gap: var(--mv-gap);
+  }
+
+  .mobile-view--staff .data-table tbody tr {
+    display: flex;
+    flex-direction: column;
+    gap: 0.28rem;
+    padding: var(--mv-card-pad);
+    border-radius: var(--mv-card-radius);
+    border: var(--mv-card-border);
+    background: var(--mv-card-bg);
+    box-shadow: var(--mv-card-shadow);
+  }
+
+  .mobile-view--staff .data-table td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.12rem 0 !important;
+    border: none !important;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-view--staff .data-table td::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 650;
+    text-align: left;
+    flex: 0 1 auto;
+  }
+
+  .mobile-view--staff .data-table td:first-child {
+    display: block;
+    text-align: left;
+    padding-bottom: 0.4rem !important;
+    margin-bottom: 0.15rem;
+    border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent) !important;
+  }
+
+  .mobile-view--staff .data-table td:first-child::before {
+    display: none;
+  }
+
+  .mobile-view--staff .data-table td[data-label=''] {
+    justify-content: stretch;
+    padding-top: 0.45rem !important;
+  }
+
+  .mobile-view--staff .data-table td[data-label='']::before {
+    content: none;
+  }
+
+  .mobile-view--staff .staff-manager__row-actions {
+    flex-direction: row;
+    width: 100%;
+  }
+
+  .mobile-view--staff .staff-manager__row-actions .btn-compact {
+    flex: 1;
+    min-height: 2.45rem;
+  }
+
+  .mobile-view--shop.shop-admin {
+    padding-top: 0.2rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .app-shell--mobile-dock .mobile-view--shop .shop-admin__hero {
+    display: none;
+  }
+
+  .mobile-view--shop .shop-admin__hero {
+    margin-bottom: 0.75rem;
+  }
+
+  .mobile-view--shop .shop-admin__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .mobile-view--shop .shop-admin__copy-row,
+  .mobile-view--shop .shop-admin__actions {
+    flex-direction: column;
+  }
+
+  .mobile-view--shop .shop-admin__copy-row input,
+  .mobile-view--shop .shop-admin__copy-row textarea,
+  .mobile-view--shop .shop-admin__field input,
+  .mobile-view--shop .shop-admin__actions .btn-primary,
+  .mobile-view--shop .shop-admin__actions .btn-secondary {
+    width: 100%;
+    max-width: none;
+    flex: 1 1 auto;
+    min-height: 2.65rem;
+    font-size: 16px;
+  }
+
+  .mobile-view--projects.projects-history {
+    padding: 0.15rem 0 0.5rem;
+  }
+
+  .mobile-view--projects .projects-history__head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .mobile-view--projects .projects-history__head button {
+    width: 100%;
+    min-height: 2.65rem;
+  }
+
+  .app-shell--mobile-dock .mobile-view--cash-close .cash-close-manager__head {
+    display: none;
+  }
+
+  .mobile-view--projects .projects-history__kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mobile-view--finance .finance-analytics__presets {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .mobile-view--tasks .tasks-view__add {

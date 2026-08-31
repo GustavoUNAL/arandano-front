@@ -13,6 +13,7 @@ import type { MonthCalendarDay } from './MonthCalendar'
 import { MonthCalendarScrollFeed } from './MonthCalendarScrollFeed'
 import { DayTasksModal } from './DayTasksModal'
 import { ViewBootSplash } from './DataLoadingSplash'
+import { namedCopy } from '../lib/userIdentity'
 import { MOBILE_FILTER_BREAKPOINT } from './MobileAwareFilterBar'
 
 function localDateKey(d = new Date()): string {
@@ -110,7 +111,11 @@ export function TasksView({ baseUrl, user }: Props) {
         <div>
           <h1 className="page-title">Tareas</h1>
           <p className="muted small tasks-view__lead">
-            Calendario compartido del equipo · todo list por día
+            {namedCopy(
+              user?.name,
+              '{name}, este es el calendario de tareas del equipo.',
+              'Calendario compartido del equipo.',
+            )}
           </p>
         </div>
         <button
@@ -177,8 +182,8 @@ export function TasksView({ baseUrl, user }: Props) {
 
       <p className="muted small month-calendar-hint">
         {isMobile
-          ? 'Tocá un día para ver y gestionar las tareas de toda la empresa.'
-          : 'Hacé clic en un día para ver y gestionar las tareas de toda la empresa.'}
+          ? 'Toque un día para ver y gestionar las tareas de toda la empresa.'
+          : 'Haga clic en un día para ver y gestionar las tareas de toda la empresa.'}
       </p>
 
       {dayModalDate ? (

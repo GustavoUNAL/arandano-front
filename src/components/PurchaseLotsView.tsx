@@ -38,6 +38,8 @@ import {
   resolveLotLineInventoryBehavior,
 } from '../inventorySemantics'
 import { useMatchMedia } from '../hooks/useMatchMedia'
+import { useFirstName } from '../hooks/useSessionUser'
+import { namedCopy } from '../lib/userIdentity'
 import {
   MobileAwareFilterBar,
   MOBILE_FILTER_BREAKPOINT,
@@ -606,6 +608,7 @@ export function PurchaseLotsView({
   baseUrl: string
   inaugurationDate?: string | null
 }) {
+  const first = useFirstName()
   const { rowClass, panelClass, runRemove, flashSaved } =
     useEntityActionAnimation()
   const [list, setList] = useState<PurchaseLotRow[]>([])
@@ -2385,7 +2388,7 @@ export function PurchaseLotsView({
             </div>
             <p className="muted small purchase-lot-consumed-at-block__hint">
               Cuándo se dio por consumido o agotado. Si no había valor guardado, se
-              sugiere la fecha y hora actuales al abrir; podés dejarlo vacío con «Sin
+              sugiere la fecha y hora actuales al abrir; puede dejarlo vacío con «Sin
               fecha».
             </p>
           </div>
@@ -2473,7 +2476,7 @@ export function PurchaseLotsView({
             <div className="modal-head-title">
               <h2 id="purchase-lot-meta-edit-title">Datos del lote</h2>
               <p className="muted small modal-subtitle">
-                Completá o corregí la ficha. El consumo se ajusta desde las tablas del detalle.
+                Complete o corrija la ficha. El consumo se ajusta desde las tablas del detalle.
               </p>
             </div>
             <div className="modal-head-actions">
@@ -3219,7 +3222,7 @@ export function PurchaseLotsView({
                               )}
                               role="button"
                               tabIndex={0}
-                              title="Tocá para editar"
+                              title="Toque para editar"
                               onClick={() => openLotItemEdit(inv, item)}
                               onKeyDown={(e) => {
                                 if (e.key === 'Enter' || e.key === ' ') {
@@ -3341,7 +3344,7 @@ export function PurchaseLotsView({
                                 )}
                                 role="button"
                                 tabIndex={0}
-                                title="Tocá para editar"
+                                title="Toque para editar"
                                 onClick={() => openLotItemEdit(inv)}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter' || e.key === ' ') {
@@ -3387,8 +3390,11 @@ export function PurchaseLotsView({
               <div>
                 <h2 className="page-title">Compras</h2>
                 <p className="muted small purchases-intro__description">
-                  Registro diario de compras por lote. Calendario para ver el detalle
-                  de cada día.
+                  {namedCopy(
+                    first,
+                    '{name}, aquí está el registro diario de compras por lote. Seleccione un día para ver el detalle.',
+                    'Registro diario de compras por lote. Seleccione un día para ver el detalle.',
+                  )}
                 </p>
               </div>
             ) : null}
@@ -3677,7 +3683,7 @@ export function PurchaseLotsView({
           )}
           {!isMobileFilters ? (
             <p className="muted small month-calendar-hint">
-              Hacé clic en un día del calendario para abrir un popup con todas las
+              Haga clic en un día del calendario para abrir un popup con todas las
               compras del día.
             </p>
           ) : null}

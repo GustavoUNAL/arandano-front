@@ -1,6 +1,7 @@
 import { LogOut } from 'lucide-react'
 import type { AuthUser } from '../api'
 import { displayCompanyName, displayUserRole } from '../lib/displayLabels'
+import { greetUser } from '../lib/userIdentity'
 import { userNeedsCompanyPicker } from '../lib/companySelect'
 import { CompanySwitcher } from './CompanySwitcher'
 
@@ -41,7 +42,8 @@ export function UserProfileCard({
           {initials(user.name)}
         </div>
         <div className="user-profile-card__body">
-          <strong className="user-profile-card__name">{user.name}</strong>
+          <strong className="user-profile-card__name">{greetUser(user.name)}</strong>
+          <p className="user-profile-card__legal-name">{user.name}</p>
           <p className="user-profile-card__email">{user.email}</p>
           {!compact ? (
             <>

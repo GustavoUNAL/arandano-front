@@ -201,7 +201,7 @@ export function ProductGrid({
           title="Ningún producto coincide"
           hint={
             search.trim()
-              ? 'Probá otro término, código o elegí «Todos»'
+              ? 'Pruebe otro término, código o seleccione «Todos»'
               : 'No hay productos en esta categoría'
           }
         />

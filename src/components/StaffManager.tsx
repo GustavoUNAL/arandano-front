@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { useEntityActionAnimation } from '../hooks/useEntityActionAnimation'
 import {
   createStaffMember,
@@ -19,19 +20,14 @@ import {
 import { ViewBootSplash } from './DataLoadingSplash'
 import type { AuthUser } from '../api'
 import { canManageAllStaff } from '../lib/permissions'
-
-function formatCOP(value: string | number | null | undefined): string {
-  const n =
-    typeof value === 'number'
-      ? value
-      : parseFloat(String(value ?? '').replace(',', '.'))
-  if (!Number.isFinite(n)) return '—'
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0,
-  }).format(n)
-}
+import { namedCopy } from '../lib/userIdentity'
+import {
+  StaffProfileCard,
+  formatPersonDate,
+  formatStaffMoney,
+  personInitials,
+} from './StaffProfileCard'
+import { mobileViewClass } from './mobile/mobileView'
 
 function parseMoneyInput(v: string): number {
   const n = parseFloat(v.replace(',', '.'))
@@ -88,6 +84,10 @@ const SHIFT_STATUS_LABEL: Record<StaffShiftRow['status'], string> = {
   OPEN: 'En curso',
   CLOSED: 'Cerrado',
   PAID: 'Pagado',
+}
+
+function overlay(node: ReactNode) {
+  return createPortal(node, document.body)
 }
 
 type Tab = 'people' | 'shifts'
@@ -178,13 +178,13 @@ export function StaffManager({
   const [editingShiftId, setEditingShiftId] = useState<string | null>(null)
   const [shiftDraft, setShiftDraft] = useState<ShiftDraft>(() => emptyShiftDraft([]))
   const [shiftSaving, setShiftSaving] = useState(false)
+  const [profileMember, setProfileMember] = useState<StaffMemberRow | null>(null)
   const [periodYm, setPeriodYm] = useState(currentPeriodYm)
   const autoPeriodSteps = useRef(0)
   const manageAll = canManageAllStaff(user)
 
-  const selfMember = useMemo(() => {
-    if (manageAll) return null
-    if (!user) return members[0] ?? null
+  const ownMember = useMemo(() => {
+    if (!user) return manageAll ? null : (members[0] ?? null)
     return (
       members.find((m) => m.userId && m.userId === user.sub) ||
       members.find(
@@ -193,10 +193,11 @@ export function StaffManager({
       members.find(
         (m) => m.name.trim().toLowerCase() === user.name.trim().toLowerCase(),
       ) ||
-      members[0] ||
-      null
+      (manageAll ? null : members[0] ?? null)
     )
   }, [manageAll, members, user])
+
+  const selfMember = manageAll ? null : ownMember
 
   const period = useMemo(() => periodRange(periodYm), [periodYm])
   const periodLabel = useMemo(() => formatPeriodLabel(periodYm), [periodYm])
@@ -280,32 +281,51 @@ export function StaffManager({
   }
 
   const saveMember = async () => {
-    const rate = parseMoneyInput(memberDraft.defaultHourlyRate)
     if (!memberDraft.name.trim()) {
       setError('El nombre es obligatorio.')
       return
     }
-    if (!Number.isFinite(rate) || rate < 0) {
-      setError('Tarifa por hora inválida.')
-      return
+    const selfEditOnly = !manageAll
+    if (!selfEditOnly) {
+      const rate = parseMoneyInput(memberDraft.defaultHourlyRate)
+      if (!Number.isFinite(rate) || rate < 0) {
+        setError('Tarifa por hora inválida.')
+        return
+      }
     }
     setMemberSaving(true)
     setError(null)
     try {
-      const payload = {
-        name: memberDraft.name.trim(),
-        phone: memberDraft.phone.trim() || undefined,
-        email: memberDraft.email.trim() || undefined,
-        idNumber: memberDraft.idNumber.trim() || undefined,
-        defaultHourlyRate: rate,
-        active: memberDraft.active,
-        notes: memberDraft.notes.trim() || undefined,
-      }
       if (editingMemberId) {
+        const payload = selfEditOnly
+          ? {
+              name: memberDraft.name.trim(),
+              phone: memberDraft.phone.trim(),
+              email: memberDraft.email.trim(),
+              idNumber: memberDraft.idNumber.trim(),
+              notes: memberDraft.notes.trim(),
+            }
+          : {
+              name: memberDraft.name.trim(),
+              phone: memberDraft.phone.trim() || undefined,
+              email: memberDraft.email.trim() || undefined,
+              idNumber: memberDraft.idNumber.trim() || undefined,
+              defaultHourlyRate: parseMoneyInput(memberDraft.defaultHourlyRate),
+              active: memberDraft.active,
+              notes: memberDraft.notes.trim() || undefined,
+            }
         await updateStaffMember(baseUrl, editingMemberId, payload)
         flashSaved(editingMemberId)
       } else {
-        await createStaffMember(baseUrl, payload)
+        await createStaffMember(baseUrl, {
+          name: memberDraft.name.trim(),
+          phone: memberDraft.phone.trim() || undefined,
+          email: memberDraft.email.trim() || undefined,
+          idNumber: memberDraft.idNumber.trim() || undefined,
+          defaultHourlyRate: parseMoneyInput(memberDraft.defaultHourlyRate),
+          active: memberDraft.active,
+          notes: memberDraft.notes.trim() || undefined,
+        })
       }
       setMemberModalOpen(false)
       await load()
@@ -343,9 +363,12 @@ export function StaffManager({
   }
 
   const saveShift = async () => {
-    const rate = parseMoneyInput(shiftDraft.hourlyRate)
+    const lockedRate = !manageAll
+      ? parseMoneyInput(selfMember?.defaultHourlyRate ?? shiftDraft.hourlyRate)
+      : parseMoneyInput(shiftDraft.hourlyRate)
+    const rate = lockedRate
     if (!shiftDraft.staffMemberId) {
-      setError('Elige una persona.')
+      setError('Seleccione una persona.')
       return
     }
     if (!Number.isFinite(rate) || rate < 0) {
@@ -422,14 +445,22 @@ export function StaffManager({
   }
 
   return (
-    <div className="staff-manager page-pane">
+    <div className={mobileViewClass('staff', 'staff-manager page-pane')}>
       <header className="staff-manager__head">
         <div>
           <h1 className="staff-manager__title">Personal</h1>
           <p className="muted staff-manager__lead">
             {manageAll
-              ? 'Turnos de atención: registra horas trabajadas y tarifa por hora para calcular el pago.'
-              : 'Registrá solo tus turnos: entrada, salida y notas. No ves los turnos de otras personas.'}
+              ? namedCopy(
+                  user?.name,
+                  '{name}, aquí puede consultar turnos y fichas del equipo.',
+                  'Turnos y fichas de personal.',
+                )
+              : namedCopy(
+                  user?.name,
+                  '{name}, estos son sus turnos.',
+                  'Sus turnos de atención.',
+                )}
           </p>
         </div>
         {manageAll ? (
@@ -462,6 +493,8 @@ export function StaffManager({
         </p>
       )}
 
+      {tab === 'shifts' ? (
+        <>
       <section className="staff-manager__period-bar" aria-label="Periodo de consulta">
         <button
           type="button"
@@ -493,13 +526,15 @@ export function StaffManager({
         </article>
         <article className="staff-manager__kpi">
           <span className="staff-manager__kpi-label">A pagar</span>
-          <strong>{loading ? '…' : formatCOP(summary?.totalPayCOP ?? 0)}</strong>
+          <strong>{loading ? '…' : formatStaffMoney(summary?.totalPayCOP ?? 0)}</strong>
         </article>
         <article className="staff-manager__kpi">
           <span className="staff-manager__kpi-label">En curso</span>
           <strong>{loading ? '…' : (summary?.openShifts ?? 0)}</strong>
         </article>
       </section>
+        </>
+      ) : null}
 
       {tab === 'people' ? (
         <section className="staff-manager__panel">
@@ -521,6 +556,7 @@ export function StaffManager({
                     <th>Nombre</th>
                     <th className="num">$/hora</th>
                     <th>Contacto</th>
+                    <th>Alta</th>
                     <th>Estado</th>
                     <th />
                   </tr>
@@ -528,24 +564,32 @@ export function StaffManager({
                 <tbody>
                   {members.map((m) => (
                     <tr key={m.id} className={rowClass(m.id)}>
-                      <td>
+                      <td data-label="Nombre">
                         <strong>{m.name}</strong>
                         {m.idNumber?.trim() ? (
                           <span className="muted small"> · {m.idNumber}</span>
                         ) : null}
                       </td>
-                      <td className="num mono">{formatCOP(m.defaultHourlyRate)}</td>
-                      <td className="muted small">
+                      <td className="num mono" data-label="$/hora">{formatStaffMoney(m.defaultHourlyRate)}</td>
+                      <td className="muted small" data-label="Contacto">
                         {[m.phone, m.email].filter(Boolean).join(' · ') || '—'}
                       </td>
-                      <td>
+                      <td className="muted small" data-label="Alta">{formatPersonDate(m.createdAt, 'medium')}</td>
+                      <td data-label="Estado">
                         {m.active ? (
                           <span className="badge badge-ok">Activo</span>
                         ) : (
                           <span className="badge badge-muted">Inactivo</span>
                         )}
                       </td>
-                      <td>
+                      <td className="staff-manager__row-actions" data-label="">
+                        <button
+                          type="button"
+                          className="btn-secondary btn-compact"
+                          onClick={() => setProfileMember(m)}
+                        >
+                          Perfil
+                        </button>
                         <button
                           type="button"
                           className="btn-secondary btn-compact"
@@ -592,8 +636,7 @@ export function StaffManager({
             <p className="muted">Cargando turnos…</p>
           ) : shifts.length === 0 ? (
             <p className="muted">
-              Sin turnos en {periodLabel.toLowerCase()}. Usa ← para ver meses anteriores (los
-              turnos de David están en abril y mayo 2026).
+              Sin turnos en {periodLabel.toLowerCase()}. Use ← para consultar meses anteriores.
             </p>
           ) : (
             <div className="data-table-wrap">
@@ -613,13 +656,13 @@ export function StaffManager({
                 <tbody>
                   {shifts.map((s) => (
                     <tr key={s.id} className={rowClass(s.id)}>
-                      <td>{s.staffMemberName}</td>
-                      <td className="small">{formatShiftTime(s.startAt)}</td>
-                      <td className="small">{formatShiftTime(s.endAt)}</td>
-                      <td className="num mono">{formatHours(s.hoursWorked)}</td>
-                      <td className="num mono">{formatCOP(s.hourlyRateCOP)}</td>
-                      <td className="num mono">{formatCOP(s.totalPayCOP)}</td>
-                      <td>
+                      <td data-label="Persona">{s.staffMemberName}</td>
+                      <td className="small" data-label="Entrada">{formatShiftTime(s.startAt)}</td>
+                      <td className="small" data-label="Salida">{formatShiftTime(s.endAt)}</td>
+                      <td className="num mono" data-label="Horas">{formatHours(s.hoursWorked)}</td>
+                      <td className="num mono" data-label="$/hora">{formatStaffMoney(s.hourlyRateCOP)}</td>
+                      <td className="num mono" data-label="Total">{formatStaffMoney(s.totalPayCOP)}</td>
+                      <td data-label="Estado">
                         <span
                           className={`badge ${
                             s.status === 'OPEN'
@@ -632,7 +675,7 @@ export function StaffManager({
                           {SHIFT_STATUS_LABEL[s.status]}
                         </span>
                       </td>
-                      <td className="staff-manager__row-actions">
+                      <td className="staff-manager__row-actions" data-label="">
                         {s.status === 'OPEN' && (
                           <button
                             type="button"
@@ -668,7 +711,7 @@ export function StaffManager({
         </section>
       )}
 
-      {memberModalOpen && (
+      {memberModalOpen && overlay(
         <div
           className="modal-backdrop modal-backdrop--config"
           role="presentation"
@@ -676,9 +719,28 @@ export function StaffManager({
             if (e.target === e.currentTarget && !memberSaving) setMemberModalOpen(false)
           }}
         >
-          <section className={panelClass('modal', 'modal--config')} role="dialog" aria-modal="true">
+          <section
+            className={panelClass('modal', 'modal--config', 'modal--config-lg')}
+            role="dialog"
+            aria-modal="true"
+          >
             <header className="modal-head modal-head--config">
-              <h2>{editingMemberId ? 'Editar persona' : 'Nueva persona'}</h2>
+              <h2>
+                {editingMemberId
+                  ? !manageAll || editingMemberId === ownMember?.id
+                    ? 'Editar perfil'
+                    : 'Editar persona'
+                  : 'Nueva persona'}
+              </h2>
+              <button
+                type="button"
+                className="modal-close"
+                disabled={memberSaving}
+                onClick={() => setMemberModalOpen(false)}
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
             </header>
             <div className="modal-body modal-body--config">
               <label className="field-stack">
@@ -688,6 +750,7 @@ export function StaffManager({
                   onChange={(e) => setMemberDraft({ ...memberDraft, name: e.target.value })}
                 />
               </label>
+              {manageAll ? (
               <label className="field-stack">
                 <span>Tarifa por hora (COP)</span>
                 <input
@@ -698,6 +761,7 @@ export function StaffManager({
                   }
                 />
               </label>
+              ) : null}
               <label className="field-stack">
                 <span>Teléfono</span>
                 <input
@@ -728,6 +792,7 @@ export function StaffManager({
                   onChange={(e) => setMemberDraft({ ...memberDraft, notes: e.target.value })}
                 />
               </label>
+              {manageAll ? (
               <label className="field-check">
                 <input
                   type="checkbox"
@@ -736,9 +801,10 @@ export function StaffManager({
                 />
                 Activo en turnos
               </label>
+              ) : null}
             </div>
             <footer className="modal-foot modal-foot--config">
-              {editingMemberId && (
+              {editingMemberId && manageAll && (
                 <button
                   type="button"
                   className="btn-secondary"
@@ -785,7 +851,7 @@ export function StaffManager({
         </div>
       )}
 
-      {shiftModalOpen && (
+      {shiftModalOpen && overlay(
         <div
           className="modal-backdrop modal-backdrop--config"
           role="presentation"
@@ -793,116 +859,187 @@ export function StaffManager({
             if (e.target === e.currentTarget && !shiftSaving) setShiftModalOpen(false)
           }}
         >
-          <section className={panelClass('modal', 'modal--config')} role="dialog" aria-modal="true">
+          <section
+            className={panelClass('modal', 'modal--config', 'modal--shift')}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="staff-shift-title"
+          >
             <header className="modal-head modal-head--config">
-              <h2>{editingShiftId ? 'Editar turno' : 'Registrar turno'}</h2>
-            </header>
-            <div className="modal-body modal-body--config">
-              <label className="field-stack">
-                <span>Persona</span>
-                <select
-                  value={shiftDraft.staffMemberId}
-                  disabled={!manageAll || Boolean(editingShiftId)}
-                  onChange={(e) => {
-                    const id = e.target.value
-                    const m = members.find((x) => x.id === id)
-                    setShiftDraft({
-                      ...shiftDraft,
-                      staffMemberId: id,
-                      hourlyRate: m?.defaultHourlyRate ?? shiftDraft.hourlyRate,
-                    })
-                  }}
-                >
-                  <option value="">Elegir…</option>
-                  {members.filter((m) => m.active).map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="field-stack">
-                <span>Entrada</span>
-                <input
-                  type="datetime-local"
-                  value={shiftDraft.startLocal}
-                  onChange={(e) =>
-                    setShiftDraft({ ...shiftDraft, startLocal: e.target.value })
-                  }
-                />
-              </label>
-              <label className="field-stack">
-                <span>Salida (opcional si sigue en curso)</span>
-                <input
-                  type="datetime-local"
-                  value={shiftDraft.endLocal}
-                  onChange={(e) =>
-                    setShiftDraft({ ...shiftDraft, endLocal: e.target.value })
-                  }
-                />
-              </label>
-              <label className="field-stack">
-                <span>Tarifa por hora (COP)</span>
-                <input
-                  inputMode="decimal"
-                  value={shiftDraft.hourlyRate}
-                  onChange={(e) =>
-                    setShiftDraft({ ...shiftDraft, hourlyRate: e.target.value })
-                  }
-                />
-              </label>
-              <label className="field-check">
-                <input
-                  type="checkbox"
-                  checked={shiftDraft.useManualHours}
-                  onChange={(e) =>
-                    setShiftDraft({ ...shiftDraft, useManualHours: e.target.checked })
-                  }
-                />
-                Registrar horas manualmente
-              </label>
-              {shiftDraft.useManualHours && (
-                <label className="field-stack">
-                  <span>Horas trabajadas</span>
-                  <input
-                    inputMode="decimal"
-                    value={shiftDraft.manualHours}
-                    onChange={(e) =>
-                      setShiftDraft({ ...shiftDraft, manualHours: e.target.value })
-                    }
-                  />
-                </label>
-              )}
-              <label className="field-stack">
-                <span>Estado</span>
-                <select
-                  value={shiftDraft.status}
-                  onChange={(e) =>
-                    setShiftDraft({
-                      ...shiftDraft,
-                      status: e.target.value as StaffShiftRow['status'],
-                    })
-                  }
-                >
-                  <option value="OPEN">En curso</option>
-                  <option value="CLOSED">Cerrado</option>
-                  {manageAll ? <option value="PAID">Pagado</option> : null}
-                </select>
-              </label>
-              {previewShift && (
-                <p className="staff-manager__preview muted">
-                  Vista previa: {formatHours(previewShift.hours)} h ·{' '}
-                  {formatCOP(previewShift.total)}
+              <div>
+                <p className="staff-shift-modal__kicker">
+                  {editingShiftId ? 'Turno' : 'Nuevo registro'}
                 </p>
-              )}
-              <label className="field-stack">
-                <span>Notas</span>
-                <textarea
-                  rows={2}
-                  value={shiftDraft.notes}
-                  onChange={(e) => setShiftDraft({ ...shiftDraft, notes: e.target.value })}
-                />
-              </label>
+                <h2 id="staff-shift-title">
+                  {editingShiftId ? 'Editar turno' : 'Registrar turno'}
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="modal-close"
+                disabled={shiftSaving}
+                onClick={() => setShiftModalOpen(false)}
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </header>
+            <div className="modal-body modal-body--config staff-shift-modal__body">
+              {(() => {
+                const person =
+                  members.find((m) => m.id === shiftDraft.staffMemberId) ??
+                  selfMember ??
+                  null
+                const lockPerson = !manageAll || Boolean(editingShiftId)
+                return (
+                  <>
+                    {lockPerson && person ? (
+                      <div className="staff-shift-who">
+                        <span className="staff-shift-who__avatar" aria-hidden>
+                          {personInitials(person.name)}
+                        </span>
+                        <div className="staff-shift-who__copy">
+                          <strong>{person.name}</strong>
+                          <span>
+                            {formatStaffMoney(shiftDraft.hourlyRate || person.defaultHourlyRate)}{' '}
+                            / hora
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <label className="field-stack">
+                        <span>Persona</span>
+                        <select
+                          value={shiftDraft.staffMemberId}
+                          onChange={(e) => {
+                            const id = e.target.value
+                            const m = members.find((x) => x.id === id)
+                            setShiftDraft({
+                              ...shiftDraft,
+                              staffMemberId: id,
+                              hourlyRate: m?.defaultHourlyRate ?? shiftDraft.hourlyRate,
+                            })
+                          }}
+                        >
+                          <option value="">Seleccione una persona</option>
+                          {members
+                            .filter((m) => m.active)
+                            .map((m) => (
+                              <option key={m.id} value={m.id}>
+                                {m.name}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                    )}
+
+                    <div className="staff-shift-times">
+                      <label className="field-stack">
+                        <span>Entrada</span>
+                        <input
+                          type="datetime-local"
+                          value={shiftDraft.startLocal}
+                          onChange={(e) =>
+                            setShiftDraft({ ...shiftDraft, startLocal: e.target.value })
+                          }
+                        />
+                      </label>
+                      <label className="field-stack">
+                        <span>Salida</span>
+                        <input
+                          type="datetime-local"
+                          value={shiftDraft.endLocal}
+                          onChange={(e) =>
+                            setShiftDraft({ ...shiftDraft, endLocal: e.target.value })
+                          }
+                        />
+                        <em className="staff-shift-times__hint">
+                          Deje vacío si el turno sigue en curso
+                        </em>
+                      </label>
+                    </div>
+
+                    {manageAll ? (
+                      <label className="field-stack">
+                        <span>Tarifa por hora (COP)</span>
+                        <input
+                          inputMode="decimal"
+                          value={shiftDraft.hourlyRate}
+                          onChange={(e) =>
+                            setShiftDraft({ ...shiftDraft, hourlyRate: e.target.value })
+                          }
+                        />
+                      </label>
+                    ) : null}
+
+                    <div className="staff-shift-status" role="group" aria-label="Estado del turno">
+                      {(
+                        [
+                          ['OPEN', 'En curso'],
+                          ['CLOSED', 'Cerrado'],
+                          ...(manageAll ? ([['PAID', 'Pagado']] as const) : []),
+                        ] as Array<[StaffShiftRow['status'], string]>
+                      ).map(([value, label]) => (
+                        <button
+                          key={value}
+                          type="button"
+                          className={`staff-shift-status__btn${
+                            shiftDraft.status === value ? ' is-on' : ''
+                          }`}
+                          onClick={() => setShiftDraft({ ...shiftDraft, status: value })}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <label className="staff-shift-toggle">
+                      <input
+                        type="checkbox"
+                        checked={shiftDraft.useManualHours}
+                        onChange={(e) =>
+                          setShiftDraft({ ...shiftDraft, useManualHours: e.target.checked })
+                        }
+                      />
+                      <span>Registrar horas a mano</span>
+                    </label>
+                    {shiftDraft.useManualHours ? (
+                      <label className="field-stack">
+                        <span>Horas trabajadas</span>
+                        <input
+                          inputMode="decimal"
+                          value={shiftDraft.manualHours}
+                          onChange={(e) =>
+                            setShiftDraft({ ...shiftDraft, manualHours: e.target.value })
+                          }
+                        />
+                      </label>
+                    ) : null}
+
+                    {previewShift ? (
+                      <div className="staff-shift-preview">
+                        <span>Total estimado</span>
+                        <strong>
+                          {formatHours(previewShift.hours)} h ·{' '}
+                          {formatStaffMoney(previewShift.total)}
+                        </strong>
+                      </div>
+                    ) : null}
+
+                    <label className="field-stack">
+                      <span>Notas</span>
+                      <textarea
+                        rows={2}
+                        placeholder="Opcional"
+                        value={shiftDraft.notes}
+                        onChange={(e) =>
+                          setShiftDraft({ ...shiftDraft, notes: e.target.value })
+                        }
+                      />
+                    </label>
+                  </>
+                )
+              })()}
             </div>
             <footer className="modal-foot modal-foot--config">
               {editingShiftId && manageAll && (
@@ -951,6 +1088,62 @@ export function StaffManager({
           </section>
         </div>
       )}
+
+      {profileMember
+        ? overlay(
+        <div
+          className="modal-backdrop modal-backdrop--config"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setProfileMember(null)
+          }}
+        >
+          <section
+            className={panelClass('modal', 'modal--config', 'modal--config-lg')}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="staff-profile-title"
+          >
+            <header className="modal-head modal-head--config">
+              <h2 id="staff-profile-title">Perfil</h2>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setProfileMember(null)}
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </header>
+            <div className="modal-body modal-body--config">
+              <StaffProfileCard member={profileMember} compact />
+            </div>
+            <footer className="modal-foot modal-foot--config">
+              {manageAll ? (
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => {
+                    const m = profileMember
+                    if (!m) return
+                    setProfileMember(null)
+                    openEditMember(m)
+                  }}
+                >
+                  Editar
+                </button>
+              ) : null}
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={() => setProfileMember(null)}
+              >
+                Cerrar
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
 
       <ViewBootSplash ready={!loading} label="Cargando personal…" />
     </div>

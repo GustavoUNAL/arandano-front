@@ -1,5 +1,25 @@
-const DEFAULT_DARK = '#161114'
-const DEFAULT_LIGHT = '#f6f6f4'
+export const THEME_STORAGE_KEY = 'vos_theme_v2'
+export const DEFAULT_THEME: 'dark' | 'light' = 'light'
+export const DEFAULT_DARK = '#111213'
+export const DEFAULT_LIGHT = '#f6f6f4'
+
+export function readStoredTheme(): 'dark' | 'light' {
+  try {
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY)
+    if (stored === 'dark' || stored === 'light') return stored
+  } catch {
+    /* ignore */
+  }
+  return DEFAULT_THEME
+}
+
+export function persistTheme(theme: 'dark' | 'light') {
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, theme)
+  } catch {
+    /* ignore */
+  }
+}
 
 export function setThemeColor(color: string) {
   let meta = document.querySelector('meta[name="theme-color"]')

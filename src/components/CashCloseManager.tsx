@@ -3,10 +3,13 @@ import { fetchCashCloseCalendar } from '../api'
 import { CashClosePanel } from './CashClosePanel'
 import { MonthCalendar } from './MonthCalendar'
 import { ViewBootSplash } from './DataLoadingSplash'
+import { useFirstName } from '../hooks/useSessionUser'
+import { namedCopy } from '../lib/userIdentity'
 import {
   getOpenPosTables,
   type OpenPosTableSnapshot,
 } from '../pos/lib/openTablesSnapshot'
+import { mobileViewClass } from './mobile/mobileView'
 
 function localDateKey(d = new Date()): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -58,6 +61,7 @@ export function CashCloseManager({
   const [openPosTables, setOpenPosTables] = useState<OpenPosTableSnapshot[]>(() =>
     getOpenPosTables(),
   )
+  const first = useFirstName()
 
   const shiftMonth = (delta: number) => {
     const d = new Date(calendarYear, calendarMonth - 1 + delta, 1)
@@ -108,13 +112,16 @@ export function CashCloseManager({
   }, [])
 
   return (
-    <div className="cash-close-manager">
+    <div className={mobileViewClass('cash-close', 'cash-close-manager')}>
       <header className="cash-close-manager__head">
         <div>
           <h1 className="cash-close-manager__title">Cierre del día</h1>
           <p className="cash-close-manager__lead muted">
-            Elegí un día en el calendario, registrá el arqueo y cerrá manualmente o
-            automáticamente a las 11:59 p. m.
+            {namedCopy(
+              first,
+              '{name}, seleccione un día en el calendario para registrar el arqueo. El cierre es a las 11:59 p. m.',
+              'Seleccione un día en el calendario para registrar el arqueo. El cierre es a las 11:59 p. m.',
+            )}
           </p>
         </div>
       </header>

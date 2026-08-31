@@ -8,6 +8,9 @@ import {
 } from '../api'
 import { formatCOP } from '../lib/money'
 import { ViewBootSplash } from './DataLoadingSplash'
+import { useFirstName } from '../hooks/useSessionUser'
+import { namedCopy } from '../lib/userIdentity'
+import { mobileViewClass } from './mobile/mobileView'
 
 function bogotaToday(): string {
   return new Intl.DateTimeFormat('en-CA', {
@@ -58,6 +61,7 @@ const GRANULARITY_LABEL: Record<AnalyticsGranularity, string> = {
 }
 
 export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
+  const first = useFirstName()
   const today = bogotaToday()
   const [dateFrom, setDateFrom] = useState('2025-01-01')
   const [dateTo, setDateTo] = useState(() => bogotaToday())
@@ -215,13 +219,16 @@ export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
   }
 
   return (
-    <div className="finance-analytics page-pane">
+    <div className={mobileViewClass('finance', 'finance-analytics page-pane')}>
       <header className="finance-analytics__head">
         <div>
           <h1 className="finance-analytics__title">Análisis financiero</h1>
           <p className="muted finance-analytics__lead">
-            Entradas, salidas y utilidad estimada por día, semana o mes — desde los
-            primeros datos.
+            {namedCopy(
+              first,
+              '{name}, aquí puede ver entradas, salidas y la utilidad estimada por día, semana o mes.',
+              'Entradas, salidas y utilidad estimada por día, semana o mes.',
+            )}
           </p>
         </div>
         <div className="view-toggle finance-analytics__granularity" role="group" aria-label="Agrupación">

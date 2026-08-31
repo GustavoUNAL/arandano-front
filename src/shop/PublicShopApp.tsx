@@ -5,6 +5,7 @@ import {
   useState,
   type CSSProperties,
 } from 'react'
+import { persistTheme, readStoredTheme } from '../lib/themeColor'
 import { formatCOP } from '../lib/money'
 import { PublicThemeSwitch } from '../components/PublicThemeSwitch'
 import '../public-shell.css'
@@ -48,13 +49,10 @@ function saveCart(key: string, lines: ShopCartLine[]) {
 }
 
 function useVosTheme(): ['dark' | 'light', () => void] {
-  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
-    const stored = window.localStorage.getItem('vos_theme')
-    return stored === 'light' ? 'light' : 'dark'
-  })
+  const [theme, setTheme] = useState<'dark' | 'light'>(readStoredTheme)
   useEffect(() => {
     document.documentElement.dataset.theme = theme
-    window.localStorage.setItem('vos_theme', theme)
+    persistTheme(theme)
   }, [theme])
   return [theme, () => setTheme((t) => (t === 'dark' ? 'light' : 'dark'))]
 }
@@ -306,7 +304,7 @@ export function PublicShopApp() {
         <div className="shop-cart-panel__empty">
           <ShopCartIcon size={28} />
           <p>Carrito vacío</p>
-          <span className="muted small">Elegí productos del menú</span>
+          <span className="muted small">Seleccione productos del menú</span>
         </div>
       )
     }

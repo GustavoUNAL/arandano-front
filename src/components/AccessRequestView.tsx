@@ -50,7 +50,7 @@ export function AccessRequestView({ baseUrl }: Props) {
     e.preventDefault()
     if (submitting) return
     if (!companyName.trim() || !contactName.trim() || !email.trim()) {
-      setError('Completá empresa, nombre y email.')
+      setError('Complete empresa, nombre y email.')
       return
     }
     setError(null)
@@ -97,11 +97,11 @@ export function AccessRequestView({ baseUrl }: Props) {
         <aside className="public-auth__visual">
           <BrandMark size="md" showTagline />
           <div>
-            <h2>{plan === 'TRIAL' ? 'Registrá tu empresa' : `Plan ${plan === 'PRO' ? 'Pro' : 'Empresa'}`}</h2>
+            <h2>{plan === 'TRIAL' ? 'Registre su empresa' : `Plan ${plan === 'PRO' ? 'Pro' : 'Empresa'}`}</h2>
             <p>
               {plan === 'TRIAL'
-                ? `Completá el formulario y activamos tu espacio en ${BRAND_NAME} para empezar a operar.`
-                : 'Dejanos tus datos. Gustavo recibe la alerta en el panel de administración y te contacta para activar el plan.'}
+                ? `Complete el formulario y activamos su espacio en ${BRAND_NAME} para empezar a operar.`
+                : 'Déjenos sus datos. Gustavo recibe la alerta en el panel de administración y le contacta para activar el plan.'}
             </p>
           </div>
           <ul className="public-auth__bullets">
