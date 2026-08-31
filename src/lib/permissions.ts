@@ -71,6 +71,9 @@ export function canAccessView(
   view: string,
 ): boolean {
   if (!user) return false
+  if (isBookingLedCompany(user) && BOOKING_LED_HIDDEN_VIEWS.has(view)) {
+    return false
+  }
   if (hasCompanyModule(user, 'booking')) {
     if (
       view === 'home' ||
@@ -140,11 +143,32 @@ export function hasBookingModule(user: AuthUser | null | undefined): boolean {
   return hasCompanyModule(user, 'booking')
 }
 
+/**
+ * Empresa que opera por agenda (barbería, etc.): reservas públicas,
+ * atención y cierre. No usa catálogo, POS, tienda ni personal de café.
+ */
+export function isBookingLedCompany(user: AuthUser | null | undefined): boolean {
+  return hasBookingModule(user)
+}
+
 /** Empresa cuyo único módulo habilitado es la agenda (p. ej. Ricky). */
 export function isBookingOnlyCompany(user: AuthUser | null | undefined): boolean {
   const mods = getCompanyModules(user)
   return mods.includes('booking') && mods.every((m) => m === 'booking')
 }
+
+const BOOKING_LED_HIDDEN_VIEWS = new Set([
+  'products',
+  'recipes',
+  'pos',
+  'shop',
+  'staff',
+  'inventory',
+  'purchases',
+  'sales',
+  'tasks',
+  'projects',
+])
 
 export function hasDentalModule(user: AuthUser | null | undefined): boolean {
   return hasCompanyModule(user, 'dental')

@@ -6,6 +6,7 @@ import {
   formatCOP,
   hhmm,
   publicBookingUrl,
+  publicDisplayName,
   STATUS_LABEL,
   type BookingAppointment,
   type BookingBlock,
@@ -357,12 +358,12 @@ function PublicBookingLinkCard({
   const url = publicBookingUrl(settings.publicSlug)
   return (
     <div className="bk__card bk__public-link">
-      <p className="bk__meta">Enlace para que cualquiera pida una cita</p>
+      <p className="bk__meta">Enlace público de reservas</p>
       <h3 style={{ wordBreak: 'break-all' }}>{url}</h3>
       <p className="bk__meta">
         {settings.publicEnabled
-          ? 'Quien abre el enlace ve un calendario, elige día y horario, y envía una solicitud. Tú aceptas o rechazas en Agenda.'
-          : 'El enlace está pausado. Actívalo para recibir solicitudes.'}
+          ? 'Quien abre este enlace elige día y horario. Usted acepta o rechaza la solicitud en Agenda, atiende y marca el servicio como terminado.'
+          : 'El enlace está pausado. Actívelo para recibir solicitudes.'}
       </p>
       <div className="bk__actions">
         <Button
@@ -546,8 +547,8 @@ function ApptCard({
         <span className={`bk__badge bk__badge--${a.status.toLowerCase()}`}>{STATUS_LABEL[a.status]}</span>
       </div>
       <p className="bk__meta">
-        {a.service.name} · {a.staff.name} · {a.service.durationMin} min
-        {a.source === 'PUBLIC_BOOKING' ? ' · Solicitud del enlace' : ''}
+        {a.service.name} · {formatCOP(a.service.price)} · {a.staff.name} · {a.service.durationMin} min
+        {a.source === 'PUBLIC_BOOKING' ? ' · Reserva del enlace' : ''}
       </p>
       <p className="bk__meta">
         {a.customer.phone}
@@ -563,13 +564,17 @@ function ApptCard({
             Rechazar
           </button>
         </div>
-      ) : a.status !== 'CANCELLED' ? (
+      ) : a.status === 'COMPLETED' ? (
+        <p className="bk__meta">
+          Servicio terminado · {formatCOP(a.service.price)} · sumado al cierre del día
+        </p>
+      ) : a.status === 'CONFIRMED' ? (
         <div className="bk__actions">
-          <button type="button" className="bk__ghost" onClick={() => void onStatus(a.id, 'COMPLETED')}>
-            Completar
-          </button>
+          <Button type="button" size="sm" onClick={() => void onStatus(a.id, 'COMPLETED')}>
+            Terminar servicio
+          </Button>
           <button type="button" className="bk__ghost" onClick={() => void onStatus(a.id, 'NO_SHOW')}>
-            No show
+            No asistió
           </button>
           <button type="button" className="bk__danger" onClick={() => void onStatus(a.id, 'CANCELLED')}>
             Cancelar
@@ -934,14 +939,18 @@ function SettingsPane({
   onSave: (body: Partial<BookingSettings>) => Promise<void>
 }) {
   const [slug, setSlug] = useState(settings.publicSlug)
-  const [welcome, setWelcome] = useState(settings.welcomeMessage ?? '')
+  const [welcome, setWelcome] = useState(
+    () => publicDisplayName(settings.welcomeMessage),
+  )
+  const [notice, setNotice] = useState(settings.noticeMessage ?? '')
+  const [whatsapp, setWhatsapp] = useState(settings.whatsappPhone ?? '')
   const [enabled, setEnabled] = useState(settings.publicEnabled)
   const preview = { ...settings, publicSlug: slug.trim() || settings.publicSlug, publicEnabled: enabled }
   return (
     <>
       <h1 className="bk__title">Enlace público</h1>
       <p className="bk__meta" style={{ marginBottom: '0.85rem' }}>
-        Quien tiene el link elige un día en el calendario y solicita la cita. Tú la aceptas o la rechazas
+        Quien tiene el enlace elige un día en el calendario y solicita la cita. Usted la acepta o la rechaza
         desde Agenda. No necesita cuenta en VOS IA.
       </p>
       <PublicBookingLinkCard settings={preview} />
@@ -958,13 +967,35 @@ function SettingsPane({
         <input value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase())} />
       </label>
       <label className="bk__field">
-        Mensaje de bienvenida
+        Nombre en el enlace
         <input
           value={welcome}
           onChange={(e) => setWelcome(e.target.value)}
-          placeholder="Agenda tu cita"
+          placeholder="Ricky Barbero"
         />
       </label>
+      <label className="bk__field">
+        Aviso al pedir un turno
+        <textarea
+          value={notice}
+          onChange={(e) => setNotice(e.target.value)}
+          rows={3}
+          maxLength={600}
+          placeholder="Su turno quedó confirmado. Escríbanos por WhatsApp si necesita cambiar algo."
+        />
+      </label>
+      <label className="bk__field">
+        WhatsApp para continuar
+        <input
+          value={whatsapp}
+          onChange={(e) => setWhatsapp(e.target.value)}
+          inputMode="tel"
+          placeholder="300 000 0000"
+        />
+      </label>
+      <p className="bk__meta">
+        Ese número abre el chat de WhatsApp en el aviso, con el día y el turno ya escritos.
+      </p>
       <p className="bk__meta">Zona horaria: {settings.timezone}</p>
       <Button
         type="button"
@@ -972,7 +1003,10 @@ function SettingsPane({
           void onSave({
             publicSlug: slug,
             publicEnabled: enabled,
-            welcomeMessage: welcome,
+            welcomeMessage: welcome.trim() || 'Ricky Barbero',
+            noticeMessage: notice.trim(),
+            whatsappPhone: whatsapp.trim(),
+            slotIntervalMin: 60,
           })
         }
       >

@@ -2,7 +2,7 @@ import { PLATFORM_MODE, SALES_FLOOR_ONLY } from '../appScope'
 import type { AuthUser } from '../api'
 import type { LauncherIconView } from '../components/AppLauncherIcon'
 import type { NavGroupId } from '../navTypes'
-import { canAccessView, canViewFinance, canViewProjects, canViewTasks, hasBookingModule } from './permissions'
+import { canAccessView, canViewFinance, canViewProjects, canViewTasks, hasBookingModule, isBookingLedCompany } from './permissions'
 
 export type LauncherApp = {
   view: LauncherIconView
@@ -24,6 +24,19 @@ export function buildLauncherApps(options?: {
 
   if (PLATFORM_MODE) {
     const user = options?.user ?? null
+    if (isBookingLedCompany(user)) {
+      const apps: LauncherApp[] = [
+        { view: 'booking', label: 'Agenda', group: 'booking' },
+        { view: 'settings', label: 'Enlace público', group: 'booking' },
+        { view: 'customers', label: 'Clientes', group: 'booking' },
+        { view: 'services', label: 'Servicios', group: 'booking' },
+        { view: 'cash-close', label: 'Cierre del día', group: 'sales' },
+      ]
+      if (options?.canViewFinance ?? canViewFinance(user)) {
+        apps.push({ view: 'analytics', label: 'Finanzas', group: 'finance' })
+      }
+      return apps.filter((app) => canAccessView(user, app.view))
+    }
     const apps: LauncherApp[] = [
       { view: 'products', label: 'Catálogo', group: 'catalog' },
       { view: 'inventory', label: 'Stock', group: 'stock' },

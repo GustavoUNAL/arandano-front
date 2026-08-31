@@ -18,6 +18,9 @@ export type LauncherIconView =
   | 'explorer'
   | 'home'
   | 'booking'
+  | 'settings'
+  | 'customers'
+  | 'services'
 
 export function AppLauncherIcon({
   view,
@@ -257,6 +260,53 @@ export function AppLauncherIcon({
             strokeWidth="1.35"
             strokeLinejoin="round"
           />
+        </svg>
+      )
+    case 'settings':
+      return (
+        <svg className={c} viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path
+            d="M10 13.5a3.2 3.2 0 0 0 4.5 0l2.2-2.2a3.2 3.2 0 0 0-4.5-4.5L11 8"
+            stroke="currentColor"
+            strokeWidth="1.35"
+            strokeLinecap="round"
+          />
+          <path
+            d="M14 10.5a3.2 3.2 0 0 0-4.5 0L7.3 12.7a3.2 3.2 0 0 0 4.5 4.5L13 16"
+            stroke="currentColor"
+            strokeWidth="1.35"
+            strokeLinecap="round"
+          />
+        </svg>
+      )
+    case 'customers':
+      return (
+        <svg className={c} viewBox="0 0 24 24" fill="none" aria-hidden>
+          <circle cx="12" cy="8" r="3.2" stroke="currentColor" strokeWidth="1.35" />
+          <path
+            d="M5.5 19c.8-3.2 3.2-5 6.5-5s5.7 1.8 6.5 5"
+            stroke="currentColor"
+            strokeWidth="1.35"
+            strokeLinecap="round"
+          />
+        </svg>
+      )
+    case 'services':
+      return (
+        <svg className={c} viewBox="0 0 24 24" fill="none" aria-hidden>
+          <path
+            d="M7 4.5h10M7 9.5h10M7 14.5h6"
+            stroke="currentColor"
+            strokeWidth="1.35"
+            strokeLinecap="round"
+          />
+          <path
+            d="M7 19.5h4"
+            stroke="currentColor"
+            strokeWidth="1.35"
+            strokeLinecap="round"
+          />
+          <circle cx="17.5" cy="17.5" r="2.2" stroke="currentColor" strokeWidth="1.35" />
         </svg>
       )
     default:

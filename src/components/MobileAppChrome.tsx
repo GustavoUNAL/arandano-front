@@ -2,7 +2,7 @@ import { Home, Menu, X } from 'lucide-react'
 import { useEffect, useMemo } from 'react'
 import type { AuthUser } from '../api'
 import { PLATFORM_MODE, SALES_FLOOR_ONLY } from '../appScope'
-import { canAccessView } from '../lib/permissions'
+import { canAccessView, isBookingLedCompany } from '../lib/permissions'
 import { BRAND_NAME } from '../lib/brand'
 import { displayCompanyName } from '../lib/displayLabels'
 import { greetUser, namedCopy } from '../lib/userIdentity'
@@ -92,6 +92,9 @@ const PLATFORM_SHEET_LINKS: SheetLink[] = [
   { view: 'shop', label: 'Tienda en línea', icon: 'shop' },
   { view: 'staff', label: 'Personal', icon: 'staff' },
   { view: 'booking', label: 'Agenda de citas', icon: 'booking' },
+  { view: 'customers', label: 'Clientes', icon: 'booking' },
+  { view: 'services', label: 'Servicios', icon: 'booking' },
+  { view: 'settings', label: 'Enlace público', icon: 'booking' },
   { view: 'analytics', label: 'Análisis financiero', icon: 'analytics' },
   { view: 'assistant', label: 'VOS IA', icon: 'assistant' },
 ]
@@ -175,8 +178,16 @@ export function MobileAppChrome({
   baseUrl?: string
 }) {
   const dockTabs = useMemo(() => {
+    const bookingDock: DockTab[] = [
+      { id: 'home', label: 'Inicio', view: 'home', icon: 'home' },
+      { id: 'booking', label: 'Agenda', view: 'booking', icon: 'booking' },
+      { id: 'cash-close', label: 'Cierre', view: 'cash-close', icon: 'cash-close' },
+      { id: 'analytics', label: 'Finanzas', view: 'analytics', icon: 'analytics' },
+    ]
     const base = PLATFORM_MODE
-      ? DOCK_TABS_PLATFORM
+      ? isBookingLedCompany(user)
+        ? bookingDock
+        : DOCK_TABS_PLATFORM
       : SALES_FLOOR_ONLY
         ? DOCK_TABS_SALES
         : DOCK_TABS_FULL
@@ -187,7 +198,7 @@ export function MobileAppChrome({
       return canAccessView(user, tab.view)
     })
     // Clientes con pocos módulos: dock con Inventario + Finanzas.
-    if (PLATFORM_MODE && user && tabs.length <= 1) {
+    if (PLATFORM_MODE && user && tabs.length <= 1 && !isBookingLedCompany(user)) {
       const extras: DockTab[] = []
       if (canAccessView(user, 'inventory')) {
         extras.push({

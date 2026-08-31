@@ -9,7 +9,11 @@ export function displayCompanyName(name: string | null | undefined): string {
     .trim()
 }
 
-export function displaySaleSource(source: string | null | undefined): string {
+export function displaySaleSource(
+  source: string | null | undefined,
+  notes?: string | null,
+): string {
+  if (notes?.startsWith('booking:')) return 'Agenda'
   if (!source?.trim()) return ''
   if (source === 'POS') return 'Punto de venta'
   if (source === 'MANUAL') return 'Manual'

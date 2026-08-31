@@ -1,6 +1,7 @@
 import { PLATFORM_MODE } from '../appScope'
 import { BRAND_NAME } from '../lib/brand'
 import { displayCompanyName } from '../lib/displayLabels'
+import { isBookingLedCompany } from '../lib/permissions'
 import { greetUser, namedCopy } from '../lib/userIdentity'
 import { buildLauncherApps } from '../lib/appLauncher'
 import { AppLauncherIcon, LAUNCHER_GROUP_CLASS } from './AppLauncherIcon'
@@ -37,12 +38,16 @@ export function OdooHomeScreen({
         <p className="odoo-home__lead muted">
           {namedCopy(
             who?.name,
-            PLATFORM_MODE
-              ? '{name}, seleccione un módulo para comenzar el día.'
-              : '{name}, este es su espacio de trabajo.',
-            PLATFORM_MODE
-              ? 'Seleccione un módulo para comenzar.'
-              : 'Su espacio de trabajo.',
+            isBookingLedCompany(who)
+              ? '{name}, las reservas llegan por el enlace público. Atienda, marque el servicio como terminado y revíselo en el cierre del día.'
+              : PLATFORM_MODE
+                ? '{name}, seleccione un módulo para comenzar el día.'
+                : '{name}, este es su espacio de trabajo.',
+            isBookingLedCompany(who)
+              ? 'Las reservas llegan por el enlace público. Atienda, marque el servicio como terminado y revíselo en el cierre del día.'
+              : PLATFORM_MODE
+                ? 'Seleccione un módulo para comenzar.'
+                : 'Su espacio de trabajo.',
           )}
         </p>
       </header>

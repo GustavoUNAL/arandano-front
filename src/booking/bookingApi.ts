@@ -64,6 +64,8 @@ export type BookingSettings = {
   publicSlug: string
   publicEnabled: boolean
   welcomeMessage: string
+  noticeMessage?: string
+  whatsappPhone?: string
   slotIntervalMin: number
   bufferMin: number
   timezone: string
@@ -203,7 +205,14 @@ export async function fetchPublicCatalog(slug: string) {
   const base = getApiBase()
   const res = await fetch(`${base}/public/booking/${encodeURIComponent(slug)}`)
   return json<{
-    business: { name: string; slug: string; welcomeMessage: string; timezone?: string }
+    business: {
+      name: string
+      slug: string
+      welcomeMessage: string
+      noticeMessage?: string
+      whatsappPhone?: string
+      timezone?: string
+    }
     hours?: Array<{ weekday: number; startMin: number; endMin: number }>
     services: Array<{
       id: string
@@ -273,6 +282,104 @@ export function publicBookingUrl(slug: string): string {
   return `${window.location.origin}/agenda/${encodeURIComponent(slug)}`
 }
 
+export function publicDisplayName(
+  welcomeMessage: string | null | undefined,
+  companyName?: string | null,
+): string {
+  const welcome = welcomeMessage?.trim() ?? ''
+  const stale =
+    !welcome ||
+    welcome.length > 48 ||
+    /elige servicio|profesional y horario/i.test(welcome)
+  if (!stale) return welcome
+  return companyName?.trim() && !/demo/i.test(companyName) ? companyName.trim() : 'Ricky Barbero'
+}
+
+export function hourlyTurns(slots: string[]): string[] {
+  const hours = slots.filter((s) => s.endsWith(':00'))
+  return hours.length ? hours : slots
+}
+
+function pad2(n: number): string {
+  return String(n).padStart(2, '0')
+}
+
+/** Horas del día según el horario de atención (turnos de 60 min). */
+export function hourSlotsForDate(
+  hours: Array<{ weekday: number; startMin: number; endMin: number }> | undefined,
+  date: string,
+): string[] {
+  const wd = new Date(`${date}T12:00:00`).getDay()
+  const blocks = (hours ?? []).filter((h) => h.weekday === wd)
+  const use = blocks.length ? blocks : [{ startMin: 8 * 60, endMin: 18 * 60 }]
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const block of use) {
+    for (let start = block.startMin; start + 60 <= block.endMin; start += 60) {
+      const label = `${pad2(Math.floor(start / 60))}:${pad2(start % 60)}`
+      if (seen.has(label)) continue
+      seen.add(label)
+      out.push(label)
+    }
+  }
+  return out.sort()
+}
+
+function minutesOf(hhmmValue: string): number {
+  const [h, m] = hhmmValue.split(':').map(Number)
+  return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0)
+}
+
+/** true si esa hora ya pasó (zona America/Bogota). */
+export function isHourPast(date: string, time: string, today: string): boolean {
+  if (date < today) return true
+  if (date > today) return false
+  const now = new Date().toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'America/Bogota',
+  })
+  return minutesOf(time) <= minutesOf(now)
+}
+
+export function digitsOnly(value: string): string {
+  return value.replace(/\D/g, '')
+}
+
+export function turnRangeLabel(start: string): string {
+  const [h, m] = start.split(':').map(Number)
+  if (!Number.isFinite(h)) return start
+  const endH = h + 1
+  const mm = String(m || 0).padStart(2, '0')
+  return `${start} – ${String(endH).padStart(2, '0')}:${mm}`
+}
+
+export const DEFAULT_BOOKING_NOTICE =
+  'Su turno quedó confirmado. Escríbanos por WhatsApp si necesita cambiar algo.'
+
+export function bookingNoticeText(notice?: string | null): string {
+  const t = notice?.trim() ?? ''
+  if (!t || /pendiente de confirmación/i.test(t)) return DEFAULT_BOOKING_NOTICE
+  return t
+}
+
+/** Arma el enlace wa.me a partir de un celular colombiano o internacional. */
+export function bookingWhatsAppUrl(
+  phone: string | null | undefined,
+  prefill?: string,
+): string | null {
+  const digits = (phone ?? '').replace(/\D/g, '')
+  if (digits.length < 10) return null
+  const e164 =
+    digits.startsWith('57') && digits.length >= 12
+      ? digits
+      : `57${digits.replace(/^0+/, '')}`
+  const base = `https://wa.me/${e164}`
+  if (!prefill?.trim()) return base
+  return `${base}?text=${encodeURIComponent(prefill.trim())}`
+}
+
 export function formatCOP(value: number | string): string {
   const n = typeof value === 'string' ? Number(value) : value
   return new Intl.NumberFormat('es-CO', {
@@ -294,7 +401,7 @@ export function hhmm(iso: string): string {
 export const STATUS_LABEL: Record<BookingStatus, string> = {
   PENDING: 'Por aceptar',
   CONFIRMED: 'Confirmada',
-  COMPLETED: 'Completada',
+  COMPLETED: 'Terminado',
   CANCELLED: 'Cancelada',
   NO_SHOW: 'No asistió',
 }

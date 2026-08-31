@@ -387,7 +387,7 @@
 }
 
 .app-sidebar__icon-btn--finance {
-  --rail-accent: #ec4899;
+  --rail-accent: #818cf8;
 }
 
 .app-sidebar__icon-btn--data {
@@ -668,7 +668,7 @@
 }
 
 .app-nav-group--finance {
-  --nav-accent: #ec4899;
+  --nav-accent: #818cf8;
 }
 
 .app-nav-group--data {
@@ -684,7 +684,7 @@
 }
 
 .app-nav-group--booking {
-  --nav-accent: #1c1d1f;
+  --nav-accent: #0ea5e9;
 }
 
 .app-nav-group--active {
@@ -958,7 +958,7 @@
 }
 
 .app-launcher-tile--finance {
-  --launcher-accent: #ec4899;
+  --launcher-accent: #818cf8;
 }
 
 .app-launcher-tile--data {
@@ -978,7 +978,7 @@
 }
 
 .app-launcher-tile--booking {
-  --launcher-accent: #1c1d1f;
+  --launcher-accent: #0ea5e9;
 }
 
 .home-dashboard .app-launcher {
@@ -1229,7 +1229,7 @@
 }
 
 .nav-hub__section--finance {
-  --hub-accent: #ec4899;
+  --hub-accent: #818cf8;
 }
 
 .nav-hub__section--data {
@@ -1721,7 +1721,7 @@
 }
 
 .brand-mark__ia {
-  color: var(--tan);
+  color: #0ea5e9;
   font-weight: 800;
   background: none;
   -webkit-background-clip: unset;
@@ -1733,7 +1733,7 @@ html[data-theme='dark'] .brand-mark__vos {
 }
 
 html[data-theme='dark'] .brand-mark__ia {
-  color: #e8c4a0;
+  color: #8be9fd;
 }
 
 html[data-theme='light'] .brand-mark__vos {
@@ -1741,7 +1741,7 @@ html[data-theme='light'] .brand-mark__vos {
 }
 
 html[data-theme='light'] .brand-mark__ia {
-  color: #c2410c;
+  color: #0ea5e9;
 }
 
 .brand-mark__tagline {
@@ -3460,7 +3460,7 @@ html[data-theme='light'] .brand-mark__ia {
 }
 
 .section-summary-bar--costs {
-  border-left-color: #ec4899;
+  border-left-color: #818cf8;
 }
 
 .section-summary-bar--gastos {

@@ -5,17 +5,13 @@ export function firstName(fullName: string | null | undefined): string {
   return parts[0] ?? ''
 }
 
-export function greetingWord(date = new Date()): string {
-  const hour = date.getHours()
-  if (hour < 12) return 'Buenos días'
-  if (hour < 19) return 'Buenas tardes'
-  return 'Buenas noches'
+export function greetingWord(_date = new Date()): string {
+  return 'Hola'
 }
 
-export function greetUser(fullName: string | null | undefined, date = new Date()): string {
+export function greetUser(fullName: string | null | undefined): string {
   const first = firstName(fullName)
-  const hello = greetingWord(date)
-  return first ? `${hello}, ${first}` : hello
+  return first ? `Hola ${first}` : 'Hola'
 }
 
 export function namedCopy(

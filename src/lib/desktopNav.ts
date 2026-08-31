@@ -1,7 +1,7 @@
 import { PLATFORM_MODE, SALES_FLOOR_ONLY } from '../appScope'
 import type { AuthUser } from '../api'
 import type { NavGroupId } from '../navTypes'
-import { canAccessView, canViewFinance, canViewProjects, canViewTasks, hasBookingModule } from './permissions'
+import { canAccessView, canViewFinance, canViewProjects, canViewTasks, hasBookingModule, isBookingLedCompany } from './permissions'
 
 export type DesktopNavLink = {
   view: string
@@ -36,6 +36,38 @@ export function buildDesktopNavGroups(options: {
 
   if (PLATFORM_MODE) {
     const user = options.user ?? null
+    if (isBookingLedCompany(user)) {
+      const groups: DesktopNavGroup[] = [
+        {
+          id: 'booking',
+          label: 'Agenda',
+          items: [
+            { view: 'booking', label: 'Agenda' },
+            { view: 'customers', label: 'Clientes' },
+            { view: 'services', label: 'Servicios' },
+            { view: 'settings', label: 'Enlace público' },
+          ],
+        },
+        {
+          id: 'sales',
+          label: 'Cierre',
+          items: [{ view: 'cash-close', label: 'Cierre del día' }],
+        },
+      ]
+      if (options.canViewFinance ?? canViewFinance(user)) {
+        groups.push({
+          id: 'finance',
+          label: 'Finanzas',
+          items: [{ view: 'analytics', label: 'Análisis financiero' }],
+        })
+      }
+      return groups
+        .map((g) => ({
+          ...g,
+          items: g.items.filter((item) => canAccessView(user, item.view)),
+        }))
+        .filter((g) => g.items.length > 0)
+    }
     const groups: DesktopNavGroup[] = [
       {
         id: 'catalog',

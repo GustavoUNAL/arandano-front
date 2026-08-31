@@ -197,7 +197,7 @@
 }
 
 .odoo-navbar--finance {
-  --odoo-accent: #f472b6;
+  --odoo-accent: #a5b4fc;
 }
 
 .odoo-navbar--data {
@@ -349,7 +349,7 @@
   font-weight: 700;
   line-height: 0.95rem;
   text-align: center;
-  background: #e85d4c;
+  background: #0ea5e9;
   color: #fff;
   box-shadow: 0 0 0 1.5px #1c1418;
 }
@@ -444,7 +444,7 @@
 }
 
 .header-systray__notification--error {
-  border-left-color: #e85d4c;
+  border-left-color: #64748b;
 }
 
 .header-systray__notification-title {
@@ -574,7 +574,7 @@ html[data-theme='dark'] .odoo-navbar .brand-mark__vos,
 html[data-theme='light'] .odoo-navbar .brand-mark__ia,
 html[data-theme='dark'] .odoo-navbar .brand-mark__ia,
 .odoo-navbar .brand-mark__ia {
-  color: #e8c4a0;
+  color: #8be9fd;
 }
 
 .odoo-navbar .brand-mark__dot {
@@ -792,7 +792,7 @@ html[data-theme='dark'] .odoo-navbar .brand-mark__ia,
 
 .odoo-app-tile--finance,
 .app-launcher-tile--finance {
-  --odoo-accent: #ec4899;
+  --odoo-accent: #818cf8;
 }
 
 .odoo-app-tile--data,
@@ -817,7 +817,7 @@ html[data-theme='dark'] .odoo-navbar .brand-mark__ia,
 
 .odoo-app-tile--booking,
 .app-launcher-tile--booking {
-  --odoo-accent: #8b2942;
+  --odoo-accent: #0ea5e9;
 }
 
 /* ——— Pantalla de inicio (homemenu) ——— */
