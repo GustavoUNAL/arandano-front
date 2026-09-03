@@ -3,6 +3,7 @@ import type { AuthUser } from '../api'
 import { Button } from '../components/ui/button'
 import {
   bookingApi,
+  bookingWhatsAppUrl,
   formatCOP,
   hhmm,
   publicBookingUrl,
@@ -22,6 +23,7 @@ import {
   BOOKING_MORE,
   BOOKING_NAV,
   BOOKING_MOBILE_DOCK,
+  formatBookingDay,
   localYmd,
   WEEKDAYS,
   type BookingView,
@@ -235,8 +237,6 @@ export function BookingApp({
             pending={pending}
             weekMode={weekMode}
             setWeekMode={setWeekMode}
-            settings={settings}
-            onOpenSettings={() => onNavigate('settings')}
             onStatus={patchStatus}
             onReschedule={async (id, date, time) => {
               await bookingApi.updateAppointment(baseUrl, id, { date, time })
@@ -246,7 +246,16 @@ export function BookingApp({
         ) : null}
 
         {screen === 'appointments' ? (
-          <AppointmentsList appts={appts} day={day} setDay={setDay} onStatus={patchStatus} />
+          <AppointmentsList
+            appts={appts}
+            day={day}
+            setDay={setDay}
+            onStatus={patchStatus}
+            onReschedule={async (id, time) => {
+              await bookingApi.updateAppointment(baseUrl, id, { date: day, time })
+              await refreshDay()
+            }}
+          />
         ) : null}
 
         {screen === 'customers' ? <CustomersList customers={customers} /> : null}
@@ -362,8 +371,8 @@ function PublicBookingLinkCard({
       <h3 style={{ wordBreak: 'break-all' }}>{url}</h3>
       <p className="bk__meta">
         {settings.publicEnabled
-          ? 'Quien abre este enlace elige día y horario. Usted acepta o rechaza la solicitud en Agenda, atiende y marca el servicio como terminado.'
-          : 'El enlace está pausado. Actívelo para recibir solicitudes.'}
+          ? 'Quien abre este enlace elige día y horario. La cita queda confirmada en su agenda.'
+          : 'El enlace está pausado. Actívelo para recibir reservas.'}
       </p>
       <div className="bk__actions">
         <Button
@@ -391,6 +400,52 @@ function PublicBookingLinkCard({
   )
 }
 
+function DayNav({
+  day,
+  setDay,
+  weekMode,
+}: {
+  day: string
+  setDay: (d: string) => void
+  weekMode?: boolean
+}) {
+  return (
+    <div className="bk-daynav">
+      <button
+        type="button"
+        className="bk-daynav__btn"
+        onClick={() => setDay(addDays(day, weekMode ? -7 : -1))}
+        aria-label={weekMode ? 'Semana anterior' : 'Día anterior'}
+      >
+        ‹
+      </button>
+      <div className="bk-daynav__label">
+        <strong>{weekMode ? 'Semana' : formatBookingDay(day)}</strong>
+        <input
+          className="bk-daynav__date"
+          type="date"
+          value={day}
+          onChange={(e) => setDay(e.target.value)}
+          aria-label="Elegir fecha"
+        />
+      </div>
+      <button
+        type="button"
+        className="bk-daynav__btn"
+        onClick={() => setDay(addDays(day, weekMode ? 7 : 1))}
+        aria-label={weekMode ? 'Semana siguiente' : 'Día siguiente'}
+      >
+        ›
+      </button>
+      {day !== localYmd() ? (
+        <button type="button" className="bk-daynav__today" onClick={() => setDay(localYmd())}>
+          Hoy
+        </button>
+      ) : null}
+    </div>
+  )
+}
+
 function Agenda({
   day,
   setDay,
@@ -399,8 +454,6 @@ function Agenda({
   setWeekMode,
   onStatus,
   onReschedule,
-  settings,
-  onOpenSettings,
   pending,
 }: {
   day: string
@@ -411,39 +464,38 @@ function Agenda({
   setWeekMode: (v: boolean) => void
   onStatus: (id: string, status: BookingStatus) => Promise<void>
   onReschedule: (id: string, date: string, time: string) => Promise<void>
-  settings: BookingSettings | null
-  onOpenSettings?: () => void
 }) {
-  const hours = Array.from({ length: 13 }, (_, i) => 7 + i)
   const weekStart = addDays(day, -new Date(`${day}T12:00:00`).getDay())
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+  const dayAppts = appts
+    .filter((a) => a.date === day && a.status !== 'CANCELLED')
+    .slice()
+    .sort((a, b) => a.startAt.localeCompare(b.startAt))
+  const confirmed = dayAppts.filter((a) => a.status === 'CONFIRMED').length
+  const done = dayAppts.filter((a) => a.status === 'COMPLETED').length
 
   return (
     <>
       <div className="bk__row">
         <h1 className="bk__title">Agenda</h1>
-        <div className="bk__actions" style={{ margin: 0 }}>
-          <Button type="button" size="sm" variant={weekMode ? 'secondary' : 'primary'} onClick={() => setWeekMode(false)}>
+        <div className="bk-toggle" role="group" aria-label="Vista">
+          <button
+            type="button"
+            className={!weekMode ? 'is-on' : ''}
+            onClick={() => setWeekMode(false)}
+          >
             Día
-          </Button>
-          <Button type="button" size="sm" variant={weekMode ? 'primary' : 'secondary'} onClick={() => setWeekMode(true)}>
+          </button>
+          <button
+            type="button"
+            className={weekMode ? 'is-on' : ''}
+            onClick={() => setWeekMode(true)}
+          >
             Semana
-          </Button>
+          </button>
         </div>
       </div>
-      <div className="bk__actions" style={{ marginBottom: '0.8rem' }}>
-        <button type="button" className="bk__ghost" onClick={() => setDay(addDays(day, weekMode ? -7 : -1))}>
-          {weekMode ? 'Semana ant.' : 'Ayer'}
-        </button>
-        <button type="button" className="bk__ghost" onClick={() => setDay(localYmd())}>
-          Hoy
-        </button>
-        <button type="button" className="bk__ghost" onClick={() => setDay(addDays(day, weekMode ? 7 : 1))}>
-          {weekMode ? 'Semana sig.' : 'Mañana'}
-        </button>
-        <input type="date" value={day} onChange={(e) => setDay(e.target.value)} />
-      </div>
-      {settings ? <PublicBookingLinkCard settings={settings} onOpenSettings={onOpenSettings} /> : null}
+      <DayNav day={day} setDay={setDay} weekMode={weekMode} />
       {pending.length ? (
         <section className="bk__requests" aria-label="Solicitudes por aceptar">
           <h2 className="bk__subtitle">Solicitudes por aceptar · {pending.length}</h2>
@@ -456,23 +508,25 @@ function Agenda({
       {weekMode ? (
         <div className="bk__week">
           {weekDays.map((d) => {
-            const inDay = appts.filter((a) => a.date === d)
+            const inDay = appts.filter((a) => a.date === d && a.status !== 'CANCELLED')
             return (
               <button
                 key={d}
                 type="button"
-                className={`bk__week-day${d === day ? ' is-on' : ''}`}
+                className={`bk__week-day${d === day ? ' is-on' : ''}${d === localYmd() ? ' is-today' : ''}`}
                 onClick={() => {
                   setDay(d)
                   setWeekMode(false)
                 }}
               >
                 <strong>{WEEKDAYS[new Date(`${d}T12:00:00`).getDay()]}</strong>
-                <span>{d.slice(8)}</span>
-                <span className="bk__meta">{inDay.length} citas</span>
+                <span className="bk__week-num">{d.slice(8)}</span>
+                <span className="bk__meta">
+                  {inDay.length ? `${inDay.length} cita${inDay.length === 1 ? '' : 's'}` : 'Libre'}
+                </span>
                 {inDay.slice(0, 3).map((a) => (
                   <span key={a.id} className="bk__week-chip">
-                    {hhmm(a.startAt)} {a.customer.name}
+                    {hhmm(a.startAt)} {a.customer.name.split(' ')[0]}
                   </span>
                 ))}
               </button>
@@ -480,21 +534,37 @@ function Agenda({
           })}
         </div>
       ) : (
-        hours.map((h) => {
-          const label = `${String(h).padStart(2, '0')}:00`
-          const inHour = appts.filter(
-            (a) => a.status !== 'PENDING' && Number(hhmm(a.startAt).slice(0, 2)) === h,
-          )
-          return (
-            <div key={h} className="bk__card">
-              <p className="bk__meta">{label}</p>
-              {inHour.length === 0 ? <p className="bk__meta">Libre</p> : null}
-              {inHour.map((a) => (
-                <ApptCard key={a.id} a={a} onStatus={onStatus} onReschedule={(id, time) => onReschedule(id, day, time)} />
-              ))}
+        <>
+          <div className="bk-summary" aria-label="Resumen del día">
+            <span>
+              <strong>{dayAppts.length}</strong> agendadas
+            </span>
+            <span>
+              <strong>{confirmed}</strong> por atender
+            </span>
+            <span>
+              <strong>{done}</strong> terminadas
+            </span>
+          </div>
+          {dayAppts.length === 0 ? (
+            <div className="bk-empty">
+              <p>No hay citas este día.</p>
+              <span>Toque + Nueva cita o comparta el enlace público.</span>
             </div>
-          )
-        })
+          ) : (
+            <ol className="bk-timeline">
+              {dayAppts.map((a) => (
+                <li key={a.id}>
+                  <ApptCard
+                    a={a}
+                    onStatus={onStatus}
+                    onReschedule={(id, time) => onReschedule(id, day, time)}
+                  />
+                </li>
+              ))}
+            </ol>
+          )}
+        </>
       )}
     </>
   )
@@ -505,22 +575,45 @@ function AppointmentsList({
   day,
   setDay,
   onStatus,
+  onReschedule,
 }: {
   appts: BookingAppointment[]
   day: string
   setDay: (d: string) => void
   onStatus: (id: string, status: BookingStatus) => Promise<void>
+  onReschedule: (id: string, time: string) => Promise<void>
 }) {
+  const visible = appts
+    .slice()
+    .sort((a, b) => a.startAt.localeCompare(b.startAt))
+  const live = visible.filter((a) => a.status !== 'CANCELLED' && a.status !== 'NO_SHOW')
+
   return (
     <>
-      <div className="bk__row">
-        <h1 className="bk__title">Citas</h1>
-        <input type="date" value={day} onChange={(e) => setDay(e.target.value)} />
+      <h1 className="bk__title">Citas agendadas</h1>
+      <DayNav day={day} setDay={setDay} />
+      <div className="bk-summary">
+        <span>
+          <strong>{live.length}</strong> en el día
+        </span>
+        <span>
+          <strong>{live.filter((a) => a.status === 'CONFIRMED').length}</strong> por atender
+        </span>
       </div>
-      {appts.length === 0 ? <p className="bk__meta">No hay citas este día.</p> : null}
-      {appts.map((a) => (
-        <ApptCard key={a.id} a={a} onStatus={onStatus} />
-      ))}
+      {visible.length === 0 ? (
+        <div className="bk-empty">
+          <p>Ninguna cita el {formatBookingDay(day)}.</p>
+          <span>Cambie el día o cree una desde el botón inferior.</span>
+        </div>
+      ) : (
+        <ol className="bk-timeline">
+          {visible.map((a) => (
+            <li key={a.id}>
+              <ApptCard a={a} onStatus={onStatus} onReschedule={onReschedule} />
+            </li>
+          ))}
+        </ol>
+      )}
     </>
   )
 }
@@ -537,59 +630,84 @@ function ApptCard({
   showDate?: boolean
 }) {
   const [move, setMove] = useState('')
+  const wa = bookingWhatsAppUrl(
+    a.customer.phone,
+    `Hola ${a.customer.name.split(' ')[0]}, le escribo por su cita del ${a.date} a las ${hhmm(a.startAt)}.`,
+  )
+  const tone = a.status.toLowerCase()
+
   return (
-    <div className={`bk__card${a.status === 'PENDING' ? ' bk__card--pending' : ''}`}>
-      <div className="bk__row">
-        <h3>
-          {showDate ? `${a.date} · ` : ''}
-          {hhmm(a.startAt)} · {a.customer.name}
-        </h3>
-        <span className={`bk__badge bk__badge--${a.status.toLowerCase()}`}>{STATUS_LABEL[a.status]}</span>
+    <article className={`bk-appt bk-appt--${tone}`}>
+      <div className="bk-appt__time">
+        <strong>{hhmm(a.startAt)}</strong>
+        <span>{hhmm(a.endAt)}</span>
+        {showDate ? <span className="bk-appt__day">{a.date.slice(5)}</span> : null}
       </div>
-      <p className="bk__meta">
-        {a.service.name} · {formatCOP(a.service.price)} · {a.staff.name} · {a.service.durationMin} min
-        {a.source === 'PUBLIC_BOOKING' ? ' · Reserva del enlace' : ''}
-      </p>
-      <p className="bk__meta">
-        {a.customer.phone}
-        {a.customer.email ? ` · ${a.customer.email}` : ''}
-      </p>
-      {a.notes ? <p className="bk__meta">{a.notes}</p> : null}
-      {a.status === 'PENDING' ? (
-        <div className="bk__actions">
-          <Button type="button" size="sm" onClick={() => void onStatus(a.id, 'CONFIRMED')}>
-            Aceptar cita
-          </Button>
-          <button type="button" className="bk__danger" onClick={() => void onStatus(a.id, 'CANCELLED')}>
-            Rechazar
-          </button>
+      <div className="bk-appt__body">
+        <div className="bk-appt__head">
+          <h3>{a.customer.name}</h3>
+          <span className={`bk__badge bk__badge--${tone}`}>{STATUS_LABEL[a.status]}</span>
         </div>
-      ) : a.status === 'COMPLETED' ? (
-        <p className="bk__meta">
-          Servicio terminado · {formatCOP(a.service.price)} · sumado al cierre del día
+        <p className="bk-appt__service">
+          {a.service.name}
+          <span>· {a.service.durationMin} min</span>
+          <span>· {formatCOP(a.service.price)}</span>
         </p>
-      ) : a.status === 'CONFIRMED' ? (
-        <div className="bk__actions">
-          <Button type="button" size="sm" onClick={() => void onStatus(a.id, 'COMPLETED')}>
-            Terminar servicio
-          </Button>
-          <button type="button" className="bk__ghost" onClick={() => void onStatus(a.id, 'NO_SHOW')}>
-            No asistió
-          </button>
-          <button type="button" className="bk__danger" onClick={() => void onStatus(a.id, 'CANCELLED')}>
-            Cancelar
-          </button>
+        <p className="bk-appt__staff">{a.staff.name}</p>
+        <div className="bk-appt__contact">
+          <a href={`tel:${a.customer.phone.replace(/\s/g, '')}`}>{a.customer.phone}</a>
+          {wa ? (
+            <a href={wa} target="_blank" rel="noreferrer">
+              WhatsApp
+            </a>
+          ) : null}
+          {a.source === 'PUBLIC_BOOKING' ? <span>Reserva web</span> : null}
         </div>
-      ) : null}
-      {onReschedule && a.status === 'CONFIRMED' ? (
-        <div className="bk__actions">
-          <input placeholder="HH:MM" value={move} onChange={(e) => setMove(e.target.value)} style={{ width: 90 }} />
-          <button type="button" className="bk__ghost" onClick={() => move && void onReschedule(a.id, move)}>
-            Reprogramar
-          </button>
-        </div>
-      ) : null}
-    </div>
+        {a.notes ? <p className="bk-appt__notes">{a.notes}</p> : null}
+        {a.status === 'PENDING' ? (
+          <div className="bk-appt__actions">
+            <Button type="button" size="sm" onClick={() => void onStatus(a.id, 'CONFIRMED')}>
+              Aceptar
+            </Button>
+            <button type="button" className="bk__danger" onClick={() => void onStatus(a.id, 'CANCELLED')}>
+              Rechazar
+            </button>
+          </div>
+        ) : a.status === 'COMPLETED' ? (
+          <p className="bk-appt__done">Terminado · sumado al cierre</p>
+        ) : a.status === 'CONFIRMED' ? (
+          <div className="bk-appt__actions">
+            <Button type="button" size="sm" onClick={() => void onStatus(a.id, 'COMPLETED')}>
+              Terminar
+            </Button>
+            <button type="button" className="bk__ghost" onClick={() => void onStatus(a.id, 'NO_SHOW')}>
+              No asistió
+            </button>
+            <button type="button" className="bk__danger" onClick={() => void onStatus(a.id, 'CANCELLED')}>
+              Cancelar
+            </button>
+          </div>
+        ) : null}
+        {onReschedule && a.status === 'CONFIRMED' ? (
+          <div className="bk-appt__move">
+            <input
+              type="time"
+              value={move}
+              onChange={(e) => setMove(e.target.value)}
+              aria-label="Nueva hora"
+            />
+            <button
+              type="button"
+              className="bk__ghost"
+              disabled={!move}
+              onClick={() => move && void onReschedule(a.id, move)}
+            >
+              Mover
+            </button>
+          </div>
+        ) : null}
+      </div>
+    </article>
   )
 }
 
@@ -950,8 +1068,8 @@ function SettingsPane({
     <>
       <h1 className="bk__title">Enlace público</h1>
       <p className="bk__meta" style={{ marginBottom: '0.85rem' }}>
-        Quien tiene el enlace elige un día en el calendario y solicita la cita. Usted la acepta o la rechaza
-        desde Agenda. No necesita cuenta en VOS IA.
+        Quien tiene el enlace elige un día y un horario. La cita queda confirmada en su agenda.
+        No necesita cuenta en VOS IA.
       </p>
       <PublicBookingLinkCard settings={preview} />
       <label className="bk__check">
@@ -960,7 +1078,7 @@ function SettingsPane({
           checked={enabled}
           onChange={(e) => setEnabled(e.target.checked)}
         />
-        <span>Recibir solicitudes desde el enlace público</span>
+        <span>Recibir reservas desde el enlace público</span>
       </label>
       <label className="bk__field">
         Slug del enlace
@@ -975,7 +1093,7 @@ function SettingsPane({
         />
       </label>
       <label className="bk__field">
-        Aviso al pedir un turno
+        Mensaje al confirmar el turno
         <textarea
           value={notice}
           onChange={(e) => setNotice(e.target.value)}
@@ -985,7 +1103,7 @@ function SettingsPane({
         />
       </label>
       <label className="bk__field">
-        WhatsApp para continuar
+        WhatsApp del negocio
         <input
           value={whatsapp}
           onChange={(e) => setWhatsapp(e.target.value)}
@@ -994,7 +1112,7 @@ function SettingsPane({
         />
       </label>
       <p className="bk__meta">
-        Ese número abre el chat de WhatsApp en el aviso, con el día y el turno ya escritos.
+        Si lo completa, el cliente puede abrir WhatsApp al terminar de reservar, con el día y el turno ya escritos.
       </p>
       <p className="bk__meta">Zona horaria: {settings.timezone}</p>
       <Button
@@ -1036,7 +1154,9 @@ function Composer({
   const [newName, setNewName] = useState('')
   const [newPhone, setNewPhone] = useState('')
   const [serviceId, setServiceId] = useState(services[0]?.id ?? '')
-  const [staffId, setStaffId] = useState('')
+  const [staffId, setStaffId] = useState(
+    () => staff.find((s) => /^ricky$/i.test(s.name))?.id ?? staff[0]?.id ?? '',
+  )
   const [date, setDate] = useState(localYmd())
   const [time, setTime] = useState('')
   const [slots, setSlots] = useState<string[]>([])

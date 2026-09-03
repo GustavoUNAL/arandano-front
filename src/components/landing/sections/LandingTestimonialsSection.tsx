@@ -1,109 +1,95 @@
-const AGENTS = [
-  {
-    name: 'Agente de citas',
-    handle: '@barberia',
-    initials: 'CI',
-    quote: 'Confirmé los turnos de mañana y envié los recordatorios. El salón ya no depende del chat.',
-  },
-  {
-    name: 'Agente de agenda',
-    handle: '@consultorio',
-    initials: 'AG',
-    quote: 'Organicé la agenda, dejé la información lista y cerré lo administrativo del día.',
-  },
-  {
-    name: 'Agente de documentos',
-    handle: '@ingenieria',
-    initials: 'DO',
-    quote: 'Analicé el expediente, armé el informe y lo dejé listo para revisar.',
-  },
-  {
-    name: 'Agente de cotizaciones',
-    handle: '@proyectos',
-    initials: 'CO',
-    quote: 'Preparé la propuesta con tus reglas de margen y programé el seguimiento a 48 h.',
-  },
-  {
-    name: 'Agente de atención',
-    handle: '@clientes',
-    initials: 'AT',
-    quote: 'Recibí, clasifiqué y cerré los casos de hoy. Solo quedan dos para tu criterio.',
-  },
-  {
-    name: 'Agente de ventas',
-    handle: '@comercial',
-    initials: 'VE',
-    quote: 'Seguí los leads, actualicé el pipeline y dejé el próximo paso en cada ficha.',
-  },
-  {
-    name: 'Agente de operaciones',
-    handle: '@equipo',
-    initials: 'OP',
-    quote: 'Asigné pendientes, avisé al equipo y dejé el tablero del día al día.',
-  },
-  {
-    name: 'Agente de administración',
-    handle: '@estudio',
-    initials: 'AD',
-    quote: 'Ordené la información, completé los procesos y dejé los documentos en su lugar.',
-  },
-  {
-    name: 'Agente de análisis',
-    handle: '@direccion',
-    initials: 'AN',
-    quote: 'Resumí el día, crucé agenda y tareas, y generé el informe para que solo revises.',
-  },
-  {
-    name: 'Agente de proyectos',
-    handle: '@obras',
-    initials: 'PR',
-    quote: 'Detecté dos hitos de esta semana, avisé al equipo y dejé el siguiente paso en cada obra.',
-  },
-  {
-    name: 'Agente de informes',
-    handle: '@profesional',
-    initials: 'IN',
-    quote: 'Recibí el contexto, tomé las reglas que definiste y completé el documento de punta a punta.',
-  },
-  {
-    name: 'Agente de recordatorios',
-    handle: '@servicios',
-    initials: 'RE',
-    quote: 'Confirmé horarios, cubrí un hueco a las 16:00 y avisé a quienes tenían cita mañana.',
-  },
-] as const
+import {
+  AppLauncherIcon,
+  type LauncherIconView,
+} from '../../AppLauncherIcon'
 
-function chunk<T>(items: readonly T[], size: number): T[][] {
-  const cols: T[][] = Array.from({ length: size }, () => [])
-  items.forEach((item, i) => {
-    cols[i % size].push(item)
-  })
-  return cols
+const ROW_A: { view: LauncherIconView; name: string }[] = [
+  { view: 'booking', name: 'Agenda' },
+  { view: 'pos', name: 'Punto de venta' },
+  { view: 'products', name: 'Catálogo' },
+  { view: 'shop', name: 'Tienda' },
+  { view: 'inventory', name: 'Inventario' },
+  { view: 'sales', name: 'Ventas' },
+  { view: 'customers', name: 'Clientes' },
+  { view: 'cash-close', name: 'Cierre de caja' },
+]
+
+const ROW_B: { view: LauncherIconView; name: string }[] = [
+  { view: 'purchases', name: 'Compras' },
+  { view: 'analytics', name: 'Finanzas' },
+  { view: 'staff', name: 'Personal' },
+  { view: 'tasks', name: 'Tareas' },
+  { view: 'projects', name: 'Proyectos' },
+  { view: 'services', name: 'Servicios' },
+  { view: 'costs', name: 'Costos' },
+  { view: 'recipes', name: 'Recetas' },
+]
+
+const ROW_C: { view: LauncherIconView; name: string }[] = [
+  { view: 'booking', name: 'Citas' },
+  { view: 'gastos', name: 'Gastos' },
+  { view: 'explorer', name: 'Análisis' },
+  { view: 'pos', name: 'Comandas' },
+  { view: 'shop', name: 'Pedidos web' },
+  { view: 'inventory', name: 'Stock' },
+  { view: 'sales', name: 'Tickets' },
+  { view: 'home', name: 'Inicio' },
+]
+
+function ModuleChip({
+  view,
+  name,
+  index,
+}: {
+  view: LauncherIconView
+  name: string
+  index: number
+}) {
+  return (
+    <span
+      className="attio-float__chip"
+      style={{ animationDelay: `${(index % 8) * -0.55}s` }}
+    >
+      <AppLauncherIcon view={view} className="attio-float__icon" />
+      {name}
+    </span>
+  )
+}
+
+function MarqueeRow({
+  items,
+  reverse,
+  duration,
+}: {
+  items: { view: LauncherIconView; name: string }[]
+  reverse?: boolean
+  duration: string
+}) {
+  const loop = [...items, ...items]
+  return (
+    <div className={reverse ? 'attio-float__row attio-float__row--rev' : 'attio-float__row'}>
+      <div className="attio-float__track" style={{ animationDuration: duration }}>
+        {loop.map((item, i) => (
+          <ModuleChip
+            key={`${item.name}-${i}`}
+            view={item.view}
+            name={item.name}
+            index={i}
+          />
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export function LandingTestimonialsSection() {
-  const columns = chunk(AGENTS, 4)
-
   return (
-    <section className="attio-social" aria-label="Agentes inteligentes de VOS AI">
+    <section className="attio-float" aria-label="Módulos de VOS IA">
       <div className="attio-dots" aria-hidden />
-      <div className="attio-tweets">
-        {columns.map((col, i) => (
-          <div key={i} className="attio-tweets__col">
-            {col.map((item) => (
-              <article key={item.handle} className="attio-tweet">
-                <span className="attio-tweet__avatar" aria-hidden>
-                  {item.initials}
-                </span>
-                <p className="attio-tweet__meta">
-                  <span className="attio-tweet__name">{item.name}</span>
-                  <span className="attio-tweet__handle">{item.handle}</span>
-                </p>
-                <p className="attio-tweet__quote">{item.quote}</p>
-              </article>
-            ))}
-          </div>
-        ))}
+      <MarqueeRow items={ROW_A} duration="42s" />
+      <MarqueeRow items={ROW_B} reverse duration="48s" />
+      <div className="attio-float__row-lg">
+        <MarqueeRow items={ROW_C} duration="36s" />
       </div>
     </section>
   )

@@ -60,3 +60,12 @@ export function addDays(ymd: string, n: number): string {
 }
 
 export const WEEKDAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+
+export function formatBookingDay(ymd: string): string {
+  const raw = new Intl.DateTimeFormat('es-CO', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+  }).format(new Date(`${ymd}T12:00:00`))
+  return raw.charAt(0).toUpperCase() + raw.slice(1)
+}

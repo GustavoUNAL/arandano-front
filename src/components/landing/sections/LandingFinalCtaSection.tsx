@@ -17,12 +17,14 @@ export function LandingFinalCtaSection({ accessUrl, onAccess, onDemo }: Props) {
               Conecta. Automatiza. Escala. <em>La inteligencia que trabaja contigo.</em>
             </h2>
             <div className="attio-cta-final__actions">
-              <a className="attio-btn attio-btn--primary" href={accessUrl} onClick={onAccess}>
-                Registrarse
+              <a className="attio-btn attio-btn--primary attio-btn--hero" href={accessUrl} onClick={onAccess}>
+                Acceder
               </a>
-              <button type="button" className="attio-btn attio-btn--outline" onClick={onDemo}>
-                Ver demostración
-              </button>
+              {onDemo ? (
+                <button type="button" className="attio-cta-final__demo" onClick={onDemo}>
+                  Ver demostración
+                </button>
+              ) : null}
             </div>
           </div>
           <div className="attio-cta-final__art" aria-hidden />

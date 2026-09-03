@@ -44,21 +44,6 @@ const VALIDATION_STEPS = [
   },
 ] as const
 
-const MODULE_LOGOS = [
-  'Agenda',
-  'Atención',
-  'Documentos',
-  'Ventas',
-  'Operaciones',
-  'Administración',
-  'Análisis',
-  'Cotizaciones',
-  'Informes',
-  'Citas',
-  'Proyectos',
-  'IA',
-] as const
-
 const NAV_LINKS = [
   { href: '#agentes', label: 'Agentes' },
   { href: '#features', label: 'Capacidades' },
@@ -181,11 +166,8 @@ export function LandingView({
               <MenuIcon />
             </button>
             <div className="attio-nav__cta">
-              <a className="attio-btn attio-btn--outline" href={loginUrl} onClick={handleLogin}>
-                Iniciar sesión
-              </a>
-              <a className="attio-btn attio-btn--primary" href={registerUrl} onClick={handleAccess}>
-                Registrarse
+              <a className="attio-btn attio-btn--primary" href={loginUrl} onClick={handleLogin}>
+                Acceder
               </a>
             </div>
           </nav>
@@ -195,11 +177,15 @@ export function LandingView({
                 {link.label}
               </a>
             ))}
-            <a href={loginUrl} onClick={(e) => { closeMenu(); handleLogin(e) }}>
-              Iniciar sesión
-            </a>
-            <a href={registerUrl} onClick={(e) => { closeMenu(); handleAccess(e) }}>
-              Registrarse
+            <a
+              className="attio-btn attio-btn--primary attio-nav__drawer-access"
+              href={loginUrl}
+              onClick={(e) => {
+                closeMenu()
+                handleLogin(e)
+              }}
+            >
+              Acceder
             </a>
           </div>
         </div>
@@ -214,7 +200,7 @@ export function LandingView({
           <div className="attio-frame">
             <header className="attio-hero" aria-labelledby="landing-hero-title">
               <div className="attio-badge">
-                Plataforma de agentes inteligentes
+                Plataforma de agentes inteligentes para empresas y profesionales
               </div>
               <h1 id="landing-hero-title">La inteligencia que trabaja contigo.</h1>
               <p className="attio-hero__lead">
@@ -224,25 +210,17 @@ export function LandingView({
                 realmente importa.
               </p>
               <div className="attio-hero__cta">
-                <a className="attio-btn attio-btn--primary" href={registerUrl} onClick={handleAccess}>
-                  Registrarse
-                </a>
-                <a className="attio-btn attio-btn--outline" href={loginUrl} onClick={handleLogin}>
-                  Iniciar sesión
+                <a
+                  className="attio-btn attio-btn--primary attio-btn--hero"
+                  href={loginUrl}
+                  onClick={handleLogin}
+                >
+                  Acceder
+                  <ArrowIcon />
                 </a>
               </div>
             </header>
             <LandingTestimonialsSection />
-          </div>
-        </div>
-
-        <div className="attio-container">
-          <div className="attio-frame">
-            <div className="attio-logos" aria-label="Capacidades de los agentes">
-              {MODULE_LOGOS.map((name) => (
-                <span key={name}>{name}</span>
-              ))}
-            </div>
           </div>
         </div>
 
@@ -405,25 +383,12 @@ export function LandingView({
         </div>
 
         <LandingFinalCtaSection
-          accessUrl={registerUrl}
-          onAccess={handleAccess}
+          accessUrl={loginUrl}
+          onAccess={handleLogin}
           onDemo={scrollToDemo}
         />
 
         <SiteFooter tagline={BRAND_TAGLINE} />
-      </div>
-
-      <div className="landing-mobile-cta" role="region" aria-label="Acciones rápidas">
-        <a
-          className="attio-btn attio-btn--primary landing-mobile-cta__primary"
-          href={registerUrl}
-          onClick={handleAccess}
-        >
-          Registrarse
-        </a>
-        <a className="landing-mobile-cta__ghost" href={loginUrl} onClick={handleLogin}>
-          Iniciar sesión
-        </a>
       </div>
 
       <LandingSalesChat />

@@ -86,9 +86,10 @@ html:has(.attio-home) #root {
 
 @media (max-width: 720px) {
   .attio-home .public-wrap,
-  .attio-home .public-wrap.landing-v2__wrap {
+  .attio-home .public-wrap.landing-v2__wrap,
+  .attio-home .landing-v2__wrap {
     padding-inline: 0;
-    padding-bottom: calc(5.75rem + max(16px, env(safe-area-inset-bottom, 0px)));
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
   }
 }
 
@@ -191,13 +192,14 @@ html:has(.attio-home) #root {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1.5rem;
-  padding: 0.65rem 1.15rem 0.8rem;
+  gap: 0.75rem;
+  padding: 0.55rem 0.9rem 0.65rem;
 }
 
 @media (min-width: 1024px) {
   .attio-nav {
     padding: 1rem 1.5rem 0.95rem;
+    gap: 1.5rem;
   }
 }
 
@@ -242,20 +244,24 @@ html:has(.attio-home) #root {
   gap: 0.4rem;
   margin-left: auto;
   flex-shrink: 0;
+  order: 2;
 }
 
 .attio-nav__cta .attio-btn {
-  min-height: 2.5rem;
-  padding: 0.5rem 0.7rem;
-  font-size: 0.82rem;
+  min-height: 2.4rem;
+  padding: 0.45rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .attio-nav__menu {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.75rem;
-  height: 2.75rem;
+  order: 3;
+  width: 2.6rem;
+  height: 2.6rem;
   border: 0;
   border-radius: var(--attio-radius-btn);
   background: transparent;
@@ -307,6 +313,14 @@ html:has(.attio-home) #root {
   align-items: center;
 }
 
+.attio-nav__drawer-access {
+  margin-top: 0.35rem;
+  width: 100%;
+  min-height: 3rem !important;
+  padding: 0.85rem 1rem !important;
+  font-size: 0.95rem !important;
+}
+
 @media (min-width: 1024px) {
   .attio-nav__drawer {
     display: none !important;
@@ -337,11 +351,18 @@ html:has(.attio-home) #root {
 }
 
 @media (min-width: 1024px) {
-  .attio-btn {
+  .attio-btn:not(.attio-btn--hero) {
     min-height: 2.25rem;
     height: 2.25rem;
     padding: 0 0.85rem;
     font-size: 0.875rem;
+  }
+
+  .attio-btn--hero {
+    min-height: 2.65rem;
+    height: 2.65rem;
+    padding: 0 1.2rem;
+    font-size: 0.9375rem;
   }
 }
 
@@ -353,6 +374,25 @@ html:has(.attio-home) #root {
 
 .attio-btn--primary:hover {
   background: #111213;
+}
+
+.attio-btn--hero {
+  min-height: 3rem;
+  padding: 0.85rem 1.35rem;
+  font-size: 0.98rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  border-radius: 12px;
+}
+
+.attio-btn--hero svg {
+  width: 15px;
+  height: 15px;
+  transition: transform 0.2s ease;
+}
+
+.attio-btn--hero:hover svg {
+  transform: translateX(2px);
 }
 
 .attio-btn--outline {
@@ -404,7 +444,7 @@ html:has(.attio-home) #root {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: 5rem 1.25rem 3.5rem;
+  padding: 3.15rem 1.15rem 2.35rem;
 }
 
 @media (min-width: 768px) {
@@ -422,7 +462,8 @@ html:has(.attio-home) #root {
 .attio-badge {
   display: inline-block;
   margin-bottom: 1.35rem;
-  padding: 0.38rem 0.8rem;
+  max-width: min(36rem, calc(100% - 0.25rem));
+  padding: 0.4rem 0.9rem;
   border: 1px solid var(--attio-stroke-weak);
   border-radius: 13px;
   background: var(--attio-surface);
@@ -430,12 +471,14 @@ html:has(.attio-home) #root {
   font-size: 13px;
   font-weight: 500;
   line-height: 1.4;
+  text-align: center;
+  text-wrap: balance;
 }
 
 .attio-hero h1 {
   margin: 0;
   max-width: 15em;
-  font-size: clamp(2.15rem, 5.2vw, 3.65rem);
+  font-size: clamp(1.9rem, 8.4vw, 3.65rem);
   font-weight: 600;
   letter-spacing: -0.045em;
   line-height: 1.08;
@@ -455,16 +498,44 @@ html:has(.attio-home) #root {
 .attio-hero__cta {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
   gap: 0.65rem;
-  margin-top: 1.5rem;
+  margin-top: 1.35rem;
+  width: 100%;
 }
 
-/* ——— Testimonials + dots ——— */
-.attio-social {
+/* ——— Módulos flotantes ——— */
+.attio-float {
   position: relative;
-  margin-top: -2.5rem;
-  padding: 2.5rem 1rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-top: -1.25rem;
+  padding: 1.35rem 0 1.75rem;
   overflow: hidden;
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    #000 8%,
+    #000 92%,
+    transparent 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    #000 8%,
+    #000 92%,
+    transparent 100%
+  );
+}
+
+@media (min-width: 768px) {
+  .attio-float {
+    margin-top: -2rem;
+    gap: 1rem;
+    padding: 2.25rem 0 2.75rem;
+  }
 }
 
 .attio-dots {
@@ -472,137 +543,94 @@ html:has(.attio-home) #root {
   inset: 0;
   background-image: radial-gradient(circle, var(--attio-dot) 1px, transparent 1.2px);
   background-size: 10px 10px;
-  mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 62%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 62%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 82%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 18%, #000 82%, transparent 100%);
   pointer-events: none;
 }
 
-.attio-tweets {
+.attio-float__row {
   position: relative;
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-  max-height: 22rem;
   overflow: hidden;
-  mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, #000 55%, transparent 100%);
 }
 
-@media (min-width: 640px) {
-  .attio-tweets {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    max-height: 26rem;
-  }
-
-  .attio-tweets__col:nth-child(2) {
-    margin-top: 2.5rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .attio-tweets {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    max-height: 28rem;
-    padding-inline: 1rem;
-  }
-
-  .attio-tweets__col:nth-child(2) {
-    margin-top: 5rem;
-  }
-
-  .attio-tweets__col:nth-child(3) {
-    margin-top: 2.5rem;
-  }
-}
-
-@media (min-width: 1280px) {
-  .attio-tweets {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    max-height: 26.5rem;
-  }
-
-  .attio-tweets__col:nth-child(2) {
-    margin-top: 7.5rem;
-  }
-
-  .attio-tweets__col:nth-child(3) {
-    margin-top: 5rem;
-  }
-
-  .attio-tweets__col:nth-child(4) {
-    margin-top: 2.5rem;
-  }
-}
-
-.attio-tweets__col {
+.attio-float__track {
   display: flex;
-  flex-direction: column;
-  gap: 1rem;
+  width: max-content;
+  gap: 0.7rem;
+  animation: attio-marquee 42s linear infinite;
 }
 
-.attio-tweet {
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  grid-template-rows: max-content 1fr;
+.attio-float__row--rev .attio-float__track {
+  animation-direction: reverse;
+}
+
+.attio-float__chip {
+  display: inline-flex;
   align-items: center;
-  column-gap: 0.65rem;
-  row-gap: 0.25rem;
-  padding: 1rem;
+  gap: 0.5rem;
+  flex: 0 0 auto;
+  padding: 0.58rem 0.9rem 0.58rem 0.62rem;
   border: 1px solid var(--attio-stroke-weak);
-  border-radius: var(--attio-radius-card);
+  border-radius: 14px;
   background: #fff;
-}
-
-.attio-tweet__avatar {
-  display: grid;
-  place-items: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  background: #eceef1;
   color: var(--attio-ink);
-  font-size: 0.58rem;
-  font-weight: 650;
+  font-size: 0.84rem;
+  font-weight: 600;
   letter-spacing: -0.02em;
-}
-
-.attio-tweet__meta {
-  display: flex;
-  min-width: 0;
-  gap: 0.35rem;
-  margin: 0;
-  font-size: 0.875rem;
-}
-
-.attio-tweet__name {
-  overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 600;
+  box-shadow:
+    0 1px 1px rgba(28, 29, 31, 0.04),
+    0 10px 24px rgba(28, 29, 31, 0.05);
+  animation: attio-chip-float 4.8s ease-in-out infinite;
 }
 
-.attio-tweet__handle {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-  color: var(--attio-caption);
-  font-weight: 500;
-}
-
-.attio-tweet__quote {
-  grid-column: 2;
-  margin: 0;
-  color: var(--attio-tertiary);
-  font-size: 0.9rem;
-  line-height: 1.45;
-  text-wrap: pretty;
-}
-
-.attio-tweet__quote strong {
+.attio-float__icon {
+  width: 1.15rem;
+  height: 1.15rem;
   color: var(--attio-secondary);
-  font-weight: 600;
+  flex-shrink: 0;
+}
+
+@keyframes attio-marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes attio-chip-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .attio-float__track,
+  .attio-float__chip {
+    animation: none !important;
+  }
+
+  .attio-float {
+    mask-image: none;
+    -webkit-mask-image: none;
+  }
+
+  .attio-float__track {
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: center;
+    padding-inline: 0.75rem;
+  }
+
+  .attio-float__row:last-child {
+    display: none;
+  }
 }
 
 /* ——— Logos strip ——— */
@@ -1148,6 +1176,38 @@ html:has(.attio-home) #root {
   border-color: #3a3d42;
 }
 
+.attio-cta-final .attio-btn--hero {
+  background: #fff;
+  color: var(--attio-ink);
+  border-color: #fff;
+}
+
+.attio-cta-final .attio-btn--hero:hover {
+  background: #eceef1;
+}
+
+.attio-cta-final__demo {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: #c8ced6;
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  min-height: 2.75rem;
+  padding: 0.35rem 0.15rem;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-color: rgba(255, 255, 255, 0.28);
+}
+
+.attio-cta-final__demo:hover {
+  color: #fff;
+  text-decoration-color: rgba(255, 255, 255, 0.7);
+}
+
 .attio-cta-final__art {
   position: relative;
   min-height: 16rem;
@@ -1209,13 +1269,209 @@ html:has(.attio-home) #root {
 
 /* ——— Mobile sticky CTAs ——— */
 .attio-home .landing-mobile-cta {
-  background: color-mix(in srgb, var(--attio-surface) 92%, transparent);
-  border-top: 1px solid var(--attio-stroke);
-  backdrop-filter: blur(16px);
+  display: none !important;
 }
 
-.attio-home .landing-mobile-cta__ghost {
-  color: var(--attio-ink) !important;
+/* ——— Responsive: celular ——— */
+@media (max-width: 720px) {
+  .attio-container {
+    width: min(1180px, calc(100% - 0.9rem));
+  }
+
+  .attio-banner {
+    min-height: 2rem;
+    padding: 0.32rem 0.85rem;
+    font-size: 12px;
+  }
+
+  .attio-banner a span {
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .attio-hero {
+    padding: 2.65rem 1.05rem 2rem;
+  }
+
+  .attio-badge {
+    margin-bottom: 1rem;
+    padding: 0.4rem 0.75rem;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .attio-hero h1 {
+    font-size: clamp(1.85rem, 9vw, 2.4rem);
+    max-width: 11.5em;
+  }
+
+  .attio-hero__lead {
+    margin-top: 0.85rem;
+    font-size: 1.02rem;
+    line-height: 1.5;
+    max-width: 28rem;
+  }
+
+  .attio-hero__cta {
+    margin-top: 1.25rem;
+  }
+
+  .attio-hero__cta .attio-btn--hero {
+    min-width: min(100%, 17rem);
+    min-height: 3.15rem;
+    padding: 0.9rem 1.35rem;
+    font-size: 1.02rem;
+    border-radius: 12px;
+    box-shadow: 0 10px 28px rgba(28, 29, 31, 0.14);
+  }
+
+  .attio-float {
+    margin-top: -0.35rem;
+    gap: 0.65rem;
+    padding: 0.85rem 0 1.15rem;
+  }
+
+  .attio-float__row-lg {
+    display: none;
+  }
+
+  .attio-float__chip {
+    padding: 0.5rem 0.78rem 0.5rem 0.55rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+  }
+
+  .attio-float__icon {
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+
+  .attio-float__track {
+    gap: 0.55rem;
+  }
+
+  .attio-trust__copy {
+    padding: 1.85rem 1.15rem 1.5rem;
+  }
+
+  .attio-trust__copy h2,
+  .attio-trust__copy p {
+    display: block;
+    font-size: 1.12rem;
+    line-height: 1.45;
+  }
+
+  .attio-trust__copy h2 {
+    margin-bottom: 0.55rem;
+    font-size: 1.28rem;
+  }
+
+  .attio-trust__certs {
+    grid-template-columns: 1fr;
+  }
+
+  .attio-trust__cert {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 0.85rem;
+    padding: 0.95rem 1.15rem;
+  }
+
+  .attio-trust__cert + .attio-trust__cert {
+    border-left: 0;
+    border-top: 1px solid var(--attio-stroke);
+  }
+
+  .attio-trust__mark {
+    min-width: 4.6rem;
+    height: 2.35rem;
+    font-size: 0.58rem;
+  }
+
+  .attio-why {
+    padding: 2.35rem 1.15rem 2.5rem;
+  }
+
+  .attio-why h2 {
+    margin-bottom: 1.25rem;
+    font-size: 1.55rem;
+  }
+
+  .attio-why__lead p,
+  .attio-why__body p {
+    font-size: 1.02rem;
+  }
+
+  .attio-why__close {
+    margin-top: 1.5rem;
+    font-size: 1.45rem;
+  }
+
+  .attio-home .lp-section,
+  .attio-home .public-section.landing-section,
+  .attio-home.landing-v2 .public-section {
+    margin-top: 0;
+    padding: 2.35rem 1.1rem 2.45rem;
+    border-radius: 0;
+    border: 0;
+    border-top: 1px solid var(--attio-stroke);
+    background: transparent;
+  }
+
+  .attio-home .landing-section--split .landing-section__split-copy,
+  .attio-home .landing-section--split-reverse .landing-section__split-copy {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .attio-home .public-section__head h2,
+  .attio-home .landing-section__split-copy h2,
+  .attio-home .lp-section h2 {
+    font-size: clamp(1.35rem, 6.4vw, 1.7rem);
+  }
+
+  .attio-cta-final__copy {
+    padding: 2.6rem 1.15rem 2.35rem;
+  }
+
+  .attio-cta-final h2 {
+    font-size: 1.7rem;
+  }
+
+  .attio-cta-final__actions {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+    margin-top: 1.5rem;
+  }
+
+  .attio-cta-final .attio-btn--hero {
+    min-width: min(100%, 16.5rem);
+    min-height: 3.1rem;
+  }
+
+  .attio-cta-final__art {
+    min-height: 8.5rem;
+  }
+
+  .attio-home .public-footer,
+  .attio-home .landing-site-footer {
+    padding: 2.25rem 1.15rem 2rem !important;
+  }
+
+  .attio-home .landing-sales-chat {
+    bottom: max(0.85rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  .landing-validation-cta .attio-btn,
+  .lp-modules__cta .attio-btn {
+    min-height: 3rem;
+    width: min(100%, 17rem);
+  }
 }
 
 @media (min-width: 1024px) {
