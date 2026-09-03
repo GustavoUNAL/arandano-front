@@ -334,6 +334,22 @@
   background: color-mix(in srgb, #8be9fd 8%, var(--surface-elevated));
 }
 
+.bk__push {
+  border-color: color-mix(in srgb, var(--bk-accent) 32%, var(--border));
+}
+
+.bk__push-steps {
+  margin: 0.55rem 0 0;
+  padding-left: 1.15rem;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.bk__push-steps li + li {
+  margin-top: 0.2rem;
+}
+
 .bk__ghost { color: var(--heading); }
 .bk__danger { color: var(--muted); }
 

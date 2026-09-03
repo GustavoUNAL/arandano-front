@@ -56,7 +56,10 @@ export function getGoogleOAuthStartUrl(
     getLastCompanyId() ||
     companyIdFromAccessToken(getAccessToken())
   if (companyId) q.set('companyId', companyId)
-  return `${getApiBase()}/auth/google?${q.toString()}`
+  const origin =
+    typeof window !== 'undefined' ? window.location.origin.replace(/\/$/, '') : ''
+  const base = origin || getApiBase()
+  return `${base}/auth/google?${q.toString()}`
 }
 
 function parsePopupResult(raw: unknown): GoogleAuthPopupResult | null {

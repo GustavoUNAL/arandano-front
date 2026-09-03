@@ -28,6 +28,14 @@ import {
   WEEKDAYS,
   type BookingView,
 } from './bookingNav'
+import {
+  bookingPushEnabled,
+  bookingPushSupported,
+  disableBookingPush,
+  enableBookingPush,
+  isIosDevice,
+  isStandalonePwa,
+} from './bookingPush'
 import './booking.css'
 
 type Props = {
@@ -237,6 +245,7 @@ export function BookingApp({
             pending={pending}
             weekMode={weekMode}
             setWeekMode={setWeekMode}
+            baseUrl={baseUrl}
             onStatus={patchStatus}
             onReschedule={async (id, date, time) => {
               await bookingApi.updateAppointment(baseUrl, id, { date, time })
@@ -300,12 +309,15 @@ export function BookingApp({
           />
         ) : null}
         {screen === 'settings' && settings ? (
-          <SettingsPane
-            settings={settings}
-            onSave={async (body) => {
-              setSettings(await bookingApi.updateSettings(baseUrl, body))
-            }}
-          />
+          <>
+            <BookingPushCard baseUrl={baseUrl} />
+            <SettingsPane
+              settings={settings}
+              onSave={async (body) => {
+                setSettings(await bookingApi.updateSettings(baseUrl, body))
+              }}
+            />
+          </>
         ) : null}
       </div>
 
@@ -352,6 +364,69 @@ export function BookingApp({
           }}
         />
       ) : null}
+    </div>
+  )
+}
+
+function BookingPushCard({ baseUrl }: { baseUrl: string }) {
+  const [on, setOn] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+  const supported = bookingPushSupported()
+  const ios = isIosDevice()
+  const standalone = isStandalonePwa()
+  const needsHomeScreen = ios && !standalone
+
+  useEffect(() => {
+    void bookingPushEnabled().then(setOn)
+  }, [])
+
+  async function toggle() {
+    setBusy(true)
+    setMsg(null)
+    try {
+      if (on) {
+        await disableBookingPush(baseUrl)
+        setOn(false)
+      } else {
+        await enableBookingPush(baseUrl)
+        setOn(true)
+      }
+    } catch (err) {
+      setMsg(err instanceof Error ? err.message : 'No se pudieron activar los avisos.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="bk__card bk__push">
+      <h3>Avisos de citas</h3>
+      <p className="bk__meta">
+        Cuando alguien agenda, le llega una notificación en este teléfono, como en cualquier app.
+      </p>
+      {needsHomeScreen ? (
+        <ol className="bk__push-steps">
+          <li>En Safari, toque Compartir (el cuadrado con la flecha).</li>
+          <li>Elija Agregar a pantalla de inicio y confirme.</li>
+          <li>Abra VOS IA desde el icono nuevo, no desde Safari.</li>
+          <li>Vuelva a esta pantalla y pulse Activar avisos.</li>
+        </ol>
+      ) : !supported ? (
+        <p className="bk__meta">
+          Este navegador no entrega avisos. En iPhone use Safari, iOS 16.4 o posterior, y abra la app desde la pantalla de inicio.
+        </p>
+      ) : (
+        <div className="bk__actions">
+          <Button type="button" size="sm" disabled={busy} onClick={() => void toggle()}>
+            {busy ? 'Un momento…' : on ? 'Avisos activados' : 'Activar avisos'}
+          </Button>
+        </div>
+      )}
+      {ios && standalone && !on ? (
+        <p className="bk__meta">Ya está como app. Pulse Activar avisos y acepte el permiso.</p>
+      ) : null}
+      {msg ? <p className="bk__alert">{msg}</p> : null}
     </div>
   )
 }
@@ -455,6 +530,7 @@ function Agenda({
   onStatus,
   onReschedule,
   pending,
+  baseUrl,
 }: {
   day: string
   setDay: (d: string) => void
@@ -464,6 +540,7 @@ function Agenda({
   setWeekMode: (v: boolean) => void
   onStatus: (id: string, status: BookingStatus) => Promise<void>
   onReschedule: (id: string, date: string, time: string) => Promise<void>
+  baseUrl: string
 }) {
   const weekStart = addDays(day, -new Date(`${day}T12:00:00`).getDay())
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
@@ -496,6 +573,7 @@ function Agenda({
         </div>
       </div>
       <DayNav day={day} setDay={setDay} weekMode={weekMode} />
+      <BookingPushCard baseUrl={baseUrl} />
       {pending.length ? (
         <section className="bk__requests" aria-label="Solicitudes por aceptar">
           <h2 className="bk__subtitle">Solicitudes por aceptar · {pending.length}</h2>
