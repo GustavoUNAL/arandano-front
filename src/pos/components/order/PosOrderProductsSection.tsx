@@ -1,6 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { Plus } from 'lucide-react'
 import type { CategoryRef, ProductRow } from '../../../api'
-import { formatCOP } from '../../lib/money'
+import { formatCOP, parseMoney } from '../../lib/money'
+import {
+  filterProductsForPos,
+  pinPosFeaturedCombos,
+  sortProductsForPos,
+} from '../../lib/productSearch'
 import type { OrderLine } from '../../types'
 import { PosMiniCartPicker } from './PosMiniCartPicker'
 import { PosOrderLineNoteModal } from './PosOrderLineNoteModal'
@@ -66,60 +73,144 @@ export function PosOrderProductsSection({
     onPickerActiveChange?.(pickerOpen)
   }, [pickerOpen, onPickerActiveChange])
 
+  useEffect(() => {
+    if (!pickerOpen) return
+    const isPhone = window.matchMedia('(max-width: 720px)').matches
+    if (isPhone) return
+    const t = window.setTimeout(() => searchRef.current?.focus(), 30)
+    return () => window.clearTimeout(t)
+  }, [pickerOpen])
+
   const lineCount = useMemo(
     () => lines.reduce((sum, l) => sum + l.quantity, 0),
     [lines],
   )
 
+  const topSellers = useMemo(() => {
+    const active = filterProductsForPos(products, { activeCategoryId: null, search: '' })
+    const activeById = new Map(active.map((product) => [product.id, product]))
+    const ranked = topProductIds
+      .map((id) => activeById.get(id))
+      .filter((product): product is ProductRow => Boolean(product))
+    const rest =
+      ranked.length > 0
+        ? ranked
+        : sortProductsForPos(active, {
+            search: '',
+            salesUnitsByProductId: unitsSoldByProductId,
+          })
+    return pinPosFeaturedCombos(rest, active).slice(0, 12)
+  }, [products, topProductIds, unitsSoldByProductId])
+
   const openPicker = () => {
     setPickerOpen(true)
-    window.requestAnimationFrame(() => searchRef.current?.focus())
   }
 
   const closePicker = () => setPickerOpen(false)
 
+  const pickerHost =
+    typeof document !== 'undefined'
+      ? document.querySelector('.pos-root') ?? document.body
+      : null
+
   return (
     <div
-      className={`pos-order-products${isEmpty ? ' pos-order-products--empty' : ''}${pickerOpen ? ' pos-order-products--picking' : ''}`}
+      className={`pos-order-products${isEmpty ? ' pos-order-products--empty' : ''}`}
     >
       {!pickerOpen ? (
         <div className="pos-order-products__head">
-          <h2 className="pos-order-lines__title">Productos del pedido</h2>
+          <h2 className="pos-order-lines__title">
+            {isEmpty ? 'Más vendidos' : 'Productos del pedido'}
+          </h2>
           {!isEmpty ? (
             <span className="pos-order-products__count muted small">
               {lineCount} {lineCount === 1 ? 'unidad' : 'unidades'}
             </span>
+          ) : topSellers.length > 0 ? (
+            <span className="pos-order-products__count muted small">Toque para agregar</span>
           ) : null}
         </div>
       ) : null}
 
-      {pickerOpen ? (
-        <div className="pos-order-cart pos-order-cart--mini" aria-label="Seleccionar productos">
-          <PosMiniCartPicker
-            products={products}
-            categories={categories}
-            lines={lines}
-            totalCOP={totalCOP}
-            topProductIds={topProductIds}
-            unitsSoldByProductId={unitsSoldByProductId}
-            highlightId={highlightId}
-            searchInputRef={searchRef}
-            onAdd={onAdd}
-            onQty={onQty}
-            onClose={closePicker}
-          />
-        </div>
-      ) : isEmpty ? (
-        <div className="pos-order-products__empty-state">
-          <button
-            type="button"
-            className="pos-btn pos-btn--primary pos-btn--block pos-order-products__add-btn"
-            disabled={catalogLoading}
-            onClick={openPicker}
-          >
-            {catalogLoading ? 'Cargando carta…' : '+ Agregar productos'}
-          </button>
-        </div>
+      {pickerOpen && pickerHost
+        ? createPortal(
+            <div
+              className="pos-product-picker-overlay"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Agregar productos"
+            >
+              <PosMiniCartPicker
+                products={products}
+                categories={categories}
+                lines={lines}
+                totalCOP={totalCOP}
+                topProductIds={topProductIds}
+                unitsSoldByProductId={unitsSoldByProductId}
+                highlightId={highlightId}
+                searchInputRef={searchRef}
+                onAdd={onAdd}
+                onQty={onQty}
+                onClose={closePicker}
+              />
+            </div>,
+            pickerHost,
+          )
+        : null}
+
+      {isEmpty ? (
+        <>
+          {topSellers.length > 0 ? (
+            <ul className="pos-order-quick" aria-label="Productos más vendidos">
+              {topSellers.map((product, index) => (
+                <li key={product.id}>
+                  <button
+                    type="button"
+                    className={`pos-order-quick__item${highlightId === product.id ? ' pos-order-quick__item--flash' : ''}`}
+                    onClick={() =>
+                      onAdd({
+                        id: product.id,
+                        name: product.name,
+                        price: parseMoney(product.price),
+                      })
+                    }
+                  >
+                    {index < 3 ? (
+                      <span className="pos-order-quick__rank" aria-hidden>
+                        {index + 1}
+                      </span>
+                    ) : null}
+                    <span className="pos-order-quick__text">
+                      <span className="pos-order-quick__name">{product.name}</span>
+                      <span className="pos-order-quick__price mono">
+                        {formatCOP(parseMoney(product.price))}
+                      </span>
+                    </span>
+                    <span className="pos-order-quick__add" aria-hidden>
+                      <Plus strokeWidth={2.5} />
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : catalogLoading ? (
+            <p className="pos-order-quick__hint muted small">Cargando carta…</p>
+          ) : (
+            <p className="pos-order-quick__hint muted small">
+              Aún no hay ventas para armar este listado. Use el botón para ver toda la carta.
+            </p>
+          )}
+          <div className="pos-order-products__empty-state">
+            <button
+              type="button"
+              className="pos-btn pos-btn--primary pos-btn--block pos-order-products__add-btn"
+              disabled={catalogLoading}
+              onClick={openPicker}
+            >
+              {catalogLoading ? 'Cargando carta…' : '+ Ver toda la carta'}
+            </button>
+          </div>
+        </>
       ) : (
         <>
           <div className="pos-order-lines__table-wrap">

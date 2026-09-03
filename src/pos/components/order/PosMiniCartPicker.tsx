@@ -1,10 +1,12 @@
 import type { RefObject } from 'react'
 import { ChevronDown, ChevronUp, Plus, Search, ShoppingBag } from 'lucide-react'
 import { useMemo, useRef, useState } from 'react'
+import { stripInventoryCategoryPrefix } from '../../../inventorySemantics'
 import type { CategoryRef, ProductRow } from '../../../api'
 import { formatCOP, parseMoney } from '../../lib/money'
 import {
   filterProductsForPos,
+  pinPosFeaturedCombos,
   sortProductsForPos,
 } from '../../lib/productSearch'
 import type { OrderLine } from '../../types'
@@ -25,6 +27,37 @@ type Props = {
   onClose: () => void
 }
 
+function isComboCategory(category: CategoryRef): boolean {
+  const slug = (category.slug ?? '').toLowerCase()
+  if (slug === 'combos' || slug === 'combo') return true
+  return /combo/i.test(category.name)
+}
+
+function posSaleCategories(
+  categories: CategoryRef[],
+  products: ProductRow[],
+): CategoryRef[] {
+  const byId = new Map<string, CategoryRef>()
+  for (const category of categories) byId.set(category.id, category)
+  for (const product of products) {
+    if (product.category?.id) byId.set(product.category.id, product.category)
+  }
+
+  const list = [...byId.values()].filter((category) => {
+    const slug = (category.slug ?? '').toLowerCase()
+    if (slug === 'insumos') return false
+    return !/^inventory::/i.test(category.name)
+  })
+
+  list.sort((a, b) => {
+    const aCombo = isComboCategory(a)
+    const bCombo = isComboCategory(b)
+    if (aCombo !== bCombo) return aCombo ? -1 : 1
+    return 0
+  })
+  return list
+}
+
 function lineForProduct(lines: OrderLine[], productId: string): OrderLine | undefined {
   return lines.find((l) => l.productId === productId)
 }
@@ -34,7 +67,6 @@ export function PosMiniCartPicker({
   categories,
   lines,
   totalCOP,
-  topProductIds = [],
   unitsSoldByProductId = new Map(),
   highlightId,
   searchInputRef: externalSearchRef,
@@ -53,29 +85,29 @@ export function PosMiniCartPicker({
     [lines],
   )
 
+  const saleCategories = useMemo(
+    () => posSaleCategories(categories, products),
+    [categories, products],
+  )
+
   const filtered = useMemo(() => {
     const base = filterProductsForPos(products, { activeCategoryId: categoryId, search })
-    return sortProductsForPos(base, {
+    const sorted = sortProductsForPos(base, {
       search,
       salesUnitsByProductId: unitsSoldByProductId,
     })
+    return pinPosFeaturedCombos(sorted, categoryId ? base : products)
   }, [products, categoryId, search, unitsSoldByProductId])
-
-  const quickPicks = useMemo(() => {
-    if (search.trim() || categoryId) return []
-    const byId = new Map(products.filter((p) => p.active).map((p) => [p.id, p]))
-    return topProductIds
-      .map((id) => byId.get(id))
-      .filter((p): p is ProductRow => Boolean(p))
-      .slice(0, 6)
-  }, [products, topProductIds, search, categoryId])
 
   const addProduct = (p: ProductRow) => {
     onAdd({ id: p.id, name: p.name, price: parseMoney(p.price) })
   }
 
   return (
-    <div className="pos-mini-cart" aria-label="Mini carrito">
+    <div className="pos-mini-cart" aria-label="Agregar productos">
+      <header className="pos-mini-cart__head">
+        <h2 className="pos-mini-cart__title">Agregar productos</h2>
+      </header>
       <div className="pos-mini-cart__toolbar">
         <label className="pos-mini-cart__search">
           <Search className="pos-mini-cart__search-icon" aria-hidden strokeWidth={2} />
@@ -100,7 +132,7 @@ export function PosMiniCartPicker({
           >
             Todos
           </button>
-          {categories.map((c) => (
+          {saleCategories.map((c) => (
             <button
               key={c.id}
               type="button"
@@ -109,37 +141,11 @@ export function PosMiniCartPicker({
               className={`pos-mini-cart__chip${categoryId === c.id ? ' pos-mini-cart__chip--active' : ''}`}
               onClick={() => setCategoryId(c.id)}
             >
-              {c.name}
+              {stripInventoryCategoryPrefix(c.name) || c.name}
             </button>
           ))}
         </div>
       </div>
-
-      {quickPicks.length > 0 ? (
-        <div className="pos-mini-cart__quick" aria-label="Sugeridos">
-          <span className="pos-mini-cart__quick-label">Populares</span>
-          <div className="pos-mini-cart__quick-scroll">
-            {quickPicks.map((p) => {
-              const line = lineForProduct(lines, p.id)
-              return (
-                <button
-                  key={p.id}
-                  type="button"
-                  className={`pos-mini-cart__quick-item${line ? ' pos-mini-cart__quick-item--in-cart' : ''}${highlightId === p.id ? ' pos-mini-cart__quick-item--flash' : ''}`}
-                  onClick={() => addProduct(p)}
-                >
-                  <span className="pos-mini-cart__quick-name">{p.name}</span>
-                  {line ? (
-                    <span className="pos-mini-cart__quick-qty mono">{line.quantity}</span>
-                  ) : (
-                    <Plus className="pos-mini-cart__quick-plus" aria-hidden strokeWidth={2.5} />
-                  )}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      ) : null}
 
       <ul className="pos-mini-cart__catalog">
         {filtered.length === 0 ? (

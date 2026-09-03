@@ -1,5 +1,32 @@
 import type { ProductRow } from '../../api'
 
+/** Combos de la categoría Combos (y SKUs conocidos como respaldo). */
+export const POS_FEATURED_COMBO_SKUS = ['4013', '4014'] as const
+
+function isPosComboProduct(product: ProductRow): boolean {
+  const slug = (product.category?.slug ?? product.type ?? '').toLowerCase()
+  if (slug === 'combos' || slug === 'combo') return true
+  const sku = product.sku ?? ''
+  return (POS_FEATURED_COMBO_SKUS as readonly string[]).includes(sku)
+}
+
+export function pinPosFeaturedCombos(
+  products: ProductRow[],
+  catalog: ProductRow[] = products,
+): ProductRow[] {
+  const pinnedIds = new Set<string>()
+  const pinned: ProductRow[] = []
+  for (const product of catalog) {
+    if (product.active === false) continue
+    if (!isPosComboProduct(product)) continue
+    if (pinnedIds.has(product.id)) continue
+    pinned.push(product)
+    pinnedIds.add(product.id)
+  }
+  pinned.sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }))
+  return [...pinned, ...products.filter((p) => !pinnedIds.has(p.id))]
+}
+
 function normalizeText(value: string): string {
   return value
     .normalize('NFD')

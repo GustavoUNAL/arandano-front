@@ -1031,17 +1031,29 @@
 
   /* ——— POS (mismo ancho que Productos / Ventas / Compras) ——— */
   .mobile-view--pos {
-    gap: var(--mv-gap);
+    gap: 0;
     padding-bottom: 0 !important;
     width: 100%;
     max-width: none;
+    flex: 1 1 0;
+    min-height: 0;
+    height: 100%;
   }
 
   .mobile-view--pos .pos-screen {
     width: 100%;
     max-width: none;
     margin-inline: 0;
-    padding: 0.35rem 0 max(0.5rem, env(safe-area-inset-bottom, 0px));
+    padding: 0.5rem var(--mv-pad-x) 0.45rem;
+    box-sizing: border-box;
+  }
+
+  .mobile-view--pos .pos-screen--order,
+  .mobile-view--pos .pos-screen--tables {
+    flex: 1 1 0;
+    min-height: 0;
+    height: 100%;
+    padding-bottom: 0;
   }
 
   .mobile-view--pos .pos-mobile-module-bar {
