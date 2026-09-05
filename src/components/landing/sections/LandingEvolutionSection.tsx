@@ -30,8 +30,8 @@ export function LandingEvolutionSection() {
       <LandingSectionHeader
         align="left"
         titleId="evo-title"
-        title="Una plataforma que evoluciona contigo."
-        subtitle="El nombre VOS-AI señala el destino de la plataforma. Hoy el trabajo está en gestión y en generar datos confiables. La inteligencia se construye encima de esa base."
+        title="Una plataforma que evoluciona con usted."
+        subtitle="El nombre VOS-AI señala el destino de la plataforma. Hoy el trabajo está en la gestión y en datos confiables. La inteligencia se construye encima de esa base."
       />
       <ol className="lp-evo__line">
         {STEPS.map((step, i) => (

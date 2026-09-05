@@ -2,11 +2,11 @@ import { motion } from 'framer-motion'
 import { fadeUp, LandingSection, LandingSectionHeader } from './shared'
 
 const QUESTIONS = [
-  '¿Cuánto vendimos hoy?',
+  '¿Cuánto vendió hoy?',
   '¿Qué productos están próximos a agotarse?',
-  '¿Cómo se comportaron nuestras ventas esta semana?',
+  '¿Cómo se comportaron las ventas esta semana?',
   '¿Qué debería comprar?',
-  '¿Qué tendencia encuentras en mis ventas?',
+  '¿Qué tendencia hay en las ventas?',
 ] as const
 
 const FUTURE = [
@@ -21,10 +21,9 @@ export function LandingIntelligenceSection() {
   return (
     <LandingSection id="inteligencia" ariaLabelledBy="intel-title" className="lp-intel">
       <LandingSectionHeader
-        align="left"
         titleId="intel-title"
-        title="La inteligencia llega a partir de tus datos."
-        subtitle="VOS-AI está evolucionando para incorporar inteligencia artificial sobre la información que genera cada negocio. No es el producto completo: es una capa que se construye cuando la operación ya está registrada."
+        title="La inteligencia llega a partir de sus datos."
+        subtitle="VOS-AI incorpora inteligencia sobre lo que ya registró su operación. Es una capa encima de ventas, inventario y citas, no un producto aparte."
       />
       <motion.ul
         className="lp-intel__qs"

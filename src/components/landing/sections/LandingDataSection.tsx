@@ -20,10 +20,9 @@ export function LandingDataSection() {
   return (
     <LandingSection id="como-funciona" ariaLabelledBy="data-title" className="lp-data">
       <LandingSectionHeader
-        align="left"
         titleId="data-title"
-        title="Tu negocio genera datos. VOS-AI los convierte en información."
-        subtitle="Toda esa información se almacena y se estructura. Por eso la arquitectura está pensada para evolucionar hacia automatización e inteligencia, sin cambiar de plataforma."
+        title="Su negocio genera datos. VOS-AI los convierte en información."
+        subtitle="Cada venta, cita o movimiento de inventario queda registrado. Sobre esa misma base se construyen indicadores, automatización e inteligencia, sin cambiar de plataforma."
       />
       <div className="lp-data__grid">
         <motion.ul

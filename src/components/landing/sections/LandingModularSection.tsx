@@ -9,8 +9,8 @@ export function LandingModularSection() {
       <LandingSectionHeader
         align="left"
         titleId="modular-title"
-        title="Diseñada para crecer contigo"
-        subtitle="VOS-AI está construida como una plataforma modular. Cada herramienta resuelve una necesidad específica, mientras toda la información permanece conectada en una misma plataforma."
+        title="Diseñada para crecer con usted"
+        subtitle="VOS-AI es una plataforma modular. Cada herramienta cubre una necesidad; la información de ventas, citas e inventario es la misma para todas."
       />
       <motion.ol
         className="lp-flow"
@@ -31,7 +31,9 @@ export function LandingModularSection() {
           </li>
         ))}
       </motion.ol>
-      <p className="lp-flow__note">Todos los módulos leen y escriben sobre la misma información del negocio.</p>
+      <p className="lp-flow__note">
+        Una venta, una cita o un recuento alimentan el resto. No hay un dato por módulo.
+      </p>
     </LandingSection>
   )
 }

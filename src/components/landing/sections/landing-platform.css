@@ -1,6 +1,6 @@
 /* Landing VOS-AI — plataforma modular */
 
-.lp-platform .attio-nav__login {
+.lp-platform:not(.lp-gh) .attio-nav__login {
   display: none;
 }
 
@@ -30,7 +30,7 @@
 }
 
 .attio-hero--split .attio-hero__cta {
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 @media (min-width: 900px) {
@@ -131,9 +131,17 @@
 }
 
 .lp-preview__main header h3 {
-  margin: 0.15rem 0 0.75rem;
+  margin: 0.15rem 0 0;
   font-size: 1.02rem;
   letter-spacing: -0.03em;
+}
+
+.lp-preview__hint {
+  margin: 0.35rem 0 0.75rem !important;
+  font-size: 0.72rem !important;
+  letter-spacing: 0.01em !important;
+  text-transform: none !important;
+  color: var(--attio-tertiary) !important;
 }
 
 .lp-preview__main ul {
@@ -145,27 +153,46 @@
 }
 
 .lp-preview__main li {
-  display: grid;
-  grid-template-columns: 5.2rem minmax(0, 1fr) auto;
-  gap: 0.4rem;
-  align-items: center;
-  padding: 0.45rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.18rem;
+  padding: 0.55rem 0.7rem;
   border: 1px solid var(--attio-stroke-weak);
   border-radius: 10px;
-  font-size: 0.78rem;
 }
 
-.lp-preview__main li span:first-child {
-  color: var(--attio-tertiary);
+.lp-preview__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
 }
 
-.lp-preview__main em {
-  font-style: normal;
+.lp-preview__item {
+  min-width: 0;
+  font-size: 0.86rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--attio-ink);
+}
+
+.lp-preview__channel {
+  flex-shrink: 0;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(28, 29, 31, 0.06);
+  color: var(--attio-ink);
   font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--attio-caption);
+}
+
+.lp-preview__origin {
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: var(--attio-tertiary);
 }
 
 .lp-preview__main footer {
@@ -271,8 +298,11 @@
   line-height: 1.5;
 }
 
-.lp-cap__line {
-  display: none;
+.lp-cap__from {
+  margin: 0.4rem 0 0;
+  color: var(--attio-tertiary);
+  font-size: 0.8rem;
+  line-height: 1.4;
 }
 
 .lp-cap__top {
@@ -316,7 +346,7 @@
 
 @media (max-width: 699px) {
   .lp-caps__head {
-    margin-bottom: 1.15rem;
+    margin-bottom: 1rem;
     max-width: none;
   }
 
@@ -325,26 +355,25 @@
   }
 
   .lp-caps__head p:not(.landing-section__kicker) {
-    margin-top: 0.55rem;
-    max-width: 22rem;
+    margin-top: 0.5rem;
+    max-width: none;
     font-size: 0.9rem;
     line-height: 1.45;
     color: var(--attio-secondary);
   }
 
   .lp-caps__grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0.6rem;
+    grid-template-columns: 1fr;
+    gap: 0.45rem;
   }
 
   .lp-caps .lp-cap {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: flex-start;
-    gap: 0;
-    min-height: 100%;
-    padding: 0.85rem 0.8rem 0.9rem;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 0;
+    padding: 0.8rem 0.9rem;
     text-align: left;
     box-shadow: none;
   }
@@ -355,7 +384,8 @@
 
   .lp-cap__top {
     justify-content: flex-start;
-    margin-bottom: 0.55rem;
+    margin-bottom: 0;
+    flex-shrink: 0;
   }
 
   .lp-cap__status,
@@ -364,50 +394,36 @@
   }
 
   .lp-cap__icon {
-    width: 2.05rem;
-    height: 2.05rem;
+    width: 2.15rem;
+    height: 2.15rem;
     border-radius: 10px;
     background: rgba(28, 29, 31, 0.06);
   }
 
   .lp-cap__icon svg {
-    width: 1.02rem;
-    height: 1.02rem;
+    width: 1.05rem;
+    height: 1.05rem;
+  }
+
+  .lp-caps .lp-cap__copy {
+    min-width: 0;
+    flex: 1;
   }
 
   .lp-caps .lp-cap__copy h3 {
-    margin: 0 0 0.28rem;
-    font-size: 0.86rem;
+    margin: 0 0 0.12rem;
+    font-size: 0.92rem;
     font-weight: 650;
     letter-spacing: -0.03em;
   }
 
-  .lp-cap__line {
+  .lp-cap__from {
     display: block;
     margin: 0;
     color: var(--attio-secondary);
-    font-size: 0.74rem;
+    font-size: 0.78rem;
     line-height: 1.4;
     text-wrap: pretty;
-  }
-
-  .lp-caps__grid > :last-child {
-    grid-column: 1 / -1;
-  }
-
-  .lp-caps__grid > :last-child .lp-cap {
-    flex-direction: row;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.8rem 0.9rem;
-  }
-
-  .lp-caps__grid > :last-child .lp-cap__top {
-    margin-bottom: 0;
-  }
-
-  .lp-caps__grid > :last-child .lp-cap__copy h3 {
-    margin-bottom: 0.12rem;
   }
 }
 
@@ -608,12 +624,112 @@
   line-height: 1.55;
 }
 
-@media (max-width: 420px) {
+@media (max-width: 720px) {
+  .attio-home.lp-platform .lp-section,
+  .attio-home.landing-v2 .public-section {
+    padding: 2.15rem 0.95rem 2.25rem;
+  }
+
   .lp-preview__body {
     grid-template-columns: 1fr;
   }
+
   .lp-preview__rail {
     display: none;
+  }
+
+  .lp-preview__window {
+    border-radius: 14px;
+    box-shadow: 0 12px 32px rgba(28, 29, 31, 0.07);
+  }
+
+  .lp-preview__main {
+    padding: 0.85rem 0.85rem 0.95rem;
+  }
+
+  .lp-preview__item {
+    font-size: 0.84rem;
+  }
+
+  .lp-preview__cap {
+    margin-top: 0.6rem;
+    font-size: 0.78rem;
+    line-height: 1.45;
+  }
+
+  .lp-platform .lp-section {
+    padding: 2.15rem 0.95rem 2.25rem;
+  }
+
+  .lp-platform .lp-section > header {
+    margin-bottom: 1rem;
+  }
+
+  .lp-flow {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .lp-flow li {
+    gap: 0.4rem;
+  }
+
+  .lp-flow__join {
+    display: none;
+  }
+
+  .lp-flow li > span:first-child {
+    min-height: 2.25rem;
+    padding: 0.35rem 0.75rem;
+    font-size: 0.84rem;
+  }
+
+  .lp-flow__note {
+    font-size: 0.88rem;
+    line-height: 1.45;
+  }
+
+  .lp-data__sources li,
+  .lp-intel__qs li span {
+    padding: 0.75rem 0.85rem;
+    font-size: 0.9rem;
+  }
+
+  .lp-cafe__body {
+    font-size: 0.95rem;
+    line-height: 1.55;
+  }
+
+  .lp-sectors__tabs {
+    flex-wrap: wrap;
+    overflow: visible;
+    margin-bottom: 0.85rem;
+    padding-bottom: 0;
+  }
+
+  .lp-sectors__tab {
+    min-height: 2.25rem;
+    font-size: 0.8rem;
+  }
+
+  .lp-evo__line {
+    gap: 0.85rem;
+  }
+
+  .lp-evo__line li {
+    padding-left: 0.75rem;
+    border-left: 2px solid var(--attio-stroke);
+  }
+
+  .attio-hero--split {
+    gap: 1.35rem;
+    padding: 1.5rem 0.95rem 1.65rem;
+    text-align: left;
+  }
+
+  .lp-final__lead {
+    font-size: 0.95rem;
   }
 }
 

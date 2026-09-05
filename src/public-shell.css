@@ -757,52 +757,6 @@ html[data-shell='public'] #root {
   margin: 0.15rem 0 0;
 }
 
-.public-auth--register {
-  justify-content: center;
-  padding: 3.5rem 1.25rem 1.5rem;
-}
-
-.public-auth--register .public-auth__layout {
-  max-width: 54rem;
-  width: min(54rem, 100%);
-  align-items: stretch;
-}
-
-.public-auth--register .public-auth__form-wrap {
-  padding: 1.35rem 1.45rem 1.25rem;
-  justify-content: flex-start;
-}
-
-.public-auth--register .public-auth__form {
-  gap: 0.72rem;
-}
-
-.public-auth--register .public-auth__head {
-  align-items: flex-start;
-  text-align: left;
-  gap: 0.2rem;
-  margin-bottom: 0.1rem;
-}
-
-.public-auth--register .public-auth__title {
-  font-size: 1.28rem;
-}
-
-.public-auth--register .public-auth__subtitle {
-  max-width: 28rem;
-}
-
-.public-auth__form-brand {
-  display: none;
-  margin-bottom: 0.15rem;
-}
-
-.public-auth__fields {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.72rem;
-}
-
 .public-auth__layout {
   width: 100%;
   max-width: 900px;
@@ -1260,29 +1214,6 @@ html[data-shell='public'] #root {
 
   .public-auth__visual {
     display: none;
-  }
-
-  .public-auth--register {
-    padding: 4rem 1rem 1.35rem;
-    justify-content: flex-start;
-  }
-
-  .public-auth--register .public-auth__head {
-    align-items: center;
-    text-align: center;
-  }
-
-  .public-auth--register .public-auth__subtitle {
-    max-width: none;
-  }
-
-  .public-auth__form-brand {
-    display: flex;
-    justify-content: center;
-  }
-
-  .public-auth__fields {
-    grid-template-columns: 1fr;
   }
 }
 

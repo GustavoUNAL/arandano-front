@@ -202,7 +202,7 @@ export function AccessRequestView({ baseUrl }: Props) {
               <div className="public-auth__alt-action">
                 {plan === 'TRIAL' ? (
                   <a className="public-btn public-btn--ghost" href={getRegisterUrl()}>
-                    Crear cuenta ahora · formulario o Google
+                    Crear cuenta ahora · Google
                   </a>
                 ) : null}
                 <a className="public-btn public-btn--ghost" href={getLoginUrl()}>

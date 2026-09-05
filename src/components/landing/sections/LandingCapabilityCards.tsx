@@ -1,118 +1,75 @@
-import { motion } from 'framer-motion'
-import {
-  AppLauncherIcon,
-  type LauncherIconView,
-} from '../../AppLauncherIcon'
-import { fadeUp, GlassCard, LandingSection, LandingSectionHeader } from './shared'
+import { useEffect, useRef, useState } from 'react'
+import { AppLauncherIcon } from '../../AppLauncherIcon'
+import { LandingAppModal } from '../LandingAppModal'
+import { LANDING_CORE_APPS, type LandingApp } from '../landingApps'
+import { LandingSection, LandingSectionHeader } from './shared'
 
-type Status = 'disponible' | 'desarrollo' | 'proxima'
+const PLACE_MS = 160
 
-type Card = {
-  view: LauncherIconView
-  name: string
-  text: string
-  line: string
-  status: Status
+function prefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
 }
-
-const STATUS_LABEL: Record<Status, string> = {
-  disponible: 'Disponible',
-  desarrollo: 'En desarrollo',
-  proxima: 'Próximamente',
-}
-
-const CARDS: Card[] = [
-  {
-    view: 'sales',
-    name: 'Ventas',
-    text: 'Registre y controle las ventas de su negocio en el momento.',
-    line: 'Cada venta queda registrada al instante.',
-    status: 'disponible',
-  },
-  {
-    view: 'inventory',
-    name: 'Inventario',
-    text: 'Controle existencias y sepa qué productos e insumos hay que reponer.',
-    line: 'Sepa qué hay en stock y qué reponer.',
-    status: 'desarrollo',
-  },
-  {
-    view: 'recipes',
-    name: 'Recetas',
-    text: 'Relacione productos e insumos para actualizar el inventario con cada venta.',
-    line: 'La venta descuenta los insumos sola.',
-    status: 'desarrollo',
-  },
-  {
-    view: 'booking',
-    name: 'Citas',
-    text: 'Gestione reservas, horarios y clientes desde una agenda centralizada.',
-    line: 'Agenda, horarios y clientes juntos.',
-    status: 'disponible',
-  },
-  {
-    view: 'customers',
-    name: 'Clientes',
-    text: 'Construya un historial organizado de sus clientes y sus visitas.',
-    line: 'Quién compra, quién vuelve y cuándo.',
-    status: 'desarrollo',
-  },
-  {
-    view: 'analytics',
-    name: 'Analítica',
-    text: 'Convierta los datos de su operación en indicadores para entender el negocio.',
-    line: 'Los números de su operación, a la vista.',
-    status: 'desarrollo',
-  },
-  {
-    view: 'tasks',
-    name: 'Automatización',
-    text: 'Reduzca tareas repetitivas con alertas, avisos y procesos automáticos.',
-    line: 'Alertas y procesos que corren solos.',
-    status: 'proxima',
-  },
-]
 
 export function LandingCapabilityCards() {
+  const [open, setOpen] = useState<LandingApp | null>(null)
+  const [placed, setPlaced] = useState(0)
+  const [active, setActive] = useState(false)
+  const boardRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = boardRef.current
+    if (!el) return
+    if (prefersReducedMotion()) {
+      setActive(true)
+      setPlaced(LANDING_CORE_APPS.length)
+      return
+    }
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry?.isIntersecting) return
+        setActive(true)
+        io.disconnect()
+      },
+      { threshold: 0.28 },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
+  useEffect(() => {
+    if (!active || prefersReducedMotion()) return
+    if (placed >= LANDING_CORE_APPS.length) return
+    const id = window.setTimeout(() => setPlaced((n) => n + 1), PLACE_MS)
+    return () => window.clearTimeout(id)
+  }, [active, placed])
+
   return (
     <LandingSection id="modulos" ariaLabelledBy="modules-title" className="lp-caps">
       <LandingSectionHeader
-        align="left"
         className="lp-caps__head"
         titleId="modules-title"
         kicker="Módulos"
         title="Independientes. Una sola base."
-        subtitle="Cada herramienta cubre una parte del negocio. La información es la misma para todas."
+        subtitle="Cada módulo nace de un movimiento real de su operación."
       />
-      <div className="lp-caps__grid">
-        {CARDS.map((card, i) => (
-          <motion.div
-            key={card.name}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: '-40px' }}
-            variants={fadeUp}
-            transition={{ duration: 0.4, delay: (i % 3) * 0.05, ease: [0.22, 1, 0.36, 1] }}
+      <div ref={boardRef} className="lp-apps__board">
+        {LANDING_CORE_APPS.map((card, i) => (
+          <button
+            key={card.view}
+            type="button"
+            className={`lp-apps__tile lp-apps__tile--${card.tone}${i < placed ? ' is-in' : ''}`}
+            aria-haspopup="dialog"
+            aria-expanded={open?.view === card.view}
+            onClick={() => setOpen(card)}
           >
-            <GlassCard
-              hover
-              className={`lp-cap h-full p-5 lp-cap--${card.status}`}
-            >
-              <div className="lp-cap__top">
-                <span className="lp-cap__icon" aria-hidden>
-                  <AppLauncherIcon view={card.view} />
-                </span>
-                <span className="lp-cap__status">{STATUS_LABEL[card.status]}</span>
-              </div>
-              <div className="lp-cap__copy">
-                <h3>{card.name}</h3>
-                <p className="lp-cap__text">{card.text}</p>
-                <p className="lp-cap__line">{card.line}</p>
-              </div>
-            </GlassCard>
-          </motion.div>
+            <span className="lp-apps__icon" aria-hidden>
+              <AppLauncherIcon view={card.view} className="lp-apps__glyph" />
+            </span>
+            <span className="lp-apps__label">{card.name}</span>
+          </button>
         ))}
       </div>
+      {open ? <LandingAppModal app={open} onClose={() => setOpen(null)} /> : null}
     </LandingSection>
   )
 }
