@@ -1,8 +1,8 @@
 {
   "id": "https://vos-ia.com/",
-  "name": "VOS IA",
-  "short_name": "VOS IA",
-  "description": "Agentes inteligentes para empresas y profesionales.",
+  "name": "VOS-AI",
+  "short_name": "VOS-AI",
+  "description": "Plataforma tecnológica para la gestión, automatización e inteligencia empresarial.",
   "lang": "es",
   "dir": "ltr",
   "start_url": "/",

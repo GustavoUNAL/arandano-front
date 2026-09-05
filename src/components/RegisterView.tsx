@@ -87,7 +87,7 @@ export function RegisterView({ baseUrl, onCreated }: Props) {
   }
 
   return (
-    <div className="public-shell public-auth google-signup">
+    <div className="public-shell public-auth public-auth--register google-signup">
       <div className="public-shell__grid-bg" aria-hidden />
       <a className="public-btn public-btn--ghost public-auth__back" href={getLandingUrl()}>
         ← Volver
@@ -103,27 +103,27 @@ export function RegisterView({ baseUrl, onCreated }: Props) {
         <aside className="public-auth__visual">
           <BrandMark size="md" showTagline />
           <div>
-            <h2>Cree su espacio en {BRAND_NAME}</h2>
+            <h2>Su negocio, en un solo espacio</h2>
             <p>
-              Regístrese con Google o con el formulario. En ambos casos acepta el tratamiento
-              de datos de su negocio antes de activar el panel.
+              Cree la cuenta con Google o con su email. El panel queda listo para
+              ventas, inventario, citas y el resto de su operación.
             </p>
           </div>
           <ul className="public-auth__bullets">
-            <li>Ingrese al panel en el momento</li>
+            <li>Acceso inmediato al panel</li>
             <li>Datos aislados por empresa</li>
             <li>Tratamiento según Ley 1581 de 2012</li>
-            <li>Sin vender información a terceros</li>
           </ul>
         </aside>
 
         <div className="public-auth__form-wrap">
           <form className="public-auth__form google-signup__form" onSubmit={handleSubmit}>
             <header className="public-auth__head">
+              <BrandMark size="sm" className="public-auth__form-brand" />
               <p className="google-signup__kicker">Registro</p>
               <h1 className="public-auth__title">Crear su cuenta</h1>
               <p className="public-auth__subtitle">
-                Use Google o complete sus datos. El espacio queda listo para operar.
+                Google o el formulario. Acepta el tratamiento de datos al continuar.
               </p>
             </header>
 
@@ -138,32 +138,34 @@ export function RegisterView({ baseUrl, onCreated }: Props) {
               onError={(msg) => setError(msg)}
             />
 
-            <p className="public-auth__or">o con tu email</p>
+            <p className="public-auth__or">o con su email</p>
 
-            <Label>
-              <span>Nombre de la empresa</span>
-              <Input
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                autoComplete="organization"
-                required
-                autoFocus
-                disabled={submitting}
-                placeholder="Ej. Café Central"
-              />
-            </Label>
+            <div className="public-auth__fields">
+              <Label>
+                <span>Empresa</span>
+                <Input
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  autoComplete="organization"
+                  required
+                  autoFocus
+                  disabled={submitting}
+                  placeholder="Café Central"
+                />
+              </Label>
 
-            <Label>
-              <span>Tu nombre</span>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                autoComplete="name"
-                required
-                disabled={submitting}
-                placeholder="María García"
-              />
-            </Label>
+              <Label>
+                <span>Su nombre</span>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  autoComplete="name"
+                  required
+                  disabled={submitting}
+                  placeholder="María García"
+                />
+              </Label>
+            </div>
 
             <Label>
               <span>Email</span>
@@ -174,7 +176,7 @@ export function RegisterView({ baseUrl, onCreated }: Props) {
                 autoComplete="username"
                 required
                 disabled={submitting}
-                placeholder="tu@empresa.com"
+                placeholder="usted@empresa.com"
               />
             </Label>
 
@@ -222,7 +224,7 @@ export function RegisterView({ baseUrl, onCreated }: Props) {
             </Button>
 
             <p className="public-auth__footer-link">
-              ¿Ya tenés acceso? <a href={getLoginUrl()}>Iniciar sesión</a>
+              ¿Ya tiene acceso? <a href={getLoginUrl()}>Iniciar sesión</a>
             </p>
           </form>
         </div>

@@ -415,7 +415,7 @@ export default function App() {
 
   if (authInitializing) {
     return (
-      <div className="app-initial-boot" aria-busy="true" aria-label="Cargando VOS IA">
+      <div className="app-initial-boot" aria-busy="true" aria-label="Cargando VOS-AI">
         <BrandMark size="lg" className="brand-mark--splash" />
       </div>
     )

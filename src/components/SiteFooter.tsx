@@ -40,7 +40,7 @@ export function SiteFooter({ tagline, className = '' }: Props) {
     <footer className={shellClass}>
       <nav className="landing-site-footer__icons" aria-label="Redes sociales y contacto">
         <a
-          href={getWhatsAppUrl('Hola, vi VOS IA en la web y me gustaría más información.')}
+          href={getWhatsAppUrl('Hola, vi VOS-AI en la web y me gustaría más información.')}
           className="landing-site-footer__icon landing-site-footer__icon--whatsapp"
           target="_blank"
           rel="noopener noreferrer"

@@ -1,53 +1,29 @@
 import { useEffect, useState, type MouseEvent } from 'react'
-import { useLandingScrollReveal } from '../hooks/useLandingScrollReveal'
 import { BRAND_NAME, BRAND_TAGLINE } from '../lib/brand'
 import { DEFAULT_LIGHT, setThemeColor } from '../lib/themeColor'
 import { SiteFooter } from './SiteFooter'
 import { getLoginUrl, getRegisterUrl } from '../lib/authRoutes'
 import { BrandMark } from './BrandMark'
-import { LandingSolutionDemo } from './landing/LandingSolutionDemo'
-import { LandingSalesChat } from './landing/LandingSalesChat'
+import { LandingProductPreview } from './landing/LandingProductPreview'
 import {
-  LandingAgentsSection,
-  LandingAutomationsSection,
-  LandingCompareSection,
-  LandingFaqSection,
+  LandingCapabilityCards,
+  LandingDataSection,
+  LandingEvolutionSection,
   LandingFinalCtaSection,
-  LandingIndustriesSection,
-  LandingModulesSection,
-  LandingPricingSection,
-  LandingProductsSection,
-  LandingResultsSection,
-  LandingTestimonialsSection,
-  LandingWhySection,
+  LandingIntelligenceSection,
+  LandingModularSection,
+  LandingSectorsSection,
+  LandingValidationCafe,
 } from './landing/sections'
-import './landing/sections/landing-premium.css'
 import '../public-shell.css'
 import './landing/attio-home.css'
-
-const VALIDATION_STEPS = [
-  {
-    title: 'Conecta',
-    text: 'Tus datos, procesos y aplicaciones se integran para que los agentes entiendan el contexto real de tu trabajo.',
-  },
-  {
-    title: 'Define',
-    text: 'Creas agentes especializados con las reglas, herramientas y límites que tu negocio necesita.',
-  },
-  {
-    title: 'Delega',
-    text: 'Los agentes reciben información, toman decisiones dentro de esas reglas y ejecutan tareas de principio a fin.',
-  },
-  {
-    title: 'Escala',
-    text: 'Un agente para cada necesidad: agenda, documentos, ventas, operaciones, administración o análisis.',
-  },
-] as const
+import './landing/sections/landing-platform.css'
 
 const NAV_LINKS = [
-  { href: '#agentes', label: 'Agentes' },
-  { href: '#features', label: 'Capacidades' },
-  { href: '#planes', label: 'Precios' },
+  { href: '#producto', label: 'Producto' },
+  { href: '#modulos', label: 'Módulos' },
+  { href: '#como-funciona', label: 'Cómo funciona' },
+  { href: '#evolucion', label: 'Evolución' },
 ] as const
 
 type Props = {
@@ -86,15 +62,13 @@ function MenuIcon() {
 export function LandingView({
   onLoginClick,
   onAccessRequestClick,
-  onHealthLoginClick,
 }: Props) {
   const loginUrl = getLoginUrl()
-  const registerUrl = getRegisterUrl()
-  const scrollWrapRef = useLandingScrollReveal()
+  const knowUrl = getRegisterUrl()
   const [menuOpen, setMenuOpen] = useState(false)
 
   useEffect(() => {
-    document.title = `${BRAND_NAME} — Plataforma de agentes inteligentes`
+    document.title = `${BRAND_NAME} — Todo su negocio. Una sola plataforma.`
     const root = document.documentElement
     const prevTheme = root.dataset.theme
     const prevShell = root.dataset.shell
@@ -118,17 +92,10 @@ export function LandingView({
     onLoginClick()
   }
 
-  function handleAccess(e: MouseEvent<HTMLAnchorElement>) {
+  function handleKnow(e: MouseEvent<HTMLAnchorElement>) {
     if (!onAccessRequestClick) return
     e.preventDefault()
     onAccessRequestClick()
-  }
-
-  function scrollToDemo() {
-    document.getElementById('solution-title')?.scrollIntoView({
-      behavior: 'smooth',
-      block: 'center',
-    })
   }
 
   function closeMenu() {
@@ -136,14 +103,8 @@ export function LandingView({
   }
 
   return (
-    <div className="public-shell landing-v2 attio-home">
+    <div className="public-shell landing-v2 attio-home lp-platform">
       <header className="attio-header">
-        <div className="attio-banner">
-          <a href="#features">
-            <span>De la IA que responde a la IA que trabaja</span>
-            <ArrowIcon />
-          </a>
-        </div>
         <div className="attio-container">
           <nav className="attio-nav" aria-label="Principal">
             <a className="attio-nav__brand" href="#top" aria-label={`${BRAND_NAME} inicio`}>
@@ -166,8 +127,11 @@ export function LandingView({
               <MenuIcon />
             </button>
             <div className="attio-nav__cta">
-              <a className="attio-btn attio-btn--primary" href={loginUrl} onClick={handleLogin}>
+              <a className="attio-btn attio-btn--ghost attio-nav__login" href={loginUrl} onClick={handleLogin}>
                 Acceder
+              </a>
+              <a className="attio-btn attio-btn--ghost attio-nav__know" href={knowUrl} onClick={handleKnow}>
+                Conocer VOS-AI
               </a>
             </div>
           </nav>
@@ -178,7 +142,6 @@ export function LandingView({
               </a>
             ))}
             <a
-              className="attio-btn attio-btn--primary attio-nav__drawer-access"
               href={loginUrl}
               onClick={(e) => {
                 closeMenu()
@@ -187,70 +150,51 @@ export function LandingView({
             >
               Acceder
             </a>
+            <a
+              className="attio-btn attio-btn--primary attio-nav__drawer-access"
+              href={knowUrl}
+              onClick={(e) => {
+                closeMenu()
+                handleKnow(e)
+              }}
+            >
+              Conocer VOS-AI
+            </a>
           </div>
         </div>
       </header>
 
-      <div
-        ref={scrollWrapRef}
-        id="top"
-        className="public-wrap landing-v2__wrap landing-v2__wrap--scroll"
-      >
+      <div id="top" className="public-wrap landing-v2__wrap landing-v2__wrap--scroll">
         <div className="attio-container">
           <div className="attio-frame">
-            <header className="attio-hero" aria-labelledby="landing-hero-title">
-              <div className="attio-badge">
-                Plataforma de agentes inteligentes para empresas y profesionales
+            <header className="attio-hero attio-hero--split" aria-labelledby="landing-hero-title">
+              <div className="attio-hero__copy">
+                <div className="attio-badge">Gestión · Datos · Automatización · Inteligencia</div>
+                <h1 id="landing-hero-title">
+                  Todo tu negocio.
+                  <br />
+                  Una sola plataforma.
+                </h1>
+                <p className="attio-hero__lead">
+                  VOS-AI reúne las herramientas que necesitas para gestionar ventas,
+                  inventario, clientes, citas y procesos de tu negocio desde un solo lugar.
+                </p>
+                <div className="attio-hero__cta">
+                  <a
+                    className="attio-btn attio-btn--primary attio-btn--hero"
+                    href={knowUrl}
+                    onClick={handleKnow}
+                  >
+                    Conocer VOS-AI
+                    <ArrowIcon />
+                  </a>
+                  <a className="attio-btn attio-btn--outline attio-btn--hero" href="#modulos">
+                    Ver módulos
+                  </a>
+                </div>
               </div>
-              <h1 id="landing-hero-title">La inteligencia que trabaja contigo.</h1>
-              <p className="attio-hero__lead">
-                {BRAND_NAME} es una plataforma de agentes inteligentes para empresas y
-                profesionales. Conecta tus herramientas, entiende tu contexto y
-                automatiza tareas reales para que puedas dedicar tu tiempo a lo que
-                realmente importa.
-              </p>
-              <div className="attio-hero__cta">
-                <a
-                  className="attio-btn attio-btn--primary attio-btn--hero"
-                  href={loginUrl}
-                  onClick={handleLogin}
-                >
-                  Acceder
-                  <ArrowIcon />
-                </a>
-              </div>
+              <LandingProductPreview />
             </header>
-            <LandingTestimonialsSection />
-          </div>
-        </div>
-
-        <hr className="attio-hairline" />
-
-        <div className="attio-container">
-          <div className="attio-frame attio-trust">
-            <div className="attio-trust__copy">
-              <h2>No necesitas cambiar la forma en que trabajas. </h2>
-              <p>
-                {BRAND_NAME} funciona como una capa inteligente sobre las herramientas
-                que ya utilizas. Tus datos, procesos y aplicaciones se conectan para
-                que tus agentes entiendan el contexto y ejecuten tareas de principio a
-                fin.
-              </p>
-            </div>
-            <div className="attio-trust__certs">
-              <div className="attio-trust__cert">
-                <span className="attio-trust__mark">CONECTA</span>
-                <span>Tus herramientas</span>
-              </div>
-              <div className="attio-trust__cert">
-                <span className="attio-trust__mark">ACTÚA</span>
-                <span>Tareas reales</span>
-              </div>
-              <div className="attio-trust__cert">
-                <span className="attio-trust__mark">ESCALA</span>
-                <span>Cualquier negocio</span>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -258,140 +202,19 @@ export function LandingView({
 
         <div className="attio-container">
           <div className="attio-frame">
-            <LandingWhySection />
+            <LandingModularSection />
+            <LandingCapabilityCards />
+            <LandingDataSection />
+            <LandingIntelligenceSection />
+            <LandingValidationCafe />
+            <LandingSectorsSection />
+            <LandingEvolutionSection />
           </div>
         </div>
 
-        <hr className="attio-hairline" />
-
-        <div className="attio-container" id="features">
-          <div className="attio-frame">
-            <LandingAgentsSection />
-            <LandingModulesSection accessUrl={registerUrl} onAccess={handleAccess} />
-
-            <section
-              className="public-section landing-section landing-validation"
-              aria-labelledby="validation-title"
-            >
-              <div className="public-section__head">
-                <p className="landing-section__kicker">Empezar</p>
-                <h2 id="validation-title">De conversar con una IA a darle trabajo</h2>
-              </div>
-              <div className="landing-validation-grid">
-                {VALIDATION_STEPS.map((step, i) => (
-                  <article key={step.title} className="landing-validation-step">
-                    <span className="landing-validation-step__num" aria-hidden>
-                      {i + 1}
-                    </span>
-                    <h3>{step.title}</h3>
-                    <p>{step.text}</p>
-                  </article>
-                ))}
-              </div>
-              <div className="landing-validation-cta">
-                <a className="attio-btn attio-btn--primary" href={registerUrl} onClick={handleAccess}>
-                  Empieza gratis
-                </a>
-              </div>
-            </section>
-
-            <section className="public-section landing-section" aria-labelledby="problem-title">
-              <div className="public-section__head">
-                <p className="landing-section__kicker">De la IA que responde a la IA que trabaja</p>
-                <h2 id="problem-title">No se trata solamente de conversar con una inteligencia artificial.</h2>
-                <p>
-                  Se trata de darle trabajo. Tus agentes pueden recibir información, tomar
-                  decisiones dentro de las reglas que definas, utilizar tus herramientas y
-                  completar tareas.
-                </p>
-                <p>
-                  Dejas de preguntar una y otra vez. Empiezas a delegar el trabajo que hoy
-                  consume tu tiempo.
-                </p>
-                <p className="landing-section__after">
-                  {BRAND_NAME} conecta el contexto de tu negocio para que la inteligencia
-                  ejecute, no solo responda.
-                </p>
-              </div>
-            </section>
-
-            <section
-              className="public-section landing-section landing-section--solution"
-              aria-labelledby="solution-title"
-            >
-              <div className="public-section__head landing-section--solution__head">
-                <p className="landing-section__kicker">La solución</p>
-                <h2 id="solution-title">
-                  Una plataforma. Cualquier negocio.
-                </h2>
-                <p>
-                  Desde un profesional independiente hasta una empresa con equipos completos,{' '}
-                  {BRAND_NAME} adapta sus agentes a la forma en que cada negocio trabaja.
-                </p>
-              </div>
-              <LandingSolutionDemo />
-            </section>
-
-            <section className="public-section landing-section" aria-labelledby="how-title">
-              <div className="public-section__head">
-                <p className="landing-section__kicker">Cómo funciona</p>
-                <h2 id="how-title">Conecta. Automatiza. Escala.</h2>
-              </div>
-              <div className="public-steps landing-how-steps">
-                <article className="public-step">
-                  <h3>Conecta</h3>
-                  <p>
-                    Tus herramientas y datos se unen para que los agentes entiendan el
-                    contexto de tu trabajo.
-                  </p>
-                </article>
-                <article className="public-step">
-                  <h3>Automatiza</h3>
-                  <p>
-                    Los agentes ejecutan tareas reales: agenda, documentos, ventas,
-                    operaciones y más.
-                  </p>
-                </article>
-                <article className="public-step">
-                  <h3>Decide</h3>
-                  <p>
-                    Trabajan dentro de las reglas que definas: reciben información y
-                    actúan con criterio.
-                  </p>
-                </article>
-                <article className="public-step">
-                  <h3>Escala</h3>
-                  <p>
-                    Un agente para cada necesidad, en un solo lugar para construir la
-                    inteligencia que tu negocio necesita.
-                  </p>
-                </article>
-              </div>
-            </section>
-
-            <LandingCompareSection />
-            <LandingAutomationsSection />
-            <LandingPricingSection accessUrl={registerUrl} onAccess={handleAccess} />
-            <LandingProductsSection
-              onBusinessLogin={onLoginClick}
-              onHealthLogin={onHealthLoginClick}
-            />
-            <LandingIndustriesSection />
-            <LandingResultsSection />
-            <LandingFaqSection />
-          </div>
-        </div>
-
-        <LandingFinalCtaSection
-          accessUrl={loginUrl}
-          onAccess={handleLogin}
-          onDemo={scrollToDemo}
-        />
-
+        <LandingFinalCtaSection accessUrl={knowUrl} onAccess={handleKnow} />
         <SiteFooter tagline={BRAND_TAGLINE} />
       </div>
-
-      <LandingSalesChat />
     </div>
   )
 }

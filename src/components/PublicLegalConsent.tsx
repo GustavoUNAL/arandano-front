@@ -26,16 +26,18 @@ export function PublicLegalConsent({
       : 'Nombre, email y contraseña'
 
   return (
-    <>
-      <section className="google-signup__legal" aria-labelledby="signup-legal-title">
-        <header className="google-signup__legal-head">
-          <h2 id="signup-legal-title">Acuerdo de tratamiento de datos</h2>
-          <p>Actualizado el {PRIVACY_PAGE.updated}</p>
-        </header>
+    <div className="google-signup__consent">
+      <details className="google-signup__legal">
+        <summary className="google-signup__legal-head">
+          <span className="google-signup__legal-title" id="signup-legal-title">
+            Acuerdo de tratamiento de datos
+          </span>
+          <span className="google-signup__legal-meta">Ley 1581 · ver detalle</span>
+        </summary>
         <p>
           Al crear su espacio, {BRAND_NAME} actuará como responsable del tratamiento de sus
           datos personales y de la información de su negocio, conforme a la Ley 1581 de 2012
-          y demás normas aplicables en Colombia.
+          y demás normas aplicables en Colombia. Actualizado el {PRIVACY_PAGE.updated}.
         </p>
         <ul>
           <li>
@@ -52,7 +54,7 @@ export function PublicLegalConsent({
             <a href={`mailto:${SITE_EMAIL}`}>{SITE_EMAIL}</a>.
           </li>
         </ul>
-      </section>
+      </details>
 
       <label className="google-signup__check">
         <input
@@ -78,13 +80,13 @@ export function PublicLegalConsent({
           disabled={disabled}
         />
         <span>
-          Autorizo el tratamiento de mis datos personales según la{' '}
+          Autorizo el tratamiento de datos según la{' '}
           <a href={getPrivacyUrl()} target="_blank" rel="noreferrer">
             Política de privacidad
-          </a>{' '}
-          y la Ley 1581 de 2012.
+          </a>
+          .
         </span>
       </label>
-    </>
+    </div>
   )
 }

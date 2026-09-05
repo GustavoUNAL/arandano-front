@@ -1,16 +1,13 @@
-/* Scroll en páginas públicas (landing, login, admin) */
-html[data-shell='public'],
-html[data-shell='public'] body,
+/* El html/#root de la SPA permanece a 100dvh con overflow hidden.
+   Desbloquearlos con overflow-x: clip + height: auto anula el scroll del viewport.
+   El scroll de landing/login vive en .public-shell. */
+html:has(.public-shell) #root,
 html[data-shell='public'] #root {
-  height: auto;
-  min-height: 100%;
-  overflow-x: clip;
-  overflow-y: auto;
-}
-
-html[data-shell='public'] #root {
-  display: block;
-  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* Shell público — paleta VOS IA (berry Arándano) */
@@ -21,7 +18,14 @@ html[data-shell='public'] #root {
   --pub-green: var(--olive);
   --pub-glass: color-mix(in srgb, var(--surface-elevated) 72%, transparent);
   position: relative;
-  min-height: 100vh;
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
   color: var(--text);
   background:
     radial-gradient(ellipse 90% 60% at 0% 0%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 50%),
@@ -714,7 +718,7 @@ html[data-shell='public'] #root {
 
 /* Auth (login / solicitud) */
 .public-auth {
-  min-height: 100vh;
+  min-height: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -751,6 +755,52 @@ html[data-shell='public'] #root {
 
 .public-auth--simple .public-auth__title {
   margin: 0.15rem 0 0;
+}
+
+.public-auth--register {
+  justify-content: center;
+  padding: 3.5rem 1.25rem 1.5rem;
+}
+
+.public-auth--register .public-auth__layout {
+  max-width: 54rem;
+  width: min(54rem, 100%);
+  align-items: stretch;
+}
+
+.public-auth--register .public-auth__form-wrap {
+  padding: 1.35rem 1.45rem 1.25rem;
+  justify-content: flex-start;
+}
+
+.public-auth--register .public-auth__form {
+  gap: 0.72rem;
+}
+
+.public-auth--register .public-auth__head {
+  align-items: flex-start;
+  text-align: left;
+  gap: 0.2rem;
+  margin-bottom: 0.1rem;
+}
+
+.public-auth--register .public-auth__title {
+  font-size: 1.28rem;
+}
+
+.public-auth--register .public-auth__subtitle {
+  max-width: 28rem;
+}
+
+.public-auth__form-brand {
+  display: none;
+  margin-bottom: 0.15rem;
+}
+
+.public-auth__fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.72rem;
 }
 
 .public-auth__layout {
@@ -971,7 +1021,7 @@ html[data-shell='public'] #root {
 }
 
 .google-signup__kicker {
-  margin: 0 0 0.35rem;
+  margin: 0;
   font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.12em;
@@ -1013,32 +1063,69 @@ html[data-shell='public'] #root {
   border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border));
 }
 
+.google-signup__consent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
 .google-signup__legal {
-  padding: 0.9rem 1rem;
-  border-radius: 14px;
+  padding: 0;
+  border-radius: 12px;
   border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
   background: color-mix(in srgb, var(--surface) 88%, transparent);
 }
 
 .google-signup__legal-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  margin-bottom: 0.55rem;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0.7rem 0.85rem;
+  cursor: pointer;
+  list-style: none;
 }
 
-.google-signup__legal h2 {
-  margin: 0;
-  font-size: 0.92rem;
+.google-signup__legal-head::-webkit-details-marker {
+  display: none;
+}
+
+.google-signup__legal-title {
+  font-size: 0.82rem;
+  font-weight: 700;
   letter-spacing: -0.02em;
+  color: var(--heading);
 }
 
-.google-signup__legal-head p {
-  margin: 0;
-  font-size: 0.72rem;
+.google-signup__legal-meta {
+  flex-shrink: 0;
+  font-size: 0.7rem;
+  font-weight: 650;
   color: var(--muted);
-  white-space: nowrap;
+}
+
+.google-signup__legal-head::after {
+  content: '';
+  width: 0.38rem;
+  height: 0.38rem;
+  margin-left: 0.15rem;
+  border-right: 1.6px solid var(--muted);
+  border-bottom: 1.6px solid var(--muted);
+  transform: rotate(45deg) translateY(-1px);
+  flex-shrink: 0;
+}
+
+.google-signup__legal[open] .google-signup__legal-head::after {
+  transform: rotate(-135deg) translateY(-1px);
+}
+
+.google-signup__legal[open] .google-signup__legal-meta {
+  color: var(--heading);
+}
+
+.google-signup__legal[open] .google-signup__legal-head {
+  border-bottom: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
 }
 
 .google-signup__legal p,
@@ -1049,12 +1136,13 @@ html[data-shell='public'] #root {
 }
 
 .google-signup__legal p {
-  margin: 0 0 0.55rem;
+  margin: 0.7rem 0 0.55rem;
+  padding: 0 0.85rem;
 }
 
 .google-signup__legal ul {
   margin: 0;
-  padding-left: 1.05rem;
+  padding: 0 0.85rem 0.85rem 1.45rem;
   display: grid;
   gap: 0.4rem;
 }
@@ -1071,14 +1159,17 @@ html[data-shell='public'] #root {
 .google-signup__check {
   display: flex;
   align-items: flex-start;
-  gap: 0.6rem;
-  font-size: 0.84rem;
-  line-height: 1.45;
+  gap: 0.55rem;
+  font-size: 0.8rem;
+  line-height: 1.4;
   color: var(--text);
 }
 
 .google-signup__check input {
-  margin-top: 0.2rem;
+  margin-top: 0.12rem;
+  width: 1.05rem;
+  height: 1.05rem;
+  flex-shrink: 0;
   accent-color: var(--accent);
 }
 
@@ -1169,6 +1260,29 @@ html[data-shell='public'] #root {
 
   .public-auth__visual {
     display: none;
+  }
+
+  .public-auth--register {
+    padding: 4rem 1rem 1.35rem;
+    justify-content: flex-start;
+  }
+
+  .public-auth--register .public-auth__head {
+    align-items: center;
+    text-align: center;
+  }
+
+  .public-auth--register .public-auth__subtitle {
+    max-width: none;
+  }
+
+  .public-auth__form-brand {
+    display: flex;
+    justify-content: center;
+  }
+
+  .public-auth__fields {
+    grid-template-columns: 1fr;
   }
 }
 
