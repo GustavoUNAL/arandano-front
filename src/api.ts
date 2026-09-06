@@ -44,10 +44,18 @@ export function setCompanyId(companyId: string | null): void {
   }
 }
 
+function apiUnavailableHint(): string {
+  return import.meta.env.DEV
+    ? 'Inicie el backend: cd vos.ai-api && npm run start:dev'
+    : 'El servidor no responde en este momento. Espere un momento e intente de nuevo.'
+}
+
 export class ApiUnreachableError extends Error {
   constructor() {
     super(
-      'No se pudo conectar con el API. Levantá vos-api en el puerto 3000 (npm run start:dev).',
+      import.meta.env.DEV
+        ? 'No se pudo conectar con el API. Inicie vos-api (npm run start:dev).'
+        : 'No se pudo conectar con el servidor. Espere un momento e intente de nuevo.',
     )
     this.name = 'ApiUnreachableError'
   }
@@ -461,7 +469,7 @@ export async function apiFetch(
     return new Response(
       JSON.stringify({
         message: 'API no disponible',
-        hint: 'Iniciá el backend: cd vos.ai-api && npm run start:dev',
+        hint: apiUnavailableHint(),
       }),
       { status: 503, statusText: 'Service Unavailable' },
     )

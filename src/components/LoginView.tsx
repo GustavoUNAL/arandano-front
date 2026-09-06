@@ -163,7 +163,9 @@ export function LoginView({ baseUrl, onLogin, initialMessage }: Props) {
             {error ? (
               <div className="vos-alert vos-alert--error" role="alert">
                 {error}
-                {error.includes('no está configurado') ? null : (
+                {error.includes('no está configurado') ||
+                error.includes('API no disponible') ||
+                error.includes('no responde') ? null : (
                   <p className="public-auth__error-hint">
                     Si aún no tiene cuenta, <a href={getRegisterUrl()}>regístrese aquí</a>.
                   </p>
