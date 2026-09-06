@@ -6,6 +6,7 @@ import { displayCompanyName } from './lib/displayLabels'
 import { BRAND_NAME } from './lib/brand'
 import { AccessRequestView } from './components/AccessRequestView'
 import { PlatformAdminView } from './components/PlatformAdminView'
+import { PlatformAdminBar } from './components/PlatformAdminBar'
 import {
   exitToPlatformAdmin,
   fetchMe,
@@ -83,6 +84,7 @@ import {
   isLandingHash,
   isLegalHash,
   isLoginHash,
+  isPlatformHash,
   isPrivacyHash,
   isRegisterHash,
   isTermsHash,
@@ -271,7 +273,17 @@ export default function App() {
     let cancelled = false
     setAuthInitializing(true)
     fetchMe(baseUrl)
-      .then((u) => {
+      .then(async (u) => {
+        if (u.isPlatformAdmin) {
+          const inCompanyRoute = Boolean(parseCompanyAppHash().companySlug)
+          if (inCompanyRoute) return u
+          if (!u.platformView) {
+            const res = await exitToPlatformAdmin(baseUrl)
+            u = res.user
+          }
+          if (!isPlatformHash()) navigateToPlatform(true)
+          return u
+        }
         const boot = readGoogleAuthBoot()
         if (!boot.fromGoogle) return u
         return restorePreferredCompany(baseUrl, u, boot.preferredCompanyId)
@@ -410,6 +422,35 @@ export default function App() {
     window.history.replaceState({}, '', desired)
   }, [view, user])
 
+  function completeLogin(u: AuthUser) {
+    setAuthError(null)
+    if (u.isPlatformAdmin) {
+      if (u.platformView) {
+        setUser(u)
+        navigateToPlatform(true)
+        return
+      }
+      void exitToPlatformAdmin(baseUrl)
+        .then((res) => {
+          setUser(res.user)
+          navigateToPlatform(true)
+        })
+        .catch(() => {
+          setUser(u)
+          navigateToPlatform(true)
+        })
+      return
+    }
+    setUser(u)
+    if (userNeedsCompanyPicker(u)) {
+      setCompanyPickFromLogin(true)
+      navigateToSelectCompany(true)
+      return
+    }
+    setView('home')
+    navigateAfterLogin(u)
+  }
+
   if (isGooglePopupHash()) {
     return <GoogleAuthPopupView />
   }
@@ -436,57 +477,17 @@ export default function App() {
       return <AccessRequestView baseUrl={baseUrl} />
     }
     if (isRegisterHash()) {
-      return (
-        <RegisterView
-          baseUrl={baseUrl}
-          onCreated={(u) => {
-            setUser(u)
-            setAuthError(null)
-            if (userNeedsCompanyPicker(u)) {
-              setCompanyPickFromLogin(true)
-              navigateToSelectCompany(true)
-              return
-            }
-            setView('home')
-            navigateAfterLogin(u)
-          }}
-        />
-      )
+      return <RegisterView baseUrl={baseUrl} onCreated={completeLogin} />
     }
     if (isGoogleSignupHash()) {
-      return (
-        <GoogleSignupView
-          baseUrl={baseUrl}
-          onCreated={(u) => {
-            setUser(u)
-            setAuthError(null)
-            if (userNeedsCompanyPicker(u)) {
-              setCompanyPickFromLogin(true)
-              navigateToSelectCompany(true)
-              return
-            }
-            setView('home')
-            navigateAfterLogin(u)
-          }}
-        />
-      )
+      return <GoogleSignupView baseUrl={baseUrl} onCreated={completeLogin} />
     }
     if (isHealthLoginHash()) {
       return (
         <HealthLoginView
           baseUrl={baseUrl}
           initialMessage={authError}
-          onLogin={(u) => {
-            setUser(u)
-            setAuthError(null)
-            if (userNeedsCompanyPicker(u)) {
-              setCompanyPickFromLogin(true)
-              navigateToSelectCompany(true)
-              return
-            }
-            setView('home')
-            navigateAfterLogin(u)
-          }}
+          onLogin={completeLogin}
         />
       )
     }
@@ -495,17 +496,7 @@ export default function App() {
         <LoginView
           baseUrl={baseUrl}
           initialMessage={authError}
-          onLogin={(u) => {
-            setUser(u)
-            setAuthError(null)
-            if (userNeedsCompanyPicker(u)) {
-              setCompanyPickFromLogin(true)
-              navigateToSelectCompany(true)
-              return
-            }
-            setView('home')
-            navigateAfterLogin(u)
-          }}
+          onLogin={completeLogin}
         />
       )
     }
@@ -607,18 +598,10 @@ export default function App() {
       <>
         {trialChrome}
         {user.isPlatformAdmin && !user.platformView ? (
-          <div className="app-banner app-banner--platform" role="status">
-            <span>
-              Modo administrador — viendo <strong>{user.companyName}</strong>
-            </span>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => void returnToPlatformPanel()}
-            >
-              Volver al panel admin
-            </button>
-          </div>
+          <PlatformAdminBar
+            companyName={user.companyName}
+            onReturn={() => void returnToPlatformPanel()}
+          />
         ) : null}
         <SessionUserContext.Provider value={user}>
           <DentalClinicApp
@@ -658,15 +641,11 @@ export default function App() {
       )}
       {trialChrome}
       <SessionWelcome user={user} />
-      {user.isPlatformAdmin && !user.platformView ? (
-        <div className="app-banner app-banner--platform" role="status">
-          <span>
-            Modo administrador — viendo <strong>{user.companyName}</strong>
-          </span>
-          <button type="button" className="btn btn-secondary btn-sm" onClick={() => void returnToPlatformPanel()}>
-            Volver al panel admin
-          </button>
-        </div>
+      {user.isPlatformAdmin && !user.platformView && !isMobileNav ? (
+        <PlatformAdminBar
+          companyName={user.companyName}
+          onReturn={() => void returnToPlatformPanel()}
+        />
       ) : null}
 
       {!isMobileNav ? (
@@ -731,6 +710,11 @@ export default function App() {
               onAssistantOpenChange={setAssistantOpen}
               backendDown={backendDown}
               onRetryApi={retryApiProbe}
+              onReturnToPlatform={
+                user.isPlatformAdmin && !user.platformView
+                  ? () => void returnToPlatformPanel()
+                  : undefined
+              }
             />
           ) : null}
           <div key={view} className="app-view-enter">

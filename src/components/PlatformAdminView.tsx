@@ -261,15 +261,17 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
       setCompanies(co)
       setUsers(us)
       setRequests(req)
-      setSelectedId((prev) => prev ?? co[0]?.id ?? null)
+      const mine = new Set((user.companies ?? []).map((c) => c.id))
+      const firstMine = co.find((c) => mine.has(c.id))?.id ?? co[0]?.id ?? null
+      setSelectedId((prev) => prev ?? firstMine)
       setSelectedUserId((prev) => prev ?? us[0]?.id ?? null)
-      setFocusCompanyId((prev) => prev ?? co[0]?.id ?? null)
+      setFocusCompanyId((prev) => prev ?? firstMine)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo cargar el panel')
     } finally {
       setLoading(false)
     }
-  }, [baseUrl])
+  }, [baseUrl, user.companies])
 
   useEffect(() => {
     document.title = `Admin · ${BRAND_NAME}`
@@ -534,8 +536,14 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
     setSelectedId(id)
   }
 
+  const membershipIds = new Set((user.companies ?? []).map((c) => c.id))
+  const myCompanies = companies.filter((c) => membershipIds.has(c.id))
+  const otherCompanies = companies.filter((c) => !membershipIds.has(c.id))
   const focused =
-    companies.find((c) => c.id === focusCompanyId) ?? companies[0] ?? null
+    companies.find((c) => c.id === focusCompanyId) ??
+    myCompanies[0] ??
+    companies[0] ??
+    null
   const focusedStats =
     overview?.companyStats?.find((c) => c.id === focused?.id) ?? null
   const totals = overview?.totals ?? {
@@ -559,6 +567,31 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
     navigateToLogin()
   }
 
+  function railCards(list: PlatformCompanyRow[]) {
+    return list.map((c) => {
+      const stats = overview?.companyStats?.find((s) => s.id === c.id)
+      const active = focused?.id === c.id
+      return (
+        <button
+          key={c.id}
+          type="button"
+          role="listitem"
+          className={`platform-admin__rail-card${active ? ' is-active' : ''}`}
+          onClick={() => focusCompany(c.id)}
+        >
+          <span className="platform-admin__avatar" aria-hidden>
+            {companyInitials(c.name)}
+          </span>
+          <strong>{c.name}</strong>
+          <span>{companyPlanLabel(c.plan)}</span>
+          <small>
+            {c.salesCount} ventas · {stats?.membersCount ?? c.membersCount} personas
+          </small>
+        </button>
+      )
+    })
+  }
+
   return (
     <div className="platform-admin">
       <div className="platform-admin__chrome">
@@ -566,8 +599,7 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
           <BrandMark size="sm" />
           <div className="platform-admin__topbar-meta">
             <span className="platform-admin__badge">Admin</span>
-            <span className="platform-admin__who">{user.name}</span>
-            <span className="platform-admin__email">{user.email}</span>
+            <span className="platform-admin__who">{firstNameOf(user.name)}</span>
           </div>
           <div className="platform-admin__topbar-actions">
             <PublicThemeSwitch theme={theme} onToggle={toggleTheme} compact />
@@ -618,8 +650,8 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
                 <p className="platform-admin__kicker">Panel de plataforma</p>
                 <h1>Hola, {firstNameOf(user.name)}</h1>
                 <p className="platform-admin__hero-copy">
-                  Panorama de toda VOS-AI. Pase entre empresas, entre a un negocio o revise
-                  cuentas sin salir de aquí.
+                  Empiece por sus empresas. El menú admin queda arriba para cuentas,
+                  planes y solicitudes. Entre a un negocio cuando quiera operar.
                 </p>
               </header>
 
@@ -655,29 +687,19 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
                 Toque una para ver su panorama. Entre al panel cuando quiera operar.
               </p>
               <div className="platform-admin__rail" role="list">
-                {companies.map((c) => {
-                  const stats = overview.companyStats?.find((s) => s.id === c.id)
-                  const active = focused?.id === c.id
-                  return (
-                    <button
-                      key={c.id}
-                      type="button"
-                      role="listitem"
-                      className={`platform-admin__rail-card${active ? ' is-active' : ''}`}
-                      onClick={() => focusCompany(c.id)}
-                    >
-                      <span className="platform-admin__avatar" aria-hidden>
-                        {companyInitials(c.name)}
-                      </span>
-                      <strong>{c.name}</strong>
-                      <span>{companyPlanLabel(c.plan)}</span>
-                      <small>
-                        {c.salesCount} ventas · {stats?.membersCount ?? c.membersCount} personas
-                      </small>
-                    </button>
-                  )
-                })}
+                {railCards(myCompanies.length ? myCompanies : companies)}
               </div>
+              {myCompanies.length > 0 && otherCompanies.length > 0 ? (
+                <>
+                  <h2>Otras cuentas</h2>
+                  <p className="platform-admin__hint">
+                    Resto de la plataforma. También puede entrar como administrador.
+                  </p>
+                  <div className="platform-admin__rail" role="list">
+                    {railCards(otherCompanies)}
+                  </div>
+                </>
+              ) : null}
 
               {focused ? (
                 <article className="platform-admin__focus">

@@ -717,11 +717,8 @@ export async function restorePreferredCompany(
 ): Promise<AuthUser> {
   const preferred = preferredCompanyId?.trim()
   if (!preferred || user.companyId === preferred) return user
+  if (user.isPlatformAdmin) return user
   try {
-    if (user.isPlatformAdmin) {
-      const out = await enterPlatformCompany(base, preferred)
-      return out.user
-    }
     if (user.companies?.some((c) => c.id === preferred)) {
       const out = await switchCompany(base, preferred)
       return out.user

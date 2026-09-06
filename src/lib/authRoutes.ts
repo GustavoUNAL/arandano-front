@@ -122,7 +122,7 @@ export function navigateToRegister(replace = true): void {
 }
 
 export function navigateAfterLogin(user: AuthUser): void {
-  if (user.isPlatformAdmin && user.platformView) {
+  if (user.isPlatformAdmin && (user.platformView || !user.companyId?.trim())) {
     navigateToPlatform(true)
     return
   }

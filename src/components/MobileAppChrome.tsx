@@ -15,6 +15,7 @@ import {
 } from './mobile/mobileModuleIcons'
 import { HeaderSystray } from './HeaderSystray'
 import { Button } from './ui/button'
+import { PlatformAdminBar } from './PlatformAdminBar'
 
 export type MobileChromeView =
   | 'home'
@@ -160,6 +161,7 @@ export function MobileAppChrome({
   backendDown = false,
   onRetryApi,
   baseUrl,
+  onReturnToPlatform,
 }: {
   view: MobileChromeView
   onNavigate: (v: MobileChromeView) => void
@@ -176,6 +178,7 @@ export function MobileAppChrome({
   backendDown?: boolean
   onRetryApi?: () => void
   baseUrl?: string
+  onReturnToPlatform?: () => void
 }) {
   const dockTabs = useMemo(() => {
     const bookingDock: DockTab[] = [
@@ -372,6 +375,12 @@ export function MobileAppChrome({
           </div>
         </div>
       </header>
+      {onReturnToPlatform ? (
+        <PlatformAdminBar
+          companyName={user?.companyName}
+          onReturn={onReturnToPlatform}
+        />
+      ) : null}
 
       {showDock ? (
         <nav className="app-mobile-dock" aria-label="Módulos principales">
@@ -457,6 +466,19 @@ export function MobileAppChrome({
               </Button>
             </header>
             <div className="vos-sheet__body">
+              {onReturnToPlatform ? (
+                <button
+                  type="button"
+                  className="vos-sheet__company-switch"
+                  onClick={() => {
+                    onSheetOpenChange(false)
+                    onReturnToPlatform()
+                  }}
+                >
+                  Volver al panel admin
+                  <span className="muted small">{companyLabel}</span>
+                </button>
+              ) : null}
               {user && userNeedsCompanyPicker(user) ? (
                 <button
                   type="button"
