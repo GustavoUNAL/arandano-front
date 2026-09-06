@@ -1,12 +1,24 @@
 <!doctype html>
-<html lang="es" data-theme="light">
+<html lang="es" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content"
     />
-    <meta name="theme-color" content="#f6f6f4" />
+    <meta name="theme-color" content="#010409" />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('vos_theme_v2')
+          document.documentElement.dataset.theme = t === 'light' ? 'light' : 'dark'
+          document.querySelector('meta[name="theme-color"]')?.setAttribute(
+            'content',
+            t === 'light' ? '#ffffff' : '#010409',
+          )
+        } catch (e) {}
+      })()
+    </script>
     <meta name="color-scheme" content="light dark" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />

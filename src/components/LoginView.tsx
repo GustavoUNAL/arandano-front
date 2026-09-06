@@ -163,10 +163,11 @@ export function LoginView({ baseUrl, onLogin, initialMessage }: Props) {
             {error ? (
               <div className="vos-alert vos-alert--error" role="alert">
                 {error}
-                <p className="public-auth__error-hint">
-                  Si aún no tenés cuenta,{' '}
-                  <a href={getRegisterUrl()}>registrate acá</a>.
-                </p>
+                {error.includes('no está configurado') ? null : (
+                  <p className="public-auth__error-hint">
+                    Si aún no tiene cuenta, <a href={getRegisterUrl()}>regístrese aquí</a>.
+                  </p>
+                )}
               </div>
             ) : null}
 
