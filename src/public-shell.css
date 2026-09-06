@@ -3542,3 +3542,148 @@ html[data-theme='light'] .landing-hero__cta-secondary:hover {
     font-size: 1.35rem;
   }
 }
+
+/* Paleta pública alineada al landing */
+html:has(.public-auth),
+html:has(.public-auth) body,
+html:has(.legal-page),
+html:has(.legal-page) body {
+  background: #010409;
+  color: #f0f6fc;
+  color-scheme: dark;
+}
+
+html[data-theme='light']:has(.public-auth),
+html[data-theme='light']:has(.public-auth) body,
+html[data-theme='light']:has(.legal-page),
+html[data-theme='light']:has(.legal-page) body {
+  background: #ffffff;
+  color: #1f2328;
+  color-scheme: light;
+}
+
+.public-shell.public-auth,
+.public-shell.legal-page {
+  --text: #f0f6fc;
+  --heading: #f0f6fc;
+  --muted: #9198a1;
+  --surface: #010409;
+  --surface-elevated: #161b22;
+  --border: #30363d;
+  --input-bg: #0d1117;
+  --hover: rgba(240, 246, 252, 0.06);
+  --accent: #58a6ff;
+  --accent-soft: rgba(88, 166, 255, 0.14);
+  --accent-text: #010409;
+  --accent-border: rgba(88, 166, 255, 0.45);
+  --berry: #58a6ff;
+  --berry-light: #79c0ff;
+  --berry-glow: rgba(88, 166, 255, 0.16);
+  --shadow-soft: rgba(0, 0, 0, 0.45);
+  background: #010409;
+  color: #f0f6fc;
+  color-scheme: dark;
+}
+
+.public-shell.public-auth::before,
+.public-shell.legal-page::before {
+  animation: none;
+  filter: blur(22px);
+  opacity: 1;
+  background: radial-gradient(ellipse at 50% 0%, rgba(124, 114, 255, 0.22), transparent 62%);
+}
+
+.public-shell.public-auth .public-shell__grid-bg,
+.public-shell.legal-page .public-shell__grid-bg {
+  opacity: 0.08;
+  background-image:
+    linear-gradient(rgba(48, 54, 61, 0.7) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(48, 54, 61, 0.7) 1px, transparent 1px);
+}
+
+.public-auth__layout,
+.public-company-select__wrap,
+.legal-page__card {
+  border-color: #30363d;
+  background: #0d1117;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.4);
+  backdrop-filter: none;
+}
+
+.public-auth .public-theme-switch__track,
+.legal-page .public-theme-switch__track {
+  width: 2.35rem;
+  height: 1.28rem;
+  border-color: #30363d;
+  background: #21262d;
+  box-shadow: none;
+}
+
+.public-auth .public-theme-switch__track--on,
+.legal-page .public-theme-switch__track--on {
+  background: #d0d7de;
+  border-color: #d0d7de;
+  box-shadow: none;
+}
+
+.public-auth .public-theme-switch__thumb,
+.legal-page .public-theme-switch__thumb {
+  width: 0.95rem;
+  height: 0.95rem;
+  background: #f0f6fc;
+  box-shadow: none;
+}
+
+.public-auth .public-theme-switch__track--on .public-theme-switch__thumb,
+.legal-page .public-theme-switch__track--on .public-theme-switch__thumb {
+  transform: translate(1.05rem, -50%);
+  background: #1f2328;
+  box-shadow: none;
+}
+
+html[data-theme='light'] .public-shell.public-auth,
+html[data-theme='light'] .public-shell.legal-page {
+  --text: #1f2328;
+  --heading: #1f2328;
+  --muted: #59636e;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --border: #d1d9e0;
+  --input-bg: #f6f8fa;
+  --hover: rgba(31, 35, 40, 0.05);
+  --accent: #0969da;
+  --accent-soft: rgba(9, 105, 218, 0.1);
+  --accent-text: #ffffff;
+  --accent-border: rgba(9, 105, 218, 0.4);
+  --berry: #0969da;
+  --berry-light: #218bff;
+  --berry-glow: rgba(9, 105, 218, 0.12);
+  --shadow-soft: rgba(31, 35, 40, 0.08);
+  background: #ffffff;
+  color: #1f2328;
+  color-scheme: light;
+}
+
+html[data-theme='light'] .public-shell.public-auth::before,
+html[data-theme='light'] .public-shell.legal-page::before {
+  background: radial-gradient(ellipse at 50% 0%, rgba(9, 105, 218, 0.1), transparent 62%);
+}
+
+html[data-theme='light'] .public-auth__layout,
+html[data-theme='light'] .public-company-select__wrap,
+html[data-theme='light'] .legal-page__card {
+  border-color: #d1d9e0;
+  background: #ffffff;
+  box-shadow: 0 24px 64px rgba(31, 35, 40, 0.08);
+}
+
+html[data-theme='light'] .public-auth .public-theme-switch__track,
+html[data-theme='light'] .legal-page .public-theme-switch__track {
+  background: #eaeef2;
+  border-color: #d1d9e0;
+}
+
+html[data-theme='light'] .public-auth .public-theme-switch__thumb,
+html[data-theme='light'] .legal-page .public-theme-switch__thumb {
+  background: #1f2328;
+}

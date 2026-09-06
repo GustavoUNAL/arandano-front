@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { AppLauncherIcon } from '../AppLauncherIcon'
+import { LandingAppDemo } from './LandingAppDemo'
 import { LANDING_APP_STATUS, type LandingApp } from './landingApps'
 
 export function LandingAppModal({
@@ -11,6 +12,7 @@ export function LandingAppModal({
   onClose: () => void
 }) {
   const titleId = useId()
+  const dialogRef = useRef<HTMLDivElement>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -18,7 +20,7 @@ export function LandingAppModal({
     const prevOverflow = shell?.style.overflowY ?? ''
     const prevFocus = document.activeElement as HTMLElement | null
     if (shell) shell.style.overflowY = 'hidden'
-    closeRef.current?.focus()
+    dialogRef.current?.focus()
 
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
@@ -34,31 +36,52 @@ export function LandingAppModal({
   return createPortal(
     <div className="lp-cap-modal" role="presentation" onClick={onClose}>
       <div
+        ref={dialogRef}
         className="lp-cap-modal__dialog"
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="lp-cap-modal__top">
-          <span className="lp-cap-modal__icon" aria-hidden>
+          <span className={`lp-cap-modal__icon lp-apps__tile--${app.tone}`} aria-hidden>
             <AppLauncherIcon view={app.view} />
           </span>
           <p className={`lp-cap-modal__status lp-cap--${app.status}`}>
             {LANDING_APP_STATUS[app.status]}
           </p>
+          <button
+            ref={closeRef}
+            type="button"
+            className="lp-cap-modal__x"
+            aria-label="Cerrar"
+            onClick={onClose}
+          >
+            <span aria-hidden>×</span>
+          </button>
         </div>
         <h3 id={titleId}>{app.name}</h3>
         <p className="lp-cap-modal__text">{app.text}</p>
-        <p className="lp-cap-modal__from">{app.from}</p>
-        <button
-          ref={closeRef}
-          type="button"
-          className="attio-btn attio-btn--outline lp-cap-modal__close"
-          onClick={onClose}
-        >
-          Cerrar
-        </button>
+
+        <div className="lp-cap-modal__body">
+          <div className="lp-cap-modal__info">
+            <section>
+              <h4>Cómo se guarda</h4>
+              <p>{app.saves}</p>
+            </section>
+            <section>
+              <h4>Ventajas</h4>
+              <ul>
+                {app.advantages.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </section>
+            <p className="lp-cap-modal__from">{app.from}</p>
+          </div>
+          <LandingAppDemo view={app.view} />
+        </div>
       </div>
     </div>,
     document.body,

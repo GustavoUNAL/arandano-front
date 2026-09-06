@@ -14,7 +14,7 @@ export const staggerContainer: Variants = {
 
 type SectionHeaderProps = {
   kicker?: string
-  title: string
+  title: ReactNode
   titleId?: string
   subtitle?: string
   align?: 'left' | 'center'

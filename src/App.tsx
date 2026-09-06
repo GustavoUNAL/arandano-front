@@ -243,10 +243,11 @@ export default function App() {
   }, [baseUrl])
 
   useEffect(() => {
+    if (!user) return
     document.documentElement.dataset.theme = theme
     setThemeColor(themeColorForScheme(theme))
     persistTheme(theme)
-  }, [theme])
+  }, [theme, user])
 
   useEffect(() => {
     if (isHealthClinicCompany(user)) {

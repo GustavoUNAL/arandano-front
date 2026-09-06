@@ -1,12 +1,14 @@
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from 'react'
 import { BRAND_NAME, BRAND_TAGLINE } from '../lib/brand'
-import { DEFAULT_LIGHT, setThemeColor } from '../lib/themeColor'
 import { SiteFooter } from './SiteFooter'
 import { getLoginUrl } from '../lib/authRoutes'
 import { BrandMark } from './BrandMark'
+import { PublicThemeSwitch } from './PublicThemeSwitch'
+import { usePublicTheme } from '../hooks/usePublicTheme'
 import { LandingProductPreview } from './landing/LandingProductPreview'
 import {
   LandingCapabilityCards,
+  LandingNameSection,
   LandingSectorsSection,
 } from './landing/sections'
 import '../public-shell.css'
@@ -45,24 +47,10 @@ export function LandingView({
   const [menuOpen, setMenuOpen] = useState(false)
   const [headerScrolled, setHeaderScrolled] = useState(false)
   const shellRef = useRef<HTMLDivElement>(null)
+  const { theme, toggleTheme } = usePublicTheme()
 
   useLayoutEffect(() => {
     document.title = `${BRAND_NAME} — Todo su negocio. Una sola plataforma.`
-    const root = document.documentElement
-    const prevTheme = root.dataset.theme
-    const prevShell = root.dataset.shell
-    const prevThemeColor =
-      document.querySelector('meta[name="theme-color"]')?.getAttribute('content') ?? null
-    root.dataset.shell = 'public'
-    root.dataset.theme = 'dark'
-    setThemeColor('#010409')
-    return () => {
-      if (prevShell) root.dataset.shell = prevShell
-      else delete root.dataset.shell
-      if (prevTheme) root.dataset.theme = prevTheme
-      else delete root.dataset.theme
-      setThemeColor(prevThemeColor ?? DEFAULT_LIGHT)
-    }
   }, [])
 
   useEffect(() => {
@@ -103,9 +91,6 @@ export function LandingView({
             <a className="attio-nav__brand" href="#top" aria-label={`${BRAND_NAME} inicio`}>
               <BrandMark size="sm" />
             </a>
-            <a className="attio-nav__login attio-nav__login--mobile" href={loginUrl} onClick={handleLogin}>
-              Acceder
-            </a>
             <ul className="attio-nav__links">
               {NAV_LINKS.map((link) => (
                 <li key={link.href}>
@@ -113,7 +98,16 @@ export function LandingView({
                 </li>
               ))}
             </ul>
-            <div className="attio-nav__cta">
+            <div className="attio-nav__tools">
+              <PublicThemeSwitch
+                theme={theme}
+                onToggle={toggleTheme}
+                compact
+                className="lp-gh-theme"
+              />
+              <a className="attio-nav__login attio-nav__login--mobile" href={loginUrl} onClick={handleLogin}>
+                Acceder
+              </a>
               <a className="attio-nav__login attio-nav__login--desktop" href={loginUrl} onClick={handleLogin}>
                 Acceder
               </a>
@@ -169,6 +163,7 @@ export function LandingView({
           <div className="attio-frame">
             <LandingCapabilityCards />
             <LandingSectorsSection />
+            <LandingNameSection />
           </div>
         </div>
 

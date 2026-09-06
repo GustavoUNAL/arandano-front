@@ -50,9 +50,9 @@ export function LandingCapabilityCards() {
         titleId="modules-title"
         kicker="Módulos"
         title="Independientes. Una sola base."
-        subtitle="Cada módulo nace de un movimiento real de su operación."
+        subtitle="Abra un módulo para ver cómo se guarda, sus ventajas y un demo."
       />
-      <div ref={boardRef} className="lp-apps__board">
+      <div ref={boardRef} className="lp-apps__board lp-caps__board">
         {LANDING_CORE_APPS.map((card, i) => (
           <button
             key={card.view}
@@ -60,12 +60,19 @@ export function LandingCapabilityCards() {
             className={`lp-apps__tile lp-apps__tile--${card.tone}${i < placed ? ' is-in' : ''}`}
             aria-haspopup="dialog"
             aria-expanded={open?.view === card.view}
+            aria-label={`${card.name}. ${card.text} Abrir detalle.`}
             onClick={() => setOpen(card)}
           >
             <span className="lp-apps__icon" aria-hidden>
               <AppLauncherIcon view={card.view} className="lp-apps__glyph" />
             </span>
-            <span className="lp-apps__label">{card.name}</span>
+            <span className="lp-apps__copy">
+              <span className="lp-apps__label">{card.name}</span>
+              <span className="lp-apps__hint">{card.text}</span>
+            </span>
+            <span className="lp-apps__more" aria-hidden>
+              Ver
+            </span>
           </button>
         ))}
       </div>

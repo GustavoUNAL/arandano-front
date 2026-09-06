@@ -61,9 +61,9 @@ export function SiteFooter({ tagline, className = '' }: Props) {
           href={SITE_LINKEDIN}
           className="landing-site-footer__icon landing-site-footer__icon--linkedin"
           target="_blank"
-          rel="noopener noreferrer"
-          aria-label="LinkedIn"
-          title="LinkedIn"
+          rel="noopener noreferrer me"
+          aria-label="LinkedIn de Gustavo Arteaga"
+          title="LinkedIn · Gustavo Arteaga"
         >
           <LinkedInIcon />
         </a>
