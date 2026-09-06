@@ -746,6 +746,12 @@ export type PlatformOverview = {
   activeCompanies: number
   usersCount: number
   pendingRequests: number
+  totals?: {
+    salesCount: number
+    salesTotal: number
+    productsCount: number
+    inventoryCount: number
+  }
   recentRequests: Array<{
     id: string
     companyName: string
@@ -762,17 +768,22 @@ export type PlatformOverview = {
     name: string
     isPlatformAdmin: boolean
     createdAt: string
+    lastLoginAt?: string | null
     companies: Array<{ id: string; name: string; role: string }>
   }>
   companyStats?: Array<{
     id: string
     name: string
+    slug?: string
     plan?: 'TRIAL' | 'PRO' | 'BUSINESS'
     membersCount: number
     productsCount: number
     salesCount: number
+    salesTotal?: number
+    lastSaleAt?: string | null
     inventoryCount: number
     modules: string[]
+    moduleNames?: string[]
   }>
 }
 

@@ -52,6 +52,25 @@ function formatWhen(iso?: string | null): string {
   return new Date(iso).toLocaleString('es-CO')
 }
 
+function formatAgo(iso?: string | null): string {
+  if (!iso) return 'Nunca'
+  const t = Date.parse(iso)
+  if (!Number.isFinite(t)) return 'Nunca'
+  const sec = Math.max(0, Math.round((Date.now() - t) / 1000))
+  if (sec < 45) return 'Hace un momento'
+  const min = Math.round(sec / 60)
+  if (min < 60) return `Hace ${min} min`
+  const hours = Math.round(min / 60)
+  if (hours < 24) return `Hace ${hours} h`
+  const days = Math.round(hours / 24)
+  if (days < 30) return `Hace ${days} d`
+  return new Date(t).toLocaleDateString('es-CO', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
 function formatMoney(n: number): string {
   return new Intl.NumberFormat('es-CO', {
     style: 'currency',
@@ -68,6 +87,20 @@ function taskKindLabel(kind: PlatformUserDetail['recentTasks'][number]['kind']):
 
 function auditLabel(action: string, tableName: string): string {
   return `${action} · ${tableName}`
+}
+
+function companyInitials(name: string): string {
+  const parts = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+  if (parts.length === 0) return 'V'
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+}
+
+function firstNameOf(name: string): string {
+  return name.trim().split(/\s+/)[0] || name
 }
 
 function isUnlimitedPlan(plan?: string | null): boolean {
@@ -210,6 +243,8 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
   const [entering, setEntering] = useState(false)
   const [userQuery, setUserQuery] = useState('')
   const [planBusyId, setPlanBusyId] = useState<string | null>(null)
+  const [mobileDetail, setMobileDetail] = useState(false)
+  const [focusCompanyId, setFocusCompanyId] = useState<string | null>(null)
   const { theme, toggleTheme } = usePublicTheme()
 
   const load = useCallback(async () => {
@@ -228,6 +263,7 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
       setRequests(req)
       setSelectedId((prev) => prev ?? co[0]?.id ?? null)
       setSelectedUserId((prev) => prev ?? us[0]?.id ?? null)
+      setFocusCompanyId((prev) => prev ?? co[0]?.id ?? null)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo cargar el panel')
     } finally {
@@ -280,19 +316,27 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
     }
   }, [baseUrl, selectedUserId])
 
-  async function openModule(view: AppView) {
-    if (!detail || entering) return
+  async function enterCompany(companyId: string, view: AppView) {
+    const company =
+      companies.find((c) => c.id === companyId) ??
+      (detail && detail.id === companyId ? detail : null)
+    if (!company || entering) return
     setEntering(true)
     setError(null)
     try {
-      const res = await enterPlatformCompany(baseUrl, detail.id)
+      const res = await enterPlatformCompany(baseUrl, companyId)
       onEnterCompany(res.user, view)
-      window.location.hash = buildCompanyViewHash(detail.slug, view)
+      window.location.hash = buildCompanyViewHash(company.slug, view)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo abrir la empresa')
     } finally {
       setEntering(false)
     }
+  }
+
+  async function openModule(view: AppView) {
+    if (!detail) return
+    await enterCompany(detail.id, view)
   }
 
   async function setCompanyPlan(companyId: string, plan: CompanyPlanId) {
@@ -399,6 +443,7 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
       setUsers((prev) => prev.filter((u) => u.id !== userId))
       setSelectedUserId((prev) => (prev === userId ? null : prev))
       setUserDetail(null)
+      setMobileDetail(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo eliminar el usuario')
     } finally {
@@ -462,6 +507,51 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
       .toLowerCase()
     return hay.includes(q)
   })
+  const listedUsers = [...filteredUsers].sort((a, b) => {
+    const ta = a.lastLoginAt ? Date.parse(a.lastLoginAt) : 0
+    const tb = b.lastLoginAt ? Date.parse(b.lastLoginAt) : 0
+    return tb - ta
+  })
+
+  function openTab(id: Tab) {
+    setTab(id)
+    setMobileDetail(false)
+  }
+
+  function openCompany(id: string) {
+    setSelectedId(id)
+    setMobileDetail(true)
+  }
+
+  function openUser(id: string) {
+    setSelectedUserId(id)
+    setTab('users')
+    setMobileDetail(true)
+  }
+
+  function focusCompany(id: string) {
+    setFocusCompanyId(id)
+    setSelectedId(id)
+  }
+
+  const focused =
+    companies.find((c) => c.id === focusCompanyId) ?? companies[0] ?? null
+  const focusedStats =
+    overview?.companyStats?.find((c) => c.id === focused?.id) ?? null
+  const totals = overview?.totals ?? {
+    salesCount: companies.reduce((n, c) => n + (c.salesCount ?? 0), 0),
+    salesTotal: overview?.companyStats?.reduce((n, c) => n + (c.salesTotal ?? 0), 0) ?? 0,
+    productsCount: companies.reduce((n, c) => n + (c.productsCount ?? 0), 0),
+    inventoryCount: overview?.companyStats?.reduce((n, c) => n + (c.inventoryCount ?? 0), 0) ?? 0,
+  }
+  const recentLogins = [...users]
+    .filter((u) => !u.isPlatformAdmin)
+    .sort((a, b) => {
+      const ta = a.lastLoginAt ? Date.parse(a.lastLoginAt) : 0
+      const tb = b.lastLoginAt ? Date.parse(b.lastLoginAt) : 0
+      return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0)
+    })
+    .slice(0, 6)
 
   function handleLogout() {
     setAccessToken(null)
@@ -471,42 +561,46 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
 
   return (
     <div className="platform-admin">
-      <header className="platform-admin__topbar">
-        <BrandMark size="sm" />
-        <div className="platform-admin__topbar-meta">
-          <span className="platform-admin__badge">Administrador de plataforma</span>
-          <span>{user.name}</span>
-          <span className="platform-admin__email">{user.email}</span>
-        </div>
-        <PublicThemeSwitch theme={theme} onToggle={toggleTheme} compact />
-        <Button type="button" variant="secondary" size="sm" onClick={handleLogout}>
-          Cerrar sesión
-        </Button>
-      </header>
+      <div className="platform-admin__chrome">
+        <header className="platform-admin__topbar">
+          <BrandMark size="sm" />
+          <div className="platform-admin__topbar-meta">
+            <span className="platform-admin__badge">Admin</span>
+            <span className="platform-admin__who">{user.name}</span>
+            <span className="platform-admin__email">{user.email}</span>
+          </div>
+          <div className="platform-admin__topbar-actions">
+            <PublicThemeSwitch theme={theme} onToggle={toggleTheme} compact />
+            <Button type="button" variant="secondary" size="sm" onClick={handleLogout}>
+              Salir
+            </Button>
+          </div>
+        </header>
 
-      <nav className="platform-admin__tabs" aria-label="Secciones del panel">
-        {(
-          [
-            ['overview', 'Resumen'],
-            ['companies', 'Empresas'],
-            ['users', 'Usuarios'],
-            ['requests', 'Solicitudes'],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            className={`platform-admin__tab${tab === id ? ' platform-admin__tab--active' : ''}`}
-            onClick={() => setTab(id)}
-          >
-            {label}
-            {id === 'users' ? ` (${users.length})` : ''}
-            {id === 'requests' && overview?.pendingRequests
-              ? ` (${overview.pendingRequests})`
-              : ''}
-          </button>
-        ))}
-      </nav>
+        <nav className="platform-admin__tabs" aria-label="Secciones del panel">
+          {(
+            [
+              ['overview', 'Panorama'],
+              ['companies', 'Empresas'],
+              ['users', 'Cuentas'],
+              ['requests', 'Solicitudes'],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              type="button"
+              className={`platform-admin__tab${tab === id ? ' platform-admin__tab--active' : ''}`}
+              onClick={() => openTab(id)}
+            >
+              {label}
+              {id === 'users' ? ` (${users.length})` : ''}
+              {id === 'requests' && overview?.pendingRequests
+                ? ` (${overview.pendingRequests})`
+                : ''}
+            </button>
+          ))}
+        </nav>
+      </div>
 
       {error ? (
         <div className="platform-admin__error" role="alert">
@@ -519,139 +613,234 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
       ) : (
         <div className="platform-admin__body">
           {tab === 'overview' && overview ? (
-            <section className="platform-admin__panel">
-              <h1>Resumen de la plataforma</h1>
-              <div className="platform-admin__stats">
+            <section className="platform-admin__panel platform-admin__panorama">
+              <header className="platform-admin__hero">
+                <p className="platform-admin__kicker">Panel de plataforma</p>
+                <h1>Hola, {firstNameOf(user.name)}</h1>
+                <p className="platform-admin__hero-copy">
+                  Panorama de toda VOS-AI. Pase entre empresas, entre a un negocio o revise
+                  cuentas sin salir de aquí.
+                </p>
+              </header>
+
+              <div className="platform-admin__stats platform-admin__stats--wide">
                 <article className="platform-admin__stat">
+                  <span>Negocios</span>
                   <strong>{overview.companiesCount}</strong>
-                  <span>Empresas</span>
+                  <small>{overview.activeCompanies} activos</small>
                 </article>
                 <article className="platform-admin__stat">
-                  <strong>{overview.activeCompanies}</strong>
-                  <span>Activas</span>
-                </article>
-                <article className="platform-admin__stat">
+                  <span>Cuentas</span>
                   <strong>{overview.usersCount}</strong>
-                  <span>Usuarios</span>
+                  <small>
+                    {overview.pendingRequests
+                      ? `${overview.pendingRequests} solicitudes`
+                      : 'Sin pendientes'}
+                  </small>
                 </article>
                 <article className="platform-admin__stat">
-                  <strong>{overview.pendingRequests}</strong>
-                  <span>Solicitudes pendientes</span>
+                  <span>Ventas en la app</span>
+                  <strong>{totals.salesCount}</strong>
+                  <small>{formatMoney(totals.salesTotal)}</small>
+                </article>
+                <article className="platform-admin__stat">
+                  <span>Catálogo</span>
+                  <strong>{totals.productsCount}</strong>
+                  <small>{totals.inventoryCount} en inventario</small>
                 </article>
               </div>
 
-              {overview.companyStats && overview.companyStats.length > 0 ? (
-                <>
-                  <h2>Actividad por empresa</h2>
-                  <div className="platform-admin__table-wrap">
-                    <table className="platform-admin__table">
-                      <thead>
-                        <tr>
-                          <th>Empresa</th>
-                          <th>Plan</th>
-                          <th>Usuarios</th>
-                          <th>Productos</th>
-                          <th>Ventas</th>
-                          <th>Inventario</th>
-                          <th>Módulos</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {overview.companyStats.map((c) => (
-                          <tr key={c.id}>
-                            <td>{c.name}</td>
-                            <td>{companyPlanLabel(c.plan)}</td>
-                            <td>{c.membersCount}</td>
-                            <td>{c.productsCount}</td>
-                            <td>{c.salesCount}</td>
-                            <td>{c.inventoryCount}</td>
-                            <td>{c.modules.join(', ') || '—'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+              <h2>Sus empresas</h2>
+              <p className="platform-admin__hint">
+                Toque una para ver su panorama. Entre al panel cuando quiera operar.
+              </p>
+              <div className="platform-admin__rail" role="list">
+                {companies.map((c) => {
+                  const stats = overview.companyStats?.find((s) => s.id === c.id)
+                  const active = focused?.id === c.id
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      role="listitem"
+                      className={`platform-admin__rail-card${active ? ' is-active' : ''}`}
+                      onClick={() => focusCompany(c.id)}
+                    >
+                      <span className="platform-admin__avatar" aria-hidden>
+                        {companyInitials(c.name)}
+                      </span>
+                      <strong>{c.name}</strong>
+                      <span>{companyPlanLabel(c.plan)}</span>
+                      <small>
+                        {c.salesCount} ventas · {stats?.membersCount ?? c.membersCount} personas
+                      </small>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {focused ? (
+                <article className="platform-admin__focus">
+                  <header>
+                    <div>
+                      <span className="platform-admin__avatar platform-admin__avatar--lg" aria-hidden>
+                        {companyInitials(focused.name)}
+                      </span>
+                      <div>
+                        <p className="platform-admin__kicker">Negocio en foco</p>
+                        <h2>{focused.name}</h2>
+                        <p>
+                          {companyPlanLabel(focused.plan)} · {focused.membersCount} usuarios
+                          {focusedStats?.lastSaleAt
+                            ? ` · Última venta ${formatAgo(focusedStats.lastSaleAt)}`
+                            : ' · Sin ventas aún'}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="platform-admin__focus-actions">
+                      <Button
+                        type="button"
+                        disabled={entering}
+                        onClick={() => void enterCompany(focused.id, 'home')}
+                      >
+                        Abrir panel
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={entering}
+                        onClick={() => void enterCompany(focused.id, 'pos')}
+                      >
+                        Punto de venta
+                      </Button>
+                    </div>
+                  </header>
+
+                  <div className="platform-admin__focus-grid">
+                    <div>
+                      <strong>{focusedStats?.salesCount ?? focused.salesCount}</strong>
+                      <span>Ventas</span>
+                      <small>
+                        {formatMoney(focusedStats?.salesTotal ?? 0)}
+                      </small>
+                    </div>
+                    <div>
+                      <strong>{focused.productsCount}</strong>
+                      <span>Productos</span>
+                    </div>
+                    <div>
+                      <strong>{focusedStats?.inventoryCount ?? 0}</strong>
+                      <span>Inventario</span>
+                    </div>
+                    <div>
+                      <strong>{focused.shopOrdersCount}</strong>
+                      <span>Pedidos web</span>
+                    </div>
                   </div>
-                </>
+
+                  {(focusedStats?.moduleNames ?? focused.modules.map((m) => m.name)).length ? (
+                    <p className="platform-admin__chips">
+                      {(focusedStats?.moduleNames ?? focused.modules.map((m) => m.name)).map(
+                        (name) => (
+                          <span key={name}>{name}</span>
+                        ),
+                      )}
+                    </p>
+                  ) : (
+                    <p className="platform-admin__hint">Sin módulos activos.</p>
+                  )}
+
+                  <div className="platform-admin__jump">
+                    {(
+                      [
+                        ['sales', 'Ventas'],
+                        ['inventory', 'Inventario'],
+                        ['products', 'Productos'],
+                        ['booking', 'Agenda'],
+                      ] as const
+                    ).map(([view, label]) => (
+                      <button
+                        key={view}
+                        type="button"
+                        className="platform-admin__jump-btn"
+                        disabled={entering}
+                        onClick={() => void enterCompany(focused.id, view)}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className="platform-admin__jump-btn"
+                      onClick={() => {
+                        setSelectedId(focused.id)
+                        setTab('companies')
+                        setMobileDetail(true)
+                      }}
+                    >
+                      Ajustar módulos
+                    </button>
+                  </div>
+                </article>
               ) : null}
 
-              {overview.recentUsers && overview.recentUsers.length > 0 ? (
-                <>
-                  <h2>Usuarios recientes</h2>
-                  <div className="platform-admin__table-wrap">
-                    <table className="platform-admin__table">
-                      <thead>
-                        <tr>
-                          <th>Nombre</th>
-                          <th>Email</th>
-                          <th>Empresas</th>
-                          <th>Alta</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {overview.recentUsers.map((u) => (
-                          <tr key={u.id}>
-                            <td>
-                              <button
-                                type="button"
-                                className="platform-admin__link-btn"
-                                onClick={() => {
-                                  setSelectedUserId(u.id)
-                                  setTab('users')
-                                }}
-                              >
-                                {u.name}
-                                {u.isPlatformAdmin ? ' · Admin' : ''}
-                              </button>
-                            </td>
-                            <td>{u.email}</td>
-                            <td>
-                              {u.companies.length > 0
-                                ? u.companies
-                                    .map((c) => `${c.name} (${c.role})`)
-                                    .join(', ')
-                                : '—'}
-                            </td>
-                            <td>{new Date(u.createdAt).toLocaleString()}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              ) : null}
+              <div className="platform-admin__two">
+                <section>
+                  <h2>Quién entró</h2>
+                  <ul className="platform-admin__people">
+                    {recentLogins.length === 0 ? (
+                      <li className="platform-admin__hint">Todavía no hay accesos.</li>
+                    ) : (
+                      recentLogins.map((u) => (
+                        <li key={u.id}>
+                          <button type="button" onClick={() => openUser(u.id)}>
+                            <span className="platform-admin__avatar" aria-hidden>
+                              {companyInitials(u.name)}
+                            </span>
+                            <span>
+                              <strong>{u.name}</strong>
+                              <small>
+                                {formatAgo(u.lastLoginAt)}
+                                {u.companies[0] ? ` · ${u.companies[0].name}` : ''}
+                              </small>
+                            </span>
+                          </button>
+                        </li>
+                      ))
+                    )}
+                  </ul>
+                </section>
 
-              {overview.recentRequests.length > 0 ? (
-                <>
-                  <h2>Solicitudes recientes</h2>
-                  <div className="platform-admin__table-wrap">
-                    <table className="platform-admin__table">
-                      <thead>
-                        <tr>
-                          <th>Empresa</th>
-                          <th>Contacto</th>
-                          <th>Email</th>
-                          <th>Fecha</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {overview.recentRequests.map((r) => (
-                          <tr key={r.id}>
-                            <td>{r.companyName}</td>
-                            <td>{r.contactName}</td>
-                            <td>{r.email}</td>
-                            <td>{new Date(r.createdAt).toLocaleString()}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              ) : null}
+                <section>
+                  <h2>Solicitudes</h2>
+                  {overview.recentRequests.length === 0 ? (
+                    <p className="platform-admin__hint">No hay solicitudes pendientes.</p>
+                  ) : (
+                    <ul className="platform-admin__people">
+                      {overview.recentRequests.map((r) => (
+                        <li key={r.id}>
+                          <button type="button" onClick={() => openTab('requests')}>
+                            <span className="platform-admin__avatar" aria-hidden>
+                              {companyInitials(r.companyName)}
+                            </span>
+                            <span>
+                              <strong>{r.companyName}</strong>
+                              <small>
+                                {r.contactName} · {formatAgo(r.createdAt)}
+                              </small>
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              </div>
             </section>
           ) : null}
 
           {tab === 'companies' ? (
-            <section className="platform-admin__split">
+            <section className={`platform-admin__split${mobileDetail ? ' is-detail' : ''}`}>
               <div className="platform-admin__list">
                 <h1>Empresas</h1>
                 <ul className="platform-admin__company-list">
@@ -662,7 +851,7 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
                         className={`platform-admin__company-btn${
                           selectedId === c.id ? ' platform-admin__company-btn--active' : ''
                         }`}
-                        onClick={() => setSelectedId(c.id)}
+                        onClick={() => openCompany(c.id)}
                       >
                         <strong>{c.name}</strong>
                         <span>
@@ -682,6 +871,13 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
                   <>
                     <header className="platform-admin__detail-head">
                       <div>
+                        <button
+                          type="button"
+                          className="platform-admin__back"
+                          onClick={() => setMobileDetail(false)}
+                        >
+                          ← Empresas
+                        </button>
                         <h2>{detail.name}</h2>
                         <p>
                           Plan {companyPlanLabel(detail.plan)} · Tenant{' '}
@@ -730,7 +926,7 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
 
                     <h3>Módulos de la empresa</h3>
                     <p className="platform-admin__hint">
-                      Activá lo que el negocio necesita. Los tres principales son Ventas, Inventario y
+                      Active lo que el negocio necesita. Los tres principales son Ventas, Inventario y
                       Agenda de citas.
                     </p>
                     <ModuleToggles
@@ -789,51 +985,77 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
           ) : null}
 
           {tab === 'users' ? (
-            <section className="platform-admin__split">
+            <section className={`platform-admin__split${mobileDetail ? ' is-detail' : ''}`}>
               <div className="platform-admin__list">
-                <h1>Usuarios</h1>
+                <h1>Cuentas</h1>
                 <p className="platform-admin__hint">
-                  {users.length} cuenta{users.length === 1 ? '' : 's'} registradas. Actividad,
-                  espacio usado y empresas de cada una.
+                  {users.length} cuenta{users.length === 1 ? '' : 's'}. Puede abrir una para ver el
+                  último acceso, desactivarla o quitarla.
                 </p>
                 <label className="platform-admin__search">
-                  <span className="sr-only">Buscar usuarios</span>
+                  <span className="sr-only">Buscar cuentas</span>
                   <input
                     type="search"
                     value={userQuery}
                     onChange={(e) => setUserQuery(e.target.value)}
                     placeholder="Buscar por nombre, email o empresa…"
+                    enterKeyHint="search"
                   />
                 </label>
                 <ul className="platform-admin__company-list">
-                  {filteredUsers.length === 0 ? (
-                    <li className="platform-admin__hint">No hay usuarios con ese criterio.</li>
+                  {listedUsers.length === 0 ? (
+                    <li className="platform-admin__hint">No hay cuentas con ese criterio.</li>
                   ) : (
-                    filteredUsers.map((u) => (
-                      <li key={u.id}>
-                        <button
-                          type="button"
-                          className={`platform-admin__company-btn${
-                            selectedUserId === u.id ? ' platform-admin__company-btn--active' : ''
-                          }`}
-                          onClick={() => setSelectedUserId(u.id)}
-                        >
-                          <strong>
-                            {u.name}
-                            {u.isPlatformAdmin ? ' · Admin' : ''}
-                          </strong>
-                          <span>{u.email}</span>
-                          <small>
-                            {u.active ? 'Activo' : 'Inactivo'} · {formatWhen(u.lastActivityAt)}
-                          </small>
-                          <StorageBar
-                            used={u.storageUsedBytes ?? 0}
-                            limit={u.storageLimitBytes ?? 0}
-                            unlimited={u.storageUnlimited}
-                          />
-                        </button>
-                      </li>
-                    ))
+                    listedUsers.map((u) => {
+                      const canRemove = !u.isPlatformAdmin && u.id !== user.sub
+                      return (
+                        <li key={u.id} className="platform-admin__account-row">
+                          <button
+                            type="button"
+                            className={`platform-admin__company-btn platform-admin__account-btn${
+                              selectedUserId === u.id ? ' platform-admin__company-btn--active' : ''
+                            }`}
+                            onClick={() => openUser(u.id)}
+                          >
+                            <span className="platform-admin__account-head">
+                              <strong>
+                                {u.name}
+                                {u.isPlatformAdmin ? ' · Admin' : ''}
+                              </strong>
+                              <span
+                                className={`platform-admin__pill${u.active ? ' is-on' : ' is-off'}`}
+                              >
+                                {u.active ? 'Activo' : 'Inactivo'}
+                              </span>
+                            </span>
+                            <span className="platform-admin__account-email">{u.email}</span>
+                            <small className="platform-admin__login">
+                              Último acceso: {formatAgo(u.lastLoginAt)}
+                            </small>
+                            <small>
+                              {u.companies.length
+                                ? u.companies.map((c) => c.name).join(' · ')
+                                : 'Sin empresa'}
+                            </small>
+                            <StorageBar
+                              used={u.storageUsedBytes ?? 0}
+                              limit={u.storageLimitBytes ?? 0}
+                              unlimited={u.storageUnlimited}
+                            />
+                          </button>
+                          {canRemove ? (
+                            <button
+                              type="button"
+                              className="platform-admin__remove"
+                              disabled={userBusy}
+                              onClick={() => void removeUser(u.id)}
+                            >
+                              Quitar
+                            </button>
+                          ) : null}
+                        </li>
+                      )
+                    })
                   )}
                 </ul>
               </div>
@@ -843,6 +1065,13 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
                   <>
                     <header className="platform-admin__detail-head">
                       <div>
+                        <button
+                          type="button"
+                          className="platform-admin__back"
+                          onClick={() => setMobileDetail(false)}
+                        >
+                          ← Cuentas
+                        </button>
                         <h2>{userDetail.name}</h2>
                         <p>
                           {userDetail.email}
@@ -905,8 +1134,10 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
 
                     <div className="platform-admin__counts">
                       <span>Alta {formatWhen(userDetail.createdAt)}</span>
-                      <span>Último acceso {formatWhen(userDetail.lastLoginAt)}</span>
-                      <span>Última actividad {formatWhen(userDetail.lastActivityAt)}</span>
+                      <span className="platform-admin__count-strong">
+                        Último acceso {formatAgo(userDetail.lastLoginAt)}
+                      </span>
+                      <span>Última actividad {formatAgo(userDetail.lastActivityAt)}</span>
                       <span>{userDetail.salesCount ?? 0} ventas</span>
                       <span>{userDetail.tasksCount ?? 0} tareas</span>
                       <span>{userDetail.cashClosesCount ?? 0} cierres</span>
@@ -980,11 +1211,11 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
                           <tbody>
                             {userDetail.recentSales.map((s) => (
                               <tr key={s.id}>
-                                <td>{formatWhen(s.saleDate)}</td>
-                                <td>{s.companyName}</td>
-                                <td>{s.code ?? '—'}</td>
-                                <td>{formatMoney(s.total)}</td>
-                                <td>{s.paymentMethod ?? '—'}</td>
+                                <td data-label="Fecha">{formatWhen(s.saleDate)}</td>
+                                <td data-label="Empresa">{s.companyName}</td>
+                                <td data-label="Código">{s.code ?? '—'}</td>
+                                <td data-label="Total">{formatMoney(s.total)}</td>
+                                <td data-label="Pago">{s.paymentMethod ?? '—'}</td>
                               </tr>
                             ))}
                           </tbody>
@@ -1073,12 +1304,12 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
                   <tbody>
                     {requests.map((r) => (
                       <tr key={r.id}>
-                        <td>{r.companyName}</td>
-                        <td>{r.contactName}</td>
-                        <td>{r.email}</td>
-                        <td>{r.phone ?? '—'}</td>
-                        <td>{r.message ?? '—'}</td>
-                        <td>{new Date(r.createdAt).toLocaleString()}</td>
+                        <td data-label="Empresa">{r.companyName}</td>
+                        <td data-label="Contacto">{r.contactName}</td>
+                        <td data-label="Email">{r.email}</td>
+                        <td data-label="Teléfono">{r.phone ?? '—'}</td>
+                        <td data-label="Mensaje">{r.message ?? '—'}</td>
+                        <td data-label="Fecha">{new Date(r.createdAt).toLocaleString('es-CO')}</td>
                       </tr>
                     ))}
                   </tbody>
