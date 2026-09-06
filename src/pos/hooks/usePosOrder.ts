@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import { computeOrderTotals } from '../lib/money'
+import { formatExtraChargeLineName } from '../lib/extraCharge'
 import {
   mergeOrderMeta,
   pickOrderMeta,
@@ -77,6 +78,33 @@ export function usePosOrder(baseUrl: string) {
           },
         ]
       }
+      await persist({ ...order, lines })
+    },
+    [order, persist],
+  )
+
+  /** Cargo ocasional (rotura, daño…): siempre línea nueva, no fusiona por productId. */
+  const addExtraCharge = useCallback(
+    async (payload: {
+      productId: string
+      amountCOP: number
+      reason: string
+    }) => {
+      if (!order) return
+      const amount = Math.max(0, Math.round(payload.amountCOP))
+      const reason = payload.reason.trim()
+      if (amount <= 0 || !reason) return
+      const lines: OrderLine[] = [
+        ...order.lines,
+        {
+          id: newLineId(),
+          productId: payload.productId,
+          productName: formatExtraChargeLineName(reason),
+          quantity: 1,
+          unitPrice: amount,
+          notes: reason,
+        },
+      ]
       await persist({ ...order, lines })
     },
     [order, persist],
@@ -225,6 +253,7 @@ export function usePosOrder(baseUrl: string) {
     loading: state.orderLoading,
     error: state.orderError,
     addProduct,
+    addExtraCharge,
     setQuantity,
     setLineNotes,
     removeLine,

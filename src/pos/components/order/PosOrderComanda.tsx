@@ -29,9 +29,15 @@ type Props = {
   topProductIds?: string[]
   unitsSoldByProductId?: Map<string, number>
   highlightId?: string | null
+  extraChargeBusy?: boolean
+  extraChargeError?: string | null
   onMesa: (value: string) => void
   onOpenPayment: () => void
   onAddProduct: (product: ProductPick) => void
+  onAddExtraCharge: (payload: {
+    amountCOP: number
+    reason: string
+  }) => boolean | Promise<boolean>
   onQty: (lineId: string, qty: number) => void
   onLineNotes: (lineId: string, notes: string) => void
   onRemove: (lineId: string) => void
@@ -51,9 +57,12 @@ export function PosOrderComanda({
   topProductIds,
   unitsSoldByProductId,
   highlightId,
+  extraChargeBusy = false,
+  extraChargeError = null,
   onMesa,
   onOpenPayment,
   onAddProduct,
+  onAddExtraCharge,
   onQty,
   onLineNotes,
   onRemove,
@@ -102,8 +111,11 @@ export function PosOrderComanda({
           unitsSoldByProductId={unitsSoldByProductId}
           highlightId={highlightId}
           catalogLoading={catalogLoading}
+          extraChargeBusy={extraChargeBusy}
+          extraChargeError={extraChargeError}
           onPickerActiveChange={setPickerActive}
           onAdd={onAddProduct}
+          onAddExtraCharge={onAddExtraCharge}
           onQty={onQty}
           onNotes={onLineNotes}
           onRemove={onRemove}

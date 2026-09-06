@@ -23,6 +23,10 @@ export async function registerPlatformSaleFromPosOrder(
     payload.discountCOP && payload.discountCOP > 0
       ? `Descuento: ${formatCOP(payload.discountCOP)} — ${payload.discountReason?.trim()}`
       : null,
+    order.lines
+      .filter((l) => l.productName.startsWith('Costo adicional'))
+      .map((l) => `Cargo: ${formatCOP(l.unitPrice)} — ${l.notes?.trim() || l.productName}`)
+      .join(' · ') || null,
     order.transferReceiptDataUrl
       ? 'Comprobante transferencia (foto punto de venta)'
       : order.transferReference?.trim()

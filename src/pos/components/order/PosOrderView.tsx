@@ -6,6 +6,7 @@ import { usePosCatalog } from '../../hooks/usePosCatalog'
 import { usePosCheckout } from '../../hooks/usePosCheckout'
 import { usePosSalesRanking } from '../../hooks/usePosSalesRanking'
 import { usePosOrder } from '../../hooks/usePosOrder'
+import { ensurePosExtraChargeProduct } from '../../lib/extraCharge'
 import { DEFAULT_POS_STAFF } from '../../constants'
 import { formatPosOrderCode } from '../../lib/orderCode'
 import { usePosStore } from '../../store/posStore'
@@ -29,6 +30,7 @@ export function PosOrderView({ baseUrl }: Props) {
     error: orderError,
     loading: orderSaving,
     addProduct,
+    addExtraCharge,
     setQuantity,
     setLineNotes,
     removeLine,
@@ -44,6 +46,7 @@ export function PosOrderView({ baseUrl }: Props) {
     refreshing: catalogRefreshing,
     error: catalogError,
     usingDemoCatalog,
+    reload: reloadCatalog,
   } = usePosCatalog(baseUrl)
 
   const { unitsSoldByProductId, topProductIds, hasRanking } =
@@ -56,10 +59,13 @@ export function PosOrderView({ baseUrl }: Props) {
   const [addedFlash, setAddedFlash] = useState<string | null>(null)
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [confirmError, setConfirmError] = useState<string | null>(null)
+  const [extraBusy, setExtraBusy] = useState(false)
+  const [extraError, setExtraError] = useState<string | null>(null)
 
   useEffect(() => {
     setPaymentOpen(false)
     setConfirmError(null)
+    setExtraError(null)
   }, [order?.id])
 
   const handleAdd = useCallback(
@@ -69,6 +75,37 @@ export function PosOrderView({ baseUrl }: Props) {
       window.setTimeout(() => setAddedFlash(null), 400)
     },
     [addProduct],
+  )
+
+  const handleAddExtraCharge = useCallback(
+    async (payload: { amountCOP: number; reason: string }): Promise<boolean> => {
+      setExtraBusy(true)
+      setExtraError(null)
+      try {
+        const product = await ensurePosExtraChargeProduct(
+          baseUrl,
+          products,
+          categories,
+        )
+        await addExtraCharge({
+          productId: product.id,
+          amountCOP: payload.amountCOP,
+          reason: payload.reason,
+        })
+        setAddedFlash(product.id)
+        window.setTimeout(() => setAddedFlash(null), 400)
+        void reloadCatalog()
+        return true
+      } catch (e) {
+        setExtraError(
+          e instanceof Error ? e.message : 'No se pudo agregar el costo adicional.',
+        )
+        return false
+      } finally {
+        setExtraBusy(false)
+      }
+    },
+    [addExtraCharge, baseUrl, categories, products, reloadCatalog],
   )
 
   const handleOpenPayment = useCallback(() => {
@@ -196,9 +233,12 @@ export function PosOrderView({ baseUrl }: Props) {
             onMesa={(value) => updateMeta({ mesa: value })}
             onOpenPayment={handleOpenPayment}
             onAddProduct={(p) => void handleAdd(p)}
+            onAddExtraCharge={(payload) => handleAddExtraCharge(payload)}
             onQty={(id, q) => void setQuantity(id, q)}
             onLineNotes={(id, n) => void setLineNotes(id, n)}
             onRemove={(id) => void removeLine(id)}
+            extraChargeBusy={extraBusy}
+            extraChargeError={extraError}
             paymentBusy={confirmBusy}
           />
         </section>

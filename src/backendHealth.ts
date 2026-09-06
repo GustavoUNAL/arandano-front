@@ -24,16 +24,17 @@ export function resetBackendProbe(): void {
 }
 
 /**
- * Una sola comprobación por sesión: GET /navigation con timeout corto.
- * Si falla, el resto de apiFetch no hace red (evita 502 en consola).
+ * Comprobación GET /navigation con timeout corto.
+ * Si el primer intento falló (p. ej. API aún arrancando), permite re-probar.
  */
 export async function ensureBackendProbe(base: string): Promise<boolean> {
   if (status === 'up') return true
-  if (status === 'down') return false
   if (!probePromise) {
     probePromise = runProbe(base).then((ok) => {
       status = ok ? 'up' : 'down'
       if (!ok) enablePosLocalFallback()
+      // Liberar el promise para que un retry posterior pueda volver a probar.
+      if (!ok) probePromise = null
       return ok
     })
   }

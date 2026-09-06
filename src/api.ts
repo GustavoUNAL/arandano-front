@@ -1,4 +1,4 @@
-import { isBackendDown } from './backendHealth'
+import { ensureBackendProbe, isBackendDown, resetBackendProbe } from './backendHealth'
 import { unitCostToNumber } from './lib/productEconomics'
 import { getWhatsAppUrl } from './lib/siteContact'
 
@@ -466,13 +466,18 @@ export async function apiFetch(
   init?: RequestInit & { auth?: boolean },
 ): Promise<Response> {
   if (isBackendDown()) {
-    return new Response(
-      JSON.stringify({
-        message: 'API no disponible',
-        hint: apiUnavailableHint(),
-      }),
-      { status: 503, statusText: 'Service Unavailable' },
-    )
+    // Re-probar: el probe inicial puede haber fallado mientras Nest aún arrancaba.
+    resetBackendProbe()
+    const up = await ensureBackendProbe(getApiBase())
+    if (!up) {
+      return new Response(
+        JSON.stringify({
+          message: 'API no disponible',
+          hint: apiUnavailableHint(),
+        }),
+        { status: 503, statusText: 'Service Unavailable' },
+      )
+    }
   }
   const auth = init?.auth !== false
   const token = auth ? getAccessToken() : null

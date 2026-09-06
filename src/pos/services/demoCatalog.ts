@@ -88,6 +88,17 @@ const DEMO_PRODUCTS: ProductRow[] = [
     active: true,
     category: DEMO_CATEGORIES[2]!,
   },
+  {
+    id: 'demo-p-pos-extra',
+    name: 'Costo adicional',
+    description: 'Cargos ocasionales (roturas, daños, etc.)',
+    price: 0,
+    categoryId: 'demo-cat-cafe',
+    type: 'PRODUCT',
+    active: true,
+    sku: 'POS-EXTRA',
+    category: DEMO_CATEGORIES[0]!,
+  },
 ]
 
 export function getDemoCatalog(): {
