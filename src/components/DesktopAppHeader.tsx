@@ -16,6 +16,8 @@ import { AppMenuOverlay } from './AppMenuOverlay'
 import { HeaderSystray } from './HeaderSystray'
 import { BrandMark } from './BrandMark'
 import { CompanyBrand } from './CompanyBrand'
+import { PlatformAdminBar } from './PlatformAdminBar'
+import '../platform-admin.css'
 
 type DesktopAppHeaderProps = {
   view: string
@@ -32,6 +34,7 @@ type DesktopAppHeaderProps = {
   backendDown?: boolean
   onRetryApi?: () => void
   baseUrl?: string
+  onReturnToPlatform?: () => void
 }
 
 function groupIconView(
@@ -72,6 +75,7 @@ export function DesktopAppHeader({
   backendDown = false,
   onRetryApi,
   baseUrl,
+  onReturnToPlatform,
 }: DesktopAppHeaderProps) {
   const groups = useMemo(
     () => buildDesktopNavGroups({ user, canViewFinance, canViewTasks }),
@@ -199,6 +203,9 @@ export function DesktopAppHeader({
           ) : null}
 
           <div className="odoo-navbar__end">
+            {onReturnToPlatform ? (
+              <PlatformAdminBar onReturn={onReturnToPlatform} />
+            ) : null}
             <HeaderSystray
               user={user}
               theme={theme}

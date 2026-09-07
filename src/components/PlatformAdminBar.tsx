@@ -1,21 +1,27 @@
 import '../platform-admin.css'
 
 type Props = {
-  companyName?: string | null
   onReturn: () => void
+  /** Variante más compacta para header móvil */
+  compact?: boolean
 }
 
-export function PlatformAdminBar({ companyName, onReturn }: Props) {
-  const label = companyName?.trim() || 'esta empresa'
+/** Control sutil para volver al menú de plataforma (integrado en el header). */
+export function PlatformAdminBar({ onReturn, compact = false }: Props) {
   return (
-    <div className="platform-return" role="status">
-      <p className="platform-return__copy">
-        <span className="platform-return__kicker">Admin</span>
-        <strong>{label}</strong>
-      </p>
-      <button type="button" className="platform-return__btn" onClick={onReturn}>
-        Volver al panel
-      </button>
-    </div>
+    <button
+      type="button"
+      className={`platform-admin-return${compact ? ' platform-admin-return--compact' : ''}`}
+      onClick={onReturn}
+      title="Volver al menú principal de plataforma"
+      aria-label="Volver al menú principal de plataforma"
+    >
+      <span className="platform-admin-return__mark" aria-hidden>
+        ←
+      </span>
+      <span className="platform-admin-return__label">
+        {compact ? 'Panel' : 'Menú plataforma'}
+      </span>
+    </button>
   )
 }

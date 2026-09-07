@@ -5,6 +5,7 @@ import { rememberSignedInName, firstName } from './lib/userIdentity'
 import { displayCompanyName } from './lib/displayLabels'
 import { BRAND_NAME } from './lib/brand'
 import { AccessRequestView } from './components/AccessRequestView'
+import { BusinessSetupView } from './components/BusinessSetupView'
 import { PlatformAdminView } from './components/PlatformAdminView'
 import { PlatformAdminBar } from './components/PlatformAdminBar'
 import {
@@ -78,6 +79,7 @@ import {
   consumeGoogleAuthHash,
   googleAuthErrorMessage,
   isAccessRequestHash,
+  isBusinessSetupHash,
   isGooglePopupHash,
   isGoogleSignupHash,
   isHealthLoginHash,
@@ -89,6 +91,7 @@ import {
   isRegisterHash,
   isTermsHash,
   navigateAfterLogin,
+  navigateToBusinessSetup,
   navigateToHealthLogin,
   navigateToLanding,
   navigateToLogin,
@@ -104,6 +107,7 @@ import { GoogleSignupView } from './components/GoogleSignupView'
 import { RegisterView } from './components/RegisterView'
 import { TrialPaywallModal, TrialQuotaBanner } from './components/TrialPlanOffer'
 import { userNeedsCompanyPicker } from './lib/companySelect'
+import { userNeedsBusinessSetup } from './lib/businessSetup'
 import { isOdooHomeView } from './lib/odooNav'
 import {
   buildCompanyViewHash,
@@ -376,6 +380,10 @@ export default function App() {
     if (!user) return
     if (user.isPlatformAdmin && user.platformView) return
     if (isSelectCompanyHash()) return
+    if (userNeedsBusinessSetup(user)) {
+      if (!isBusinessSetupHash()) navigateToBusinessSetup(true)
+      return
+    }
     const parsed = parseCompanyAppHash()
     const slug = getCompanySlugFromUser(user)
     if (parsed.companySlug !== slug) {
@@ -406,6 +414,7 @@ export default function App() {
     if (!user) return
     if (user.isPlatformAdmin && user.platformView) return
     if (isSelectCompanyHash()) return
+    if (userNeedsBusinessSetup(user) || isBusinessSetupHash()) return
     const desired = companyViewHash(user, view)
     const current = window.location.hash ?? ''
     const slug = getCompanySlugFromUser(user)
@@ -445,6 +454,10 @@ export default function App() {
     if (userNeedsCompanyPicker(u)) {
       setCompanyPickFromLogin(true)
       navigateToSelectCompany(true)
+      return
+    }
+    if (userNeedsBusinessSetup(u)) {
+      navigateToBusinessSetup(true)
       return
     }
     setView('home')
@@ -573,6 +586,28 @@ export default function App() {
     )
   }
 
+  if (userNeedsBusinessSetup(user)) {
+    return (
+      <BusinessSetupView
+        baseUrl={baseUrl}
+        user={user}
+        onDone={(u) => {
+          setUser(u)
+          setAuthError(null)
+          setView('home')
+          navigateAfterLogin(u)
+        }}
+        onLogout={() => {
+          setAccessToken(null)
+          setCompanyId(null)
+          setUser(null)
+          setAuthError(null)
+          navigateToLogin()
+        }}
+      />
+    )
+  }
+
   async function returnToPlatformPanel() {
     try {
       const res = await exitToPlatformAdmin(baseUrl)
@@ -598,10 +633,9 @@ export default function App() {
       <>
         {trialChrome}
         {user.isPlatformAdmin && !user.platformView ? (
-          <PlatformAdminBar
-            companyName={user.companyName}
-            onReturn={() => void returnToPlatformPanel()}
-          />
+          <div className="platform-admin-return-host platform-admin-return-host--dental">
+            <PlatformAdminBar onReturn={() => void returnToPlatformPanel()} />
+          </div>
         ) : null}
         <SessionUserContext.Provider value={user}>
           <DentalClinicApp
@@ -641,12 +675,6 @@ export default function App() {
       )}
       {trialChrome}
       <SessionWelcome user={user} />
-      {user.isPlatformAdmin && !user.platformView && !isMobileNav ? (
-        <PlatformAdminBar
-          companyName={user.companyName}
-          onReturn={() => void returnToPlatformPanel()}
-        />
-      ) : null}
 
       {!isMobileNav ? (
         <DesktopAppHeader
@@ -675,6 +703,11 @@ export default function App() {
           canViewTasks={canViewTasks(user)}
           backendDown={backendDown}
           onRetryApi={retryApiProbe}
+          onReturnToPlatform={
+            user.isPlatformAdmin && !user.platformView
+              ? () => void returnToPlatformPanel()
+              : undefined
+          }
         />
       ) : null}
 

@@ -337,6 +337,9 @@ export function MobileAppChrome({
           </div>
 
           <div className="vos-mobile-header__trailing">
+            {onReturnToPlatform ? (
+              <PlatformAdminBar compact onReturn={onReturnToPlatform} />
+            ) : null}
             {user ? (
               <HeaderSystray
                 user={user}
@@ -375,12 +378,6 @@ export function MobileAppChrome({
           </div>
         </div>
       </header>
-      {onReturnToPlatform ? (
-        <PlatformAdminBar
-          companyName={user?.companyName}
-          onReturn={onReturnToPlatform}
-        />
-      ) : null}
 
       {showDock ? (
         <nav className="app-mobile-dock" aria-label="Módulos principales">
@@ -475,8 +472,8 @@ export function MobileAppChrome({
                     onReturnToPlatform()
                   }}
                 >
-                  Volver al panel admin
-                  <span className="muted small">{companyLabel}</span>
+                  Volver al menú plataforma
+                  <span className="muted small">Salir de {companyLabel || 'esta empresa'}</span>
                 </button>
               ) : null}
               {user && userNeedsCompanyPicker(user) ? (

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react'
-import { fetchCashCloseCalendar } from '../api'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { fetchCashCloseCalendar, fetchFinancialAnalytics } from '../api'
 import { CashClosePanel } from './CashClosePanel'
 import { MonthCalendar } from './MonthCalendar'
 import { ViewBootSplash } from './DataLoadingSplash'
@@ -10,25 +10,51 @@ import {
   type OpenPosTableSnapshot,
 } from '../pos/lib/openTablesSnapshot'
 import { mobileViewClass } from './mobile/mobileView'
+import { formatCOP } from '../lib/money'
 
-function localDateKey(d = new Date()): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+function bogotaDateKey(d = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Bogota',
+  }).format(d)
 }
 
-function formatCOP(value: number): string {
-  if (!Number.isFinite(value)) return '—'
-  return new Intl.NumberFormat('es-CO', {
-    style: 'currency',
-    currency: 'COP',
-    maximumFractionDigits: 0,
-  }).format(value)
+function addDaysKey(iso: string, days: number): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10)
+}
+
+function mondayOf(ref: string): string {
+  const [y, m, d] = ref.split('-').map(Number)
+  const noon = new Date(`${ref}T12:00:00-05:00`)
+  const dow = noon.getUTCDay()
+  const mondayOffset = dow === 0 ? -6 : 1 - dow
+  return new Date(Date.UTC(y, m - 1, d + mondayOffset)).toISOString().slice(0, 10)
+}
+
+function weekDayKeys(ref: string): string[] {
+  const monday = mondayOf(ref)
+  return Array.from({ length: 7 }, (_, i) => addDaysKey(monday, i))
+}
+
+function weekdayShort(iso: string): string {
+  return new Intl.DateTimeFormat('es-CO', {
+    weekday: 'short',
+    timeZone: 'America/Bogota',
+  }).format(new Date(`${iso}T12:00:00-05:00`))
+}
+
+function dayNum(iso: string): string {
+  return iso.slice(8, 10)
 }
 
 function formatTime(iso: string | null | undefined): string {
   if (!iso) return '—'
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return '—'
-  return new Intl.DateTimeFormat('es-CO', { timeStyle: 'short' }).format(d)
+  return new Intl.DateTimeFormat('es-CO', {
+    timeStyle: 'short',
+    timeZone: 'America/Bogota',
+  }).format(d)
 }
 
 type Props = {
@@ -48,10 +74,10 @@ export function CashCloseManager({
   onOpenPurchases,
   onOpenPos,
 }: Props) {
-  const now = new Date()
-  const [calendarYear, setCalendarYear] = useState(now.getFullYear())
-  const [calendarMonth, setCalendarMonth] = useState(now.getMonth() + 1)
-  const [selectedDate, setSelectedDate] = useState(localDateKey())
+  const todayKey = bogotaDateKey()
+  const [calendarYear, setCalendarYear] = useState(() => Number(todayKey.slice(0, 4)))
+  const [calendarMonth, setCalendarMonth] = useState(() => Number(todayKey.slice(5, 7)))
+  const [selectedDate, setSelectedDate] = useState(todayKey)
   const [cashCloseCalendar, setCashCloseCalendar] = useState<
     Awaited<ReturnType<typeof fetchCashCloseCalendar>> | null
   >(null)
@@ -61,7 +87,17 @@ export function CashCloseManager({
   const [openPosTables, setOpenPosTables] = useState<OpenPosTableSnapshot[]>(() =>
     getOpenPosTables(),
   )
+  const [weekSummary, setWeekSummary] = useState<{
+    salesCOP: number
+    purchasesCOP: number
+    salesCount: number
+    purchasesCount: number
+    netCOP: number
+  } | null>(null)
+  const [weekLoading, setWeekLoading] = useState(false)
   const first = useFirstName()
+
+  const weekKeys = useMemo(() => weekDayKeys(selectedDate), [selectedDate])
 
   const shiftMonth = (delta: number) => {
     const d = new Date(calendarYear, calendarMonth - 1 + delta, 1)
@@ -70,10 +106,18 @@ export function CashCloseManager({
   }
 
   const goToday = () => {
-    const today = new Date()
-    setCalendarYear(today.getFullYear())
-    setCalendarMonth(today.getMonth() + 1)
-    setSelectedDate(localDateKey(today))
+    const today = bogotaDateKey()
+    const [y, m] = today.split('-').map(Number)
+    setCalendarYear(y)
+    setCalendarMonth(m)
+    setSelectedDate(today)
+  }
+
+  const selectDate = (date: string) => {
+    setSelectedDate(date)
+    const [y, m] = date.split('-').map(Number)
+    setCalendarYear(y)
+    setCalendarMonth(m)
   }
 
   useEffect(() => {
@@ -107,9 +151,51 @@ export function CashCloseManager({
     }
   }, [baseUrl, calendarYear, calendarMonth, panelRefreshKey])
 
+  useEffect(() => {
+    let cancelled = false
+    setWeekLoading(true)
+    const from = weekKeys[0]
+    const to = weekKeys[6]
+    void fetchFinancialAnalytics(baseUrl, {
+      dateFrom: from,
+      dateTo: to,
+      granularity: 'day',
+    })
+      .then((res) => {
+        if (cancelled) return
+        setWeekSummary({
+          salesCOP: res.summary.salesCOP,
+          purchasesCOP: res.summary.purchasesCOP,
+          salesCount: res.sales.totals.count,
+          purchasesCount: res.purchases.totals.count,
+          netCOP: res.summary.netCOP,
+        })
+      })
+      .catch(() => {
+        if (!cancelled) setWeekSummary(null)
+      })
+      .finally(() => {
+        if (!cancelled) setWeekLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [baseUrl, weekKeys, panelRefreshKey])
+
   const handleSaved = useCallback(() => {
     setPanelRefreshKey((k) => k + 1)
   }, [])
+
+  const dayMeta = useMemo(() => {
+    const map = new Map<string, { count: number; totalCOP: number }>()
+    for (const day of cashCloseCalendar?.days ?? []) {
+      map.set(day.date, {
+        count: day.count,
+        totalCOP: Number(day.totalCOP) || 0,
+      })
+    }
+    return map
+  }, [cashCloseCalendar])
 
   return (
     <div className={mobileViewClass('cash-close', 'cash-close-manager')}>
@@ -125,6 +211,93 @@ export function CashCloseManager({
           </p>
         </div>
       </header>
+
+      <section className="cash-close-manager__week" aria-label="Semana en foco">
+        <div className="cash-close-manager__week-head">
+          <div>
+            <p className="cash-close-manager__week-kicker">Semana</p>
+            <strong>
+              {weekdayShort(weekKeys[0])} {dayNum(weekKeys[0])} –{' '}
+              {weekdayShort(weekKeys[6])} {dayNum(weekKeys[6])}
+            </strong>
+          </div>
+          <dl className="cash-close-manager__week-stats">
+            <div>
+              <dt>Ventas</dt>
+              <dd>{weekLoading ? '…' : formatCOP(weekSummary?.salesCOP ?? 0)}</dd>
+              <small>
+                {weekLoading ? '' : `${weekSummary?.salesCount ?? 0} ops`}
+              </small>
+            </div>
+            <div>
+              <dt>Compras</dt>
+              <dd>
+                {weekLoading ? '…' : formatCOP(weekSummary?.purchasesCOP ?? 0)}
+              </dd>
+              <small>
+                {weekLoading ? '' : `${weekSummary?.purchasesCount ?? 0} lotes`}
+              </small>
+            </div>
+            <div>
+              <dt>Neto</dt>
+              <dd
+                className={
+                  (weekSummary?.netCOP ?? 0) < 0 ? 'is-neg' : undefined
+                }
+              >
+                {weekLoading ? '…' : formatCOP(weekSummary?.netCOP ?? 0)}
+              </dd>
+            </div>
+          </dl>
+        </div>
+        <div className="cash-close-manager__week-strip" role="listbox" aria-label="Días de la semana">
+          {weekKeys.map((day) => {
+            const meta = dayMeta.get(day)
+            const active = day === selectedDate
+            return (
+              <button
+                key={day}
+                type="button"
+                role="option"
+                aria-selected={active}
+                className={`cash-close-manager__week-day${active ? ' is-active' : ''}`}
+                onClick={() => selectDate(day)}
+              >
+                <span>{weekdayShort(day)}</span>
+                <strong>{dayNum(day)}</strong>
+                <small>
+                  {meta?.count
+                    ? `${meta.count} · ${formatCOP(meta.totalCOP)}`
+                    : '—'}
+                </small>
+              </button>
+            )
+          })}
+        </div>
+        <div className="cash-close-manager__day-nav">
+          <button
+            type="button"
+            className="btn-secondary btn-compact"
+            onClick={() => selectDate(addDaysKey(selectedDate, -1))}
+          >
+            ← Día anterior
+          </button>
+          <button
+            type="button"
+            className="btn-secondary btn-compact"
+            onClick={goToday}
+          >
+            Hoy
+          </button>
+          <button
+            type="button"
+            className="btn-secondary btn-compact"
+            onClick={() => selectDate(addDaysKey(selectedDate, 1))}
+          >
+            Día siguiente →
+          </button>
+        </div>
+      </section>
 
       {onOpenPos && openPosTables.length > 0 ? (
         <section className="cash-close-manager__pos-alert" aria-label="Mesas abiertas en punto de venta">
@@ -184,7 +357,7 @@ export function CashCloseManager({
               showZeroForPastDays
               selectedDate={selectedDate}
               inaugurationDate={inaugurationDate}
-              onDayClick={setSelectedDate}
+              onDayClick={selectDate}
               onPrevMonth={() => shiftMonth(-1)}
               onNextMonth={() => shiftMonth(1)}
               onToday={goToday}

@@ -527,6 +527,7 @@ export type CompanySummary = {
   slug: string
   role: string
   modules: string[]
+  businessType?: string | null
 }
 
 export type SystemSettings = {
@@ -735,6 +736,22 @@ export async function exitToPlatformAdmin(base: string): Promise<LoginResponse> 
   const out = (await res.json()) as LoginResponse
   setAccessToken(out.accessToken)
   if (out.user.companyId) setCompanyId(out.user.companyId)
+  return out
+}
+
+export async function submitBusinessSetup(
+  base: string,
+  businessType: string,
+): Promise<LoginResponse> {
+  const res = await apiFetch(`${base}/auth/business-setup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ businessType }),
+  })
+  if (!res.ok) throw new Error(await parseJsonError(res))
+  const out = (await res.json()) as LoginResponse
+  setAccessToken(out.accessToken)
+  syncCompanyFromUser(out.user)
   return out
 }
 
@@ -1010,6 +1027,30 @@ export async function fetchPlatformAccessRequests(
   const res = await apiFetch(`${base}/platform/access-requests${q}`)
   if (!res.ok) throw new Error(await parseJsonError(res))
   return (await res.json()) as AccessRequestRow[]
+}
+
+export async function patchPlatformAccessRequest(
+  base: string,
+  id: string,
+  status: 'PENDING' | 'APPROVED' | 'REJECTED',
+): Promise<AccessRequestRow> {
+  const res = await apiFetch(`${base}/platform/access-requests/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status }),
+  })
+  if (!res.ok) throw new Error(await parseJsonError(res))
+  return (await res.json()) as AccessRequestRow
+}
+
+export async function deletePlatformAccessRequest(
+  base: string,
+  id: string,
+): Promise<void> {
+  const res = await apiFetch(`${base}/platform/access-requests/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  })
+  if (!res.ok) throw new Error(await parseJsonError(res))
 }
 
 export type ProductListSort = 'name' | 'price_asc' | 'price_desc'

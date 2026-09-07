@@ -1,0 +1,53 @@
+.admin-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom));
+  background: color-mix(in srgb, #050308 62%, transparent);
+  backdrop-filter: blur(6px);
+}
+
+.admin-confirm__dialog {
+  width: min(100%, 24rem);
+  padding: 1.2rem 1.15rem 1.15rem;
+  border-radius: 1.1rem;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  background: var(--surface-elevated, #1a1522);
+  color: var(--text);
+  box-shadow: 0 24px 64px color-mix(in srgb, #000 45%, transparent);
+}
+
+.admin-confirm__dialog h2 {
+  margin: 0 0 0.45rem;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+}
+
+.admin-confirm__dialog p {
+  margin: 0;
+  color: var(--muted, #9a8fa8);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.admin-confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1.15rem;
+}
+
+.admin-confirm__actions .vos-btn {
+  min-height: 44px;
+  flex: 1 1 auto;
+}
+
+@media (min-width: 480px) {
+  .admin-confirm__actions .vos-btn {
+    flex: 0 0 auto;
+    min-width: 7.5rem;
+  }
+}

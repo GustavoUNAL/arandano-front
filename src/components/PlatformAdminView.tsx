@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import {
+  deletePlatformAccessRequest,
   deletePlatformUser,
   enterPlatformCompany,
   fetchPlatformAccessRequests,
@@ -8,6 +9,7 @@ import {
   fetchPlatformOverview,
   fetchPlatformUserDetail,
   fetchPlatformUsers,
+  patchPlatformAccessRequest,
   patchPlatformCompanyModule,
   patchPlatformCompanyPlan,
   patchPlatformUser,
@@ -27,13 +29,53 @@ import { navigateToLogin } from '../lib/authRoutes'
 import { setAccessToken } from '../api'
 import { BrandMark } from './BrandMark'
 import { PublicThemeSwitch } from './PublicThemeSwitch'
+import { AdminConfirmDialog } from './AdminConfirmDialog'
 import { Button } from './ui/button'
+import { AppLauncherIcon } from './AppLauncherIcon'
 import { usePublicTheme } from '../hooks/usePublicTheme'
 import '../public-shell.css'
 import { ViewBootSplash } from './DataLoadingSplash'
 import '../platform-admin.css'
 
 type Tab = 'overview' | 'companies' | 'users' | 'requests'
+type AdminScreen = 'hub' | 'panel'
+type RequestFilter = 'ALL' | 'PENDING' | 'APPROVED' | 'REJECTED'
+
+const HUB_TILE_ACCENTS = [
+  'odoo-app-tile--sales',
+  'odoo-app-tile--catalog',
+  'odoo-app-tile--stock',
+  'odoo-app-tile--purchases',
+  'odoo-app-tile--staff',
+  'odoo-app-tile--booking',
+  'odoo-app-tile--tasks',
+  'odoo-app-tile--finance',
+] as const
+
+function platformScreenFromHash(): AdminScreen {
+  const raw = (window.location.hash ?? '').replace(/^#/, '').split('?')[0] ?? ''
+  const parts = raw.split('/').filter(Boolean)
+  return parts[0] === 'platform' && parts[1] === 'admin' ? 'panel' : 'hub'
+}
+
+function navigatePlatformScreen(screen: AdminScreen, replace = false): void {
+  const hash = screen === 'panel' ? '#/platform/admin' : '#/platform'
+  if (replace) window.location.replace(hash)
+  else window.location.hash = hash
+}
+
+type ConfirmAction =
+  | { kind: 'delete-user'; userId: string; name: string }
+  | { kind: 'toggle-user'; userId: string; name: string; active: boolean }
+  | { kind: 'delete-request'; id: string; companyName: string }
+  | { kind: 'approve-request'; id: string; companyName: string }
+  | { kind: 'reject-request'; id: string; companyName: string }
+
+function requestStatusLabel(status: string): string {
+  if (status === 'APPROVED') return 'Aprobada'
+  if (status === 'REJECTED') return 'Rechazada'
+  return 'Pendiente'
+}
 
 function formatBytes(n: number): string {
   if (!Number.isFinite(n) || n <= 0) return '0 B'
@@ -199,10 +241,13 @@ function ModuleToggles({
   )
 }
 
-const EXTRA_MODULE_VIEWS: Array<{ view: AppView; label: string }> = [
-  { view: 'home', label: 'Inicio' },
-  { view: 'pos', label: 'Punto de venta' },
-  { view: 'shop', label: 'Tienda online' },
+const EXTRA_MODULE_VIEWS: Array<{ view: AppView; label: string; hint: string }> = [
+  { view: 'home', label: 'Inicio', hint: 'Panel del negocio' },
+  { view: 'pos', label: 'Punto de venta', hint: 'Cobrar y comandas' },
+  { view: 'shop', label: 'Tienda online', hint: 'Pedidos web' },
+  { view: 'cash-close', label: 'Cierre de caja', hint: 'Totales del día' },
+  { view: 'analytics', label: 'Finanzas', hint: 'Ventas y utilidad' },
+  { view: 'settings', label: 'Ajustes', hint: 'Configuración' },
 ]
 
 const MODULE_VIEW: Record<string, AppView> = {
@@ -217,6 +262,23 @@ const MODULE_VIEW: Record<string, AppView> = {
   projects: 'projects',
 }
 
+/** Accesos rápidos organizados para operar una empresa desde el admin. */
+const COMPANY_QUICK_LINKS: Array<{ view: AppView; label: string; group: 'operar' | 'gestionar' | 'control' }> = [
+  { view: 'home', label: 'Inicio', group: 'operar' },
+  { view: 'pos', label: 'Punto de venta', group: 'operar' },
+  { view: 'sales', label: 'Ventas', group: 'operar' },
+  { view: 'shop', label: 'Tienda', group: 'operar' },
+  { view: 'products', label: 'Productos', group: 'gestionar' },
+  { view: 'inventory', label: 'Inventario', group: 'gestionar' },
+  { view: 'purchases', label: 'Compras', group: 'gestionar' },
+  { view: 'staff', label: 'Personal', group: 'gestionar' },
+  { view: 'booking', label: 'Agenda', group: 'gestionar' },
+  { view: 'analytics', label: 'Finanzas', group: 'control' },
+  { view: 'cash-close', label: 'Cierre de caja', group: 'control' },
+  { view: 'tasks', label: 'Tareas', group: 'control' },
+  { view: 'settings', label: 'Ajustes', group: 'control' },
+]
+
 type Props = {
   baseUrl: string
   user: AuthUser
@@ -225,6 +287,7 @@ type Props = {
 }
 
 export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: Props) {
+  const [screen, setScreen] = useState<AdminScreen>(() => platformScreenFromHash())
   const [tab, setTab] = useState<Tab>('overview')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -245,6 +308,13 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
   const [planBusyId, setPlanBusyId] = useState<string | null>(null)
   const [mobileDetail, setMobileDetail] = useState(false)
   const [focusCompanyId, setFocusCompanyId] = useState<string | null>(null)
+  const [requestFilter, setRequestFilter] = useState<RequestFilter>('PENDING')
+  const [requestBusyId, setRequestBusyId] = useState<string | null>(null)
+  const [confirm, setConfirm] = useState<ConfirmAction | null>(null)
+  const [confirmBusy, setConfirmBusy] = useState(false)
+  const [companyQuery, setCompanyQuery] = useState('')
+  const [companyScope, setCompanyScope] = useState<'all' | 'mine' | 'other'>('all')
+  const [exitMenuOpen, setExitMenuOpen] = useState(false)
   const { theme, toggleTheme } = usePublicTheme()
 
   const load = useCallback(async () => {
@@ -255,7 +325,7 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
         fetchPlatformOverview(baseUrl),
         fetchPlatformCompanies(baseUrl),
         fetchPlatformUsers(baseUrl),
-        fetchPlatformAccessRequests(baseUrl, 'PENDING'),
+        fetchPlatformAccessRequests(baseUrl),
       ])
       setOverview(ov)
       setCompanies(co)
@@ -274,9 +344,27 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
   }, [baseUrl, user.companies])
 
   useEffect(() => {
-    document.title = `Admin · ${BRAND_NAME}`
+    document.title =
+      screen === 'hub' ? `Menú · ${BRAND_NAME}` : `Admin · ${BRAND_NAME}`
     void load()
-  }, [load])
+  }, [load, screen])
+
+  useEffect(() => {
+    const onHash = () => setScreen(platformScreenFromHash())
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+
+  function openAdminPanel() {
+    setScreen('panel')
+    navigatePlatformScreen('panel')
+  }
+
+  function openMainMenu() {
+    setScreen('hub')
+    setExitMenuOpen(false)
+    navigatePlatformScreen('hub')
+  }
 
   useEffect(() => {
     if (!selectedId) {
@@ -324,6 +412,7 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
       (detail && detail.id === companyId ? detail : null)
     if (!company || entering) return
     setEntering(true)
+    setExitMenuOpen(false)
     setError(null)
     try {
       const res = await enterPlatformCompany(baseUrl, companyId)
@@ -405,51 +494,104 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
   }
 
   async function setUserActive(userId: string, active: boolean) {
-    setUserBusy(true)
-    setError(null)
-    try {
-      const updated = await patchPlatformUser(baseUrl, userId, { active })
-      setUserDetail(updated)
-      setUsers((prev) =>
-        prev.map((u) =>
-          u.id === userId
-            ? {
-                ...u,
-                active: updated.active,
-                lastLoginAt: updated.lastLoginAt,
-                lastActivityAt: updated.lastActivityAt,
-                storageUsedBytes: updated.storageUsedBytes,
-              }
-            : u,
-        ),
-      )
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo actualizar el usuario')
-    } finally {
-      setUserBusy(false)
-    }
+    const row = users.find((u) => u.id === userId)
+    setConfirm({
+      kind: 'toggle-user',
+      userId,
+      name: row?.name ?? 'esta cuenta',
+      active,
+    })
   }
 
   async function removeUser(userId: string) {
-    if (
-      !window.confirm(
-        '¿Eliminar esta cuenta? Se quita el acceso. Las empresas y sus datos siguen en la plataforma.',
-      )
-    ) {
-      return
-    }
-    setUserBusy(true)
+    const row = users.find((u) => u.id === userId) ?? (userDetail?.id === userId ? userDetail : null)
+    setConfirm({
+      kind: 'delete-user',
+      userId,
+      name: row?.name ?? 'esta cuenta',
+    })
+  }
+
+  async function runConfirm() {
+    if (!confirm || confirmBusy) return
+    const action = confirm
+    setConfirmBusy(true)
     setError(null)
     try {
-      await deletePlatformUser(baseUrl, userId)
-      setUsers((prev) => prev.filter((u) => u.id !== userId))
-      setSelectedUserId((prev) => (prev === userId ? null : prev))
-      setUserDetail(null)
-      setMobileDetail(false)
+      if (action.kind === 'delete-user') {
+        setUserBusy(true)
+        await deletePlatformUser(baseUrl, action.userId)
+        setUsers((prev) => prev.filter((u) => u.id !== action.userId))
+        setSelectedUserId((prev) => (prev === action.userId ? null : prev))
+        setUserDetail(null)
+        setMobileDetail(false)
+      } else if (action.kind === 'toggle-user') {
+        setUserBusy(true)
+        const updated = await patchPlatformUser(baseUrl, action.userId, {
+          active: action.active,
+        })
+        setUserDetail(updated)
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === action.userId
+              ? {
+                  ...u,
+                  active: updated.active,
+                  lastLoginAt: updated.lastLoginAt,
+                  lastActivityAt: updated.lastActivityAt,
+                  storageUsedBytes: updated.storageUsedBytes,
+                }
+              : u,
+          ),
+        )
+      } else if (action.kind === 'delete-request') {
+        setRequestBusyId(action.id)
+        const prevStatus = requests.find((r) => r.id === action.id)?.status
+        await deletePlatformAccessRequest(baseUrl, action.id)
+        setRequests((prev) => prev.filter((r) => r.id !== action.id))
+        setOverview((ov) =>
+          ov
+            ? {
+                ...ov,
+                pendingRequests: Math.max(
+                  0,
+                  ov.pendingRequests - (prevStatus === 'PENDING' ? 1 : 0),
+                ),
+                recentRequests: ov.recentRequests.filter((r) => r.id !== action.id),
+              }
+            : ov,
+        )
+      } else if (action.kind === 'approve-request' || action.kind === 'reject-request') {
+        setRequestBusyId(action.id)
+        const status = action.kind === 'approve-request' ? 'APPROVED' : 'REJECTED'
+        const prevStatus = requests.find((r) => r.id === action.id)?.status
+        const updated = await patchPlatformAccessRequest(baseUrl, action.id, status)
+        setRequests((prev) => prev.map((r) => (r.id === updated.id ? updated : r)))
+        setOverview((ov) => {
+          if (!ov) return ov
+          return {
+            ...ov,
+            pendingRequests: Math.max(
+              0,
+              ov.pendingRequests - (prevStatus === 'PENDING' ? 1 : 0),
+            ),
+            recentRequests: ov.recentRequests
+              .map((r) =>
+                r.id === updated.id ? { ...r, status: updated.status } : r,
+              )
+              .filter((r) => r.status === 'PENDING'),
+          }
+        })
+      }
+      setConfirm(null)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No se pudo eliminar el usuario')
+      setError(
+        err instanceof Error ? err.message : 'No se pudo completar la acción',
+      )
     } finally {
+      setConfirmBusy(false)
       setUserBusy(false)
+      setRequestBusyId(null)
     }
   }
 
@@ -514,6 +656,10 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
     const tb = b.lastLoginAt ? Date.parse(b.lastLoginAt) : 0
     return tb - ta
   })
+  const filteredRequests = requests.filter((r) =>
+    requestFilter === 'ALL' ? true : r.status === requestFilter,
+  )
+  const pendingRequestCount = requests.filter((r) => r.status === 'PENDING').length
 
   function openTab(id: Tab) {
     setTab(id)
@@ -561,6 +707,37 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
     })
     .slice(0, 6)
 
+  const companyQueryNorm = companyQuery.trim().toLowerCase()
+  const listedCompanies = companies.filter((c) => {
+    if (companyScope === 'mine' && !membershipIds.has(c.id) && myCompanies.length > 0) {
+      return false
+    }
+    if (companyScope === 'other' && membershipIds.has(c.id)) return false
+    if (!companyQueryNorm) return true
+    const hay = `${c.name} ${c.slug} ${c.shopSlug ?? ''} ${c.email ?? ''} ${c.plan ?? ''}`.toLowerCase()
+    return hay.includes(companyQueryNorm)
+  })
+
+  const exitTargets = myCompanies.length ? myCompanies : companies
+  const hubCompanies = myCompanies.length ? myCompanies : companies
+
+  /** Sale del panel admin e entra a operar una empresa. */
+  async function leaveAdminToCompany(companyId?: string) {
+    if (!exitTargets.length) {
+      setError('No hay empresas disponibles para entrar.')
+      return
+    }
+    if (companyId) {
+      await enterCompany(companyId, 'home')
+      return
+    }
+    if (exitTargets.length === 1) {
+      await enterCompany(exitTargets[0].id, 'home')
+      return
+    }
+    setExitMenuOpen((open) => !open)
+  }
+
   function handleLogout() {
     setAccessToken(null)
     onLogout()
@@ -571,67 +748,234 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
     return list.map((c) => {
       const stats = overview?.companyStats?.find((s) => s.id === c.id)
       const active = focused?.id === c.id
+      const isMine = membershipIds.has(c.id)
       return (
-        <button
+        <div
           key={c.id}
-          type="button"
           role="listitem"
           className={`platform-admin__rail-card${active ? ' is-active' : ''}`}
-          onClick={() => focusCompany(c.id)}
         >
-          <span className="platform-admin__avatar" aria-hidden>
-            {companyInitials(c.name)}
-          </span>
-          <strong>{c.name}</strong>
-          <span>{companyPlanLabel(c.plan)}</span>
-          <small>
-            {c.salesCount} ventas · {stats?.membersCount ?? c.membersCount} personas
-          </small>
-        </button>
+          <button
+            type="button"
+            className="platform-admin__rail-card-main"
+            onClick={() => focusCompany(c.id)}
+          >
+            <span className="platform-admin__avatar" aria-hidden>
+              {companyInitials(c.name)}
+            </span>
+            <strong>{c.name}</strong>
+            <span>
+              {companyPlanLabel(c.plan)}
+              {isMine ? ' · Suya' : ''}
+              {c.status && c.status !== 'ACTIVE' ? ` · ${c.status}` : ''}
+            </span>
+            <small>
+              {c.salesCount} ventas · {stats?.membersCount ?? c.membersCount} personas
+              {stats?.salesTotal != null ? ` · ${formatMoney(stats.salesTotal)}` : ''}
+            </small>
+          </button>
+          <div className="platform-admin__rail-card-actions">
+            <button
+              type="button"
+              className="platform-admin__rail-enter"
+              disabled={entering}
+              onClick={() => void enterCompany(c.id, 'home')}
+            >
+              Entrar
+            </button>
+            <button
+              type="button"
+              className="platform-admin__rail-enter platform-admin__rail-enter--ghost"
+              disabled={entering}
+              onClick={() => {
+                setSelectedId(c.id)
+                setTab('companies')
+                setMobileDetail(true)
+              }}
+            >
+              Gestionar
+            </button>
+          </div>
+        </div>
       )
     })
   }
 
   return (
-    <div className="platform-admin">
-      <div className="platform-admin__chrome">
-        <header className="platform-admin__topbar">
-          <BrandMark size="sm" />
-          <div className="platform-admin__topbar-meta">
-            <span className="platform-admin__badge">Admin</span>
-            <span className="platform-admin__who">{firstNameOf(user.name)}</span>
+    <div className={`platform-admin${screen === 'hub' ? ' platform-admin--hub' : ''}`}>
+      {screen === 'hub' ? (
+        <>
+          <div className="platform-admin__chrome">
+            <div className="platform-admin__chrome-inner">
+              <header className="platform-admin__topbar">
+                <BrandMark size="sm" />
+                <div className="platform-admin__topbar-meta">
+                  <span className="platform-admin__badge">Menú</span>
+                  <span className="platform-admin__who">{firstNameOf(user.name)}</span>
+                </div>
+                <div className="platform-admin__topbar-actions">
+                  <PublicThemeSwitch theme={theme} onToggle={toggleTheme} compact />
+                  <Button type="button" variant="secondary" size="sm" onClick={handleLogout}>
+                    Cerrar sesión
+                  </Button>
+                </div>
+              </header>
+            </div>
           </div>
-          <div className="platform-admin__topbar-actions">
-            <PublicThemeSwitch theme={theme} onToggle={toggleTheme} compact />
-            <Button type="button" variant="secondary" size="sm" onClick={handleLogout}>
-              Salir
-            </Button>
-          </div>
-        </header>
 
-        <nav className="platform-admin__tabs" aria-label="Secciones del panel">
-          {(
-            [
-              ['overview', 'Panorama'],
-              ['companies', 'Empresas'],
-              ['users', 'Cuentas'],
-              ['requests', 'Solicitudes'],
-            ] as const
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              type="button"
-              className={`platform-admin__tab${tab === id ? ' platform-admin__tab--active' : ''}`}
-              onClick={() => openTab(id)}
-            >
-              {label}
-              {id === 'users' ? ` (${users.length})` : ''}
-              {id === 'requests' && overview?.pendingRequests
-                ? ` (${overview.pendingRequests})`
-                : ''}
-            </button>
-          ))}
-        </nav>
+          {error ? (
+            <div className="platform-admin__error" role="alert">
+              {error}
+            </div>
+          ) : null}
+
+          {loading ? (
+            <p className="platform-admin__loading">Cargando menú…</p>
+          ) : (
+            <div className="platform-admin__body platform-admin__body--hub">
+              <div className="odoo-home platform-hub">
+                <header className="odoo-home__hero">
+                  <p className="odoo-home__brand muted small">{BRAND_NAME}</p>
+                  <h1 className="odoo-home__title">Hola, {firstNameOf(user.name)}</h1>
+                  <p className="odoo-home__lead muted">
+                    Elija una empresa para operar, o abra el panel admin para gestionar la
+                    plataforma.
+                  </p>
+                </header>
+
+                <ul className="odoo-home__grid platform-hub__grid">
+                  {hubCompanies.map((c, index) => {
+                    return (
+                      <li
+                        key={c.id}
+                        className="odoo-home__cell"
+                        style={{ '--launcher-i': index } as CSSProperties}
+                      >
+                        <button
+                          type="button"
+                          className={`odoo-app-tile odoo-app-tile--home ${HUB_TILE_ACCENTS[index % HUB_TILE_ACCENTS.length]}`}
+                          disabled={entering}
+                          onClick={() => void enterCompany(c.id, 'home')}
+                        >
+                          <span className="odoo-app-tile__icon platform-hub__company-icon" aria-hidden>
+                            {companyInitials(c.name)}
+                          </span>
+                          <span className="odoo-app-tile__label">{c.name}</span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                  <li
+                    className="odoo-home__cell"
+                    style={{ '--launcher-i': hubCompanies.length } as CSSProperties}
+                  >
+                    <button
+                      type="button"
+                      className="odoo-app-tile odoo-app-tile--home odoo-app-tile--finance"
+                      onClick={openAdminPanel}
+                    >
+                      <span className="odoo-app-tile__icon" aria-hidden>
+                        <AppLauncherIcon view="settings" />
+                      </span>
+                      <span className="odoo-app-tile__label">Panel admin</span>
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+      <div className="platform-admin__chrome">
+        <div className="platform-admin__chrome-inner">
+          <header className="platform-admin__topbar">
+            <BrandMark size="sm" />
+            <div className="platform-admin__topbar-meta">
+              <span className="platform-admin__badge">Admin</span>
+              <span className="platform-admin__who">{firstNameOf(user.name)}</span>
+            </div>
+            <div className="platform-admin__topbar-actions">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={openMainMenu}
+              >
+                Menú principal
+              </Button>
+              <div className="platform-admin__exit-wrap">
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={entering || exitTargets.length === 0}
+                  onClick={() => void leaveAdminToCompany()}
+                  aria-expanded={exitMenuOpen}
+                  aria-haspopup="menu"
+                >
+                  {entering
+                    ? 'Entrando…'
+                    : exitTargets.length <= 1
+                      ? 'Ir a mi empresa'
+                      : 'Ir a una empresa'}
+                </Button>
+                {exitMenuOpen && exitTargets.length > 1 ? (
+                  <div className="platform-admin__exit-menu" role="menu">
+                    <p className="platform-admin__exit-menu-title">Entrar a una empresa</p>
+                    {exitTargets.map((c) => (
+                      <button
+                        key={c.id}
+                        type="button"
+                        role="menuitem"
+                        className="platform-admin__exit-menu-item"
+                        disabled={entering}
+                        onClick={() => void leaveAdminToCompany(c.id)}
+                      >
+                        <strong>{c.name}</strong>
+                        <span>/{c.slug}</span>
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className="platform-admin__exit-menu-cancel"
+                      onClick={() => setExitMenuOpen(false)}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+              <PublicThemeSwitch theme={theme} onToggle={toggleTheme} compact />
+              <Button type="button" variant="secondary" size="sm" onClick={handleLogout}>
+                Cerrar sesión
+              </Button>
+            </div>
+          </header>
+
+          <nav className="platform-admin__tabs" aria-label="Secciones del panel">
+            {(
+              [
+                ['overview', 'Panorama'],
+                ['companies', 'Empresas'],
+                ['users', 'Cuentas'],
+                ['requests', 'Solicitudes'],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                className={`platform-admin__tab${tab === id ? ' platform-admin__tab--active' : ''}`}
+                onClick={() => openTab(id)}
+              >
+                {label}
+                {id === 'users' ? ` (${users.length})` : ''}
+                {id === 'requests' && pendingRequestCount
+                  ? ` (${pendingRequestCount})`
+                  : ''}
+              </button>
+            ))}
+          </nav>
+        </div>
       </div>
 
       {error ? (
@@ -646,217 +990,247 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
         <div className="platform-admin__body">
           {tab === 'overview' && overview ? (
             <section className="platform-admin__panel platform-admin__panorama">
-              <header className="platform-admin__hero">
-                <p className="platform-admin__kicker">Panel de plataforma</p>
-                <h1>Hola, {firstNameOf(user.name)}</h1>
-                <p className="platform-admin__hero-copy">
-                  Empiece por sus empresas. El menú admin queda arriba para cuentas,
-                  planes y solicitudes. Entre a un negocio cuando quiera operar.
-                </p>
-              </header>
+              <div className="platform-admin__panorama-head">
+                <header className="platform-admin__hero">
+                  <p className="platform-admin__kicker">Panel de plataforma</p>
+                  <h1>Hola, {firstNameOf(user.name)}</h1>
+                  <p className="platform-admin__hero-copy">
+                    Aquí tiene el control de todos sus negocios. Para operar el día a día, use{' '}
+                    <strong>Salir del panel admin</strong> e entre a una de sus empresas. Desde cada
+                    tarjeta también puede <strong>Entrar</strong> o <strong>Gestionar</strong> módulos.
+                  </p>
+                  {exitTargets.length > 0 ? (
+                    <div className="platform-admin__hero-actions">
+                      <Button
+                        type="button"
+                        disabled={entering}
+                        onClick={() => void leaveAdminToCompany()}
+                      >
+                        {exitTargets.length === 1
+                          ? `Entrar a ${exitTargets[0].name}`
+                          : 'Salir del panel e ir a una empresa'}
+                      </Button>
+                    </div>
+                  ) : null}
+                </header>
 
-              <div className="platform-admin__stats platform-admin__stats--wide">
-                <article className="platform-admin__stat">
-                  <span>Negocios</span>
-                  <strong>{overview.companiesCount}</strong>
-                  <small>{overview.activeCompanies} activos</small>
-                </article>
-                <article className="platform-admin__stat">
-                  <span>Cuentas</span>
-                  <strong>{overview.usersCount}</strong>
-                  <small>
-                    {overview.pendingRequests
-                      ? `${overview.pendingRequests} solicitudes`
-                      : 'Sin pendientes'}
-                  </small>
-                </article>
-                <article className="platform-admin__stat">
-                  <span>Ventas en la app</span>
-                  <strong>{totals.salesCount}</strong>
-                  <small>{formatMoney(totals.salesTotal)}</small>
-                </article>
-                <article className="platform-admin__stat">
-                  <span>Catálogo</span>
-                  <strong>{totals.productsCount}</strong>
-                  <small>{totals.inventoryCount} en inventario</small>
-                </article>
+                <div className="platform-admin__stats platform-admin__stats--wide">
+                  <article className="platform-admin__stat">
+                    <span>Negocios</span>
+                    <strong>{overview.companiesCount}</strong>
+                    <small>{overview.activeCompanies} activos</small>
+                  </article>
+                  <article className="platform-admin__stat">
+                    <span>Cuentas</span>
+                    <strong>{overview.usersCount}</strong>
+                    <small>
+                      {overview.pendingRequests
+                        ? `${overview.pendingRequests} solicitudes`
+                        : 'Sin pendientes'}
+                    </small>
+                  </article>
+                  <article className="platform-admin__stat">
+                    <span>Ventas en la app</span>
+                    <strong>{totals.salesCount}</strong>
+                    <small>{formatMoney(totals.salesTotal)}</small>
+                  </article>
+                  <article className="platform-admin__stat">
+                    <span>Catálogo</span>
+                    <strong>{totals.productsCount}</strong>
+                    <small>{totals.inventoryCount} en inventario</small>
+                  </article>
+                </div>
               </div>
 
-              <h2>Sus empresas</h2>
-              <p className="platform-admin__hint">
-                Toque una para ver su panorama. Entre al panel cuando quiera operar.
-              </p>
-              <div className="platform-admin__rail" role="list">
-                {railCards(myCompanies.length ? myCompanies : companies)}
-              </div>
-              {myCompanies.length > 0 && otherCompanies.length > 0 ? (
-                <>
-                  <h2>Otras cuentas</h2>
+              <div className="platform-admin__panorama-main">
+                <div className="platform-admin__panorama-primary">
+                  <h2>Sus empresas</h2>
                   <p className="platform-admin__hint">
-                    Resto de la plataforma. También puede entrar como administrador.
+                    Elija un negocio para ver el panorama. Desde cada tarjeta puede entrar al panel o
+                    abrir la gestión completa.
                   </p>
                   <div className="platform-admin__rail" role="list">
-                    {railCards(otherCompanies)}
+                    {railCards(myCompanies.length ? myCompanies : companies)}
                   </div>
-                </>
-              ) : null}
-
-              {focused ? (
-                <article className="platform-admin__focus">
-                  <header>
-                    <div>
-                      <span className="platform-admin__avatar platform-admin__avatar--lg" aria-hidden>
-                        {companyInitials(focused.name)}
-                      </span>
-                      <div>
-                        <p className="platform-admin__kicker">Negocio en foco</p>
-                        <h2>{focused.name}</h2>
-                        <p>
-                          {companyPlanLabel(focused.plan)} · {focused.membersCount} usuarios
-                          {focusedStats?.lastSaleAt
-                            ? ` · Última venta ${formatAgo(focusedStats.lastSaleAt)}`
-                            : ' · Sin ventas aún'}
-                        </p>
+                  {myCompanies.length > 0 && otherCompanies.length > 0 ? (
+                    <>
+                      <h2>Otras cuentas de la plataforma</h2>
+                      <p className="platform-admin__hint">
+                        Negocios donde usted no es miembro, pero puede entrar como administrador.
+                      </p>
+                      <div className="platform-admin__rail" role="list">
+                        {railCards(otherCompanies)}
                       </div>
-                    </div>
-                    <div className="platform-admin__focus-actions">
-                      <Button
-                        type="button"
-                        disabled={entering}
-                        onClick={() => void enterCompany(focused.id, 'home')}
-                      >
-                        Abrir panel
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        disabled={entering}
-                        onClick={() => void enterCompany(focused.id, 'pos')}
-                      >
-                        Punto de venta
-                      </Button>
-                    </div>
-                  </header>
+                    </>
+                  ) : null}
 
-                  <div className="platform-admin__focus-grid">
-                    <div>
-                      <strong>{focusedStats?.salesCount ?? focused.salesCount}</strong>
-                      <span>Ventas</span>
-                      <small>
-                        {formatMoney(focusedStats?.salesTotal ?? 0)}
-                      </small>
-                    </div>
-                    <div>
-                      <strong>{focused.productsCount}</strong>
-                      <span>Productos</span>
-                    </div>
-                    <div>
-                      <strong>{focusedStats?.inventoryCount ?? 0}</strong>
-                      <span>Inventario</span>
-                    </div>
-                    <div>
-                      <strong>{focused.shopOrdersCount}</strong>
-                      <span>Pedidos web</span>
-                    </div>
-                  </div>
+                  {focused ? (
+                    <article className="platform-admin__focus">
+                      <header>
+                        <div>
+                          <span
+                            className="platform-admin__avatar platform-admin__avatar--lg"
+                            aria-hidden
+                          >
+                            {companyInitials(focused.name)}
+                          </span>
+                          <div>
+                            <p className="platform-admin__kicker">Negocio en foco</p>
+                            <h2>{focused.name}</h2>
+                            <p>
+                              {companyPlanLabel(focused.plan)} · {focused.membersCount} usuarios · /
+                              {focused.slug}
+                              {focusedStats?.lastSaleAt
+                                ? ` · Última venta ${formatAgo(focusedStats.lastSaleAt)}`
+                                : ' · Sin ventas aún'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="platform-admin__focus-actions">
+                          <Button
+                            type="button"
+                            disabled={entering}
+                            onClick={() => void enterCompany(focused.id, 'home')}
+                          >
+                            Entrar al negocio
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={entering}
+                            onClick={() => void enterCompany(focused.id, 'pos')}
+                          >
+                            Punto de venta
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => {
+                              setSelectedId(focused.id)
+                              setTab('companies')
+                              setMobileDetail(true)
+                            }}
+                          >
+                            Control completo
+                          </Button>
+                        </div>
+                      </header>
 
-                  {(focusedStats?.moduleNames ?? focused.modules.map((m) => m.name)).length ? (
-                    <p className="platform-admin__chips">
-                      {(focusedStats?.moduleNames ?? focused.modules.map((m) => m.name)).map(
-                        (name) => (
-                          <span key={name}>{name}</span>
-                        ),
+                      <div className="platform-admin__focus-grid">
+                        <div>
+                          <strong>{focusedStats?.salesCount ?? focused.salesCount}</strong>
+                          <span>Ventas</span>
+                          <small>{formatMoney(focusedStats?.salesTotal ?? 0)}</small>
+                        </div>
+                        <div>
+                          <strong>{focused.productsCount}</strong>
+                          <span>Productos</span>
+                        </div>
+                        <div>
+                          <strong>{focusedStats?.inventoryCount ?? 0}</strong>
+                          <span>Inventario</span>
+                        </div>
+                        <div>
+                          <strong>{focused.shopOrdersCount}</strong>
+                          <span>Pedidos web</span>
+                        </div>
+                      </div>
+
+                      {(focusedStats?.moduleNames ?? focused.modules.map((m) => m.name)).length ? (
+                        <p className="platform-admin__chips">
+                          {(
+                            focusedStats?.moduleNames ?? focused.modules.map((m) => m.name)
+                          ).map((name) => (
+                            <span key={name}>{name}</span>
+                          ))}
+                        </p>
+                      ) : (
+                        <p className="platform-admin__hint">Sin módulos activos.</p>
                       )}
-                    </p>
-                  ) : (
-                    <p className="platform-admin__hint">Sin módulos activos.</p>
-                  )}
 
-                  <div className="platform-admin__jump">
-                    {(
-                      [
-                        ['sales', 'Ventas'],
-                        ['inventory', 'Inventario'],
-                        ['products', 'Productos'],
-                        ['booking', 'Agenda'],
-                      ] as const
-                    ).map(([view, label]) => (
-                      <button
-                        key={view}
-                        type="button"
-                        className="platform-admin__jump-btn"
-                        disabled={entering}
-                        onClick={() => void enterCompany(focused.id, view)}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      className="platform-admin__jump-btn"
-                      onClick={() => {
-                        setSelectedId(focused.id)
-                        setTab('companies')
-                        setMobileDetail(true)
-                      }}
-                    >
-                      Ajustar módulos
-                    </button>
-                  </div>
-                </article>
-              ) : null}
-
-              <div className="platform-admin__two">
-                <section>
-                  <h2>Quién entró</h2>
-                  <ul className="platform-admin__people">
-                    {recentLogins.length === 0 ? (
-                      <li className="platform-admin__hint">Todavía no hay accesos.</li>
-                    ) : (
-                      recentLogins.map((u) => (
-                        <li key={u.id}>
-                          <button type="button" onClick={() => openUser(u.id)}>
-                            <span className="platform-admin__avatar" aria-hidden>
-                              {companyInitials(u.name)}
-                            </span>
-                            <span>
-                              <strong>{u.name}</strong>
-                              <small>
-                                {formatAgo(u.lastLoginAt)}
-                                {u.companies[0] ? ` · ${u.companies[0].name}` : ''}
-                              </small>
-                            </span>
+                      <p className="platform-admin__section-label">Acceso rápido</p>
+                      <div className="platform-admin__jump">
+                        {COMPANY_QUICK_LINKS.filter((l) => l.group === 'operar').map((link) => (
+                          <button
+                            key={link.view}
+                            type="button"
+                            className="platform-admin__jump-btn"
+                            disabled={entering}
+                            onClick={() => void enterCompany(focused.id, link.view)}
+                          >
+                            {link.label}
                           </button>
-                        </li>
-                      ))
-                    )}
-                  </ul>
-                </section>
+                        ))}
+                        {COMPANY_QUICK_LINKS.filter((l) => l.group === 'control')
+                          .slice(0, 3)
+                          .map((link) => (
+                            <button
+                              key={link.view}
+                              type="button"
+                              className="platform-admin__jump-btn"
+                              disabled={entering}
+                              onClick={() => void enterCompany(focused.id, link.view)}
+                            >
+                              {link.label}
+                            </button>
+                          ))}
+                      </div>
+                    </article>
+                  ) : null}
+                </div>
 
-                <section>
-                  <h2>Solicitudes</h2>
-                  {overview.recentRequests.length === 0 ? (
-                    <p className="platform-admin__hint">No hay solicitudes pendientes.</p>
-                  ) : (
+                <aside className="platform-admin__panorama-side">
+                  <section className="platform-admin__side-card">
+                    <h2>Quién entró</h2>
                     <ul className="platform-admin__people">
-                      {overview.recentRequests.map((r) => (
-                        <li key={r.id}>
-                          <button type="button" onClick={() => openTab('requests')}>
-                            <span className="platform-admin__avatar" aria-hidden>
-                              {companyInitials(r.companyName)}
-                            </span>
-                            <span>
-                              <strong>{r.companyName}</strong>
-                              <small>
-                                {r.contactName} · {formatAgo(r.createdAt)}
-                              </small>
-                            </span>
-                          </button>
-                        </li>
-                      ))}
+                      {recentLogins.length === 0 ? (
+                        <li className="platform-admin__hint">Todavía no hay accesos.</li>
+                      ) : (
+                        recentLogins.map((u) => (
+                          <li key={u.id}>
+                            <button type="button" onClick={() => openUser(u.id)}>
+                              <span className="platform-admin__avatar" aria-hidden>
+                                {companyInitials(u.name)}
+                              </span>
+                              <span>
+                                <strong>{u.name}</strong>
+                                <small>
+                                  {formatAgo(u.lastLoginAt)}
+                                  {u.companies[0] ? ` · ${u.companies[0].name}` : ''}
+                                </small>
+                              </span>
+                            </button>
+                          </li>
+                        ))
+                      )}
                     </ul>
-                  )}
-                </section>
+                  </section>
+
+                  <section className="platform-admin__side-card">
+                    <h2>Solicitudes</h2>
+                    {overview.recentRequests.length === 0 ? (
+                      <p className="platform-admin__hint">No hay solicitudes pendientes.</p>
+                    ) : (
+                      <ul className="platform-admin__people">
+                        {overview.recentRequests.map((r) => (
+                          <li key={r.id}>
+                            <button type="button" onClick={() => openTab('requests')}>
+                              <span className="platform-admin__avatar" aria-hidden>
+                                {companyInitials(r.companyName)}
+                              </span>
+                              <span>
+                                <strong>{r.companyName}</strong>
+                                <small>
+                                  {r.contactName} · {formatAgo(r.createdAt)}
+                                </small>
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+                </aside>
               </div>
             </section>
           ) : null}
@@ -865,26 +1239,99 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
             <section className={`platform-admin__split${mobileDetail ? ' is-detail' : ''}`}>
               <div className="platform-admin__list">
                 <h1>Empresas</h1>
-                <ul className="platform-admin__company-list">
-                  {companies.map((c) => (
-                    <li key={c.id}>
-                      <button
-                        type="button"
-                        className={`platform-admin__company-btn${
-                          selectedId === c.id ? ' platform-admin__company-btn--active' : ''
-                        }`}
-                        onClick={() => openCompany(c.id)}
-                      >
-                        <strong>{c.name}</strong>
-                        <span>
-                          /{c.slug} · {companyPlanLabel(c.plan)}
-                        </span>
-                        <small>
-                          {c.productsCount} prod · {c.salesCount} ventas · {c.membersCount} usuarios
-                        </small>
-                      </button>
-                    </li>
+                <p className="platform-admin__hint">
+                  {companies.length} negocio{companies.length === 1 ? '' : 's'} en la plataforma.
+                  Busque, filtre y entre a operar o gestionar cada uno.
+                </p>
+                <label className="platform-admin__search">
+                  <span className="sr-only">Buscar empresas</span>
+                  <input
+                    type="search"
+                    value={companyQuery}
+                    onChange={(e) => setCompanyQuery(e.target.value)}
+                    placeholder="Buscar por nombre, slug o plan…"
+                    enterKeyHint="search"
+                  />
+                </label>
+                <div className="platform-admin__scope" role="group" aria-label="Filtrar empresas">
+                  {(
+                    [
+                      ['all', 'Todas'],
+                      ['mine', 'Mías'],
+                      ['other', 'Otras'],
+                    ] as const
+                  ).map(([id, label]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      className={`platform-admin__scope-btn${companyScope === id ? ' is-active' : ''}`}
+                      onClick={() => setCompanyScope(id)}
+                    >
+                      {label}
+                      {id === 'mine' ? ` (${myCompanies.length || companies.length})` : ''}
+                      {id === 'other' ? ` (${otherCompanies.length})` : ''}
+                      {id === 'all' ? ` (${companies.length})` : ''}
+                    </button>
                   ))}
+                </div>
+                <ul className="platform-admin__company-list">
+                  {listedCompanies.length === 0 ? (
+                    <li className="platform-admin__hint">No hay empresas con ese criterio.</li>
+                  ) : (
+                    listedCompanies.map((c) => {
+                      const stats = overview?.companyStats?.find((s) => s.id === c.id)
+                      const isMine = membershipIds.has(c.id)
+                      return (
+                        <li key={c.id} className="platform-admin__company-row">
+                          <button
+                            type="button"
+                            className={`platform-admin__company-btn${
+                              selectedId === c.id ? ' platform-admin__company-btn--active' : ''
+                            }`}
+                            onClick={() => openCompany(c.id)}
+                          >
+                            <span className="platform-admin__account-head">
+                              <strong>{c.name}</strong>
+                              <span
+                                className={`platform-admin__pill${
+                                  c.status === 'ACTIVE' || !c.status ? ' is-on' : ' is-off'
+                                }`}
+                              >
+                                {c.status === 'ACTIVE' || !c.status ? 'Activa' : c.status}
+                              </span>
+                            </span>
+                            <span>
+                              /{c.slug} · {companyPlanLabel(c.plan)}
+                              {isMine ? ' · Suya' : ''}
+                            </span>
+                            <small>
+                              {c.productsCount} prod · {c.salesCount} ventas ·{' '}
+                              {stats?.membersCount ?? c.membersCount} usuarios
+                              {stats?.salesTotal != null ? ` · ${formatMoney(stats.salesTotal)}` : ''}
+                            </small>
+                          </button>
+                          <div className="platform-admin__company-row-actions">
+                            <button
+                              type="button"
+                              className="platform-admin__rail-enter"
+                              disabled={entering}
+                              onClick={() => void enterCompany(c.id, 'home')}
+                            >
+                              Entrar
+                            </button>
+                            <button
+                              type="button"
+                              className="platform-admin__rail-enter platform-admin__rail-enter--ghost"
+                              disabled={entering}
+                              onClick={() => void enterCompany(c.id, 'pos')}
+                            >
+                              POS
+                            </button>
+                          </div>
+                        </li>
+                      )
+                    })
+                  )}
                 </ul>
               </div>
 
@@ -918,12 +1365,24 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
                           disabled={entering}
                           onClick={() => openModule('home')}
                         >
-                          Abrir panel completo
+                          Entrar al negocio
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          disabled={entering}
+                          onClick={() => openModule('pos')}
+                        >
+                          Punto de venta
                         </Button>
                         <label className="platform-admin__plan-select">
                           <span className="sr-only">Plan</span>
                           <select
-                            value={detail.plan === 'BUSINESS' || detail.plan === 'PRO' ? detail.plan : 'TRIAL'}
+                            value={
+                              detail.plan === 'BUSINESS' || detail.plan === 'PRO'
+                                ? detail.plan
+                                : 'TRIAL'
+                            }
                             disabled={planBusyId === detail.id}
                             onChange={(e) =>
                               void setCompanyPlan(detail.id, e.target.value as CompanyPlanId)
@@ -946,61 +1405,107 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
                       <span>{detail.counts.shopOrders} pedidos web</span>
                     </div>
 
-                    <h3>Módulos de la empresa</h3>
+                    <h3>Entrar y operar</h3>
                     <p className="platform-admin__hint">
-                      Active lo que el negocio necesita. Los tres principales son Ventas, Inventario y
-                      Agenda de citas.
+                      Abra directamente el área que necesita. Seguirá siendo administrador de
+                      plataforma y podrá volver con la barra superior.
+                    </p>
+                    <div className="platform-admin__hub">
+                      {(
+                        [
+                          ['operar', 'Operación'],
+                          ['gestionar', 'Gestión'],
+                          ['control', 'Control'],
+                        ] as const
+                      ).map(([group, title]) => (
+                        <div key={group} className="platform-admin__hub-group">
+                          <p className="platform-admin__section-label">{title}</p>
+                          <div className="platform-admin__modules">
+                            {COMPANY_QUICK_LINKS.filter((l) => l.group === group).map((link) => (
+                              <button
+                                key={link.view}
+                                type="button"
+                                className="platform-admin__module"
+                                disabled={entering}
+                                onClick={() => openModule(link.view)}
+                              >
+                                <strong>{link.label}</strong>
+                                <span>Abrir {link.view}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <h3>Módulos activos</h3>
+                    <p className="platform-admin__hint">
+                      Active solo lo que el negocio necesita. Ventas, Inventario y Agenda son los
+                      principales.
                     </p>
                     <ModuleToggles
                       modules={detail.allModules ?? []}
                       busy={moduleBusy}
-                      onToggle={(slug, enabled) => void toggleCompanyModule(detail.id, slug, enabled)}
+                      onToggle={(slug, enabled) =>
+                        void toggleCompanyModule(detail.id, slug, enabled)
+                      }
                     />
 
-                    <h3>Abrir módulos</h3>
-                    <div className="platform-admin__modules">
-                      {detail.modules.map((m) => {
-                        const view = MODULE_VIEW[m.slug]
-                        if (!view) return null
-                        return (
-                          <button
-                            key={m.slug}
-                            type="button"
-                            className="platform-admin__module"
-                            disabled={entering}
-                            onClick={() => openModule(view)}
-                          >
-                            <strong>{m.name}</strong>
-                            <span>Abrir {view}</span>
-                          </button>
-                        )
-                      })}
-                      {EXTRA_MODULE_VIEWS.map((m) => (
-                        <button
-                          key={m.view}
-                          type="button"
-                          className="platform-admin__module platform-admin__module--extra"
-                          disabled={entering}
-                          onClick={() => openModule(m.view)}
-                        >
-                          <strong>{m.label}</strong>
-                          <span>Abrir módulo</span>
-                        </button>
-                      ))}
-                    </div>
+                    {detail.modules.length > 0 ? (
+                      <>
+                        <h3>Atajos de módulos habilitados</h3>
+                        <div className="platform-admin__modules">
+                          {detail.modules.map((m) => {
+                            const view = MODULE_VIEW[m.slug]
+                            if (!view) return null
+                            return (
+                              <button
+                                key={m.slug}
+                                type="button"
+                                className="platform-admin__module platform-admin__module--extra"
+                                disabled={entering}
+                                onClick={() => openModule(view)}
+                              >
+                                <strong>{m.name}</strong>
+                                <span>Ir al módulo</span>
+                              </button>
+                            )
+                          })}
+                          {EXTRA_MODULE_VIEWS.map((m) => (
+                            <button
+                              key={m.view}
+                              type="button"
+                              className="platform-admin__module platform-admin__module--extra"
+                              disabled={entering}
+                              onClick={() => openModule(m.view)}
+                            >
+                              <strong>{m.label}</strong>
+                              <span>{m.hint}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    ) : null}
 
-                    <h3>Usuarios de la empresa</h3>
+                    <h3>Equipo de la empresa</h3>
                     <ul className="platform-admin__members">
-                      {detail.members.map((m) => (
-                        <li key={m.id}>
-                          <strong>{m.name}</strong> — {m.email}
-                          <span>{m.roles.join(', ')}</span>
-                        </li>
-                      ))}
+                      {detail.members.length === 0 ? (
+                        <li className="platform-admin__hint">Sin miembros registrados.</li>
+                      ) : (
+                        detail.members.map((m) => (
+                          <li key={m.id}>
+                            <strong>{m.name}</strong> — {m.email}
+                            <span>
+                              {m.roles.join(', ') || 'Sin rol'}
+                              {!m.active ? ' · Inactivo' : ''}
+                            </span>
+                          </li>
+                        ))
+                      )}
                     </ul>
                   </>
                 ) : (
-                  <p>Seleccione una empresa.</p>
+                  <p className="platform-admin__hint">Seleccione una empresa de la lista.</p>
                 )}
               </div>
             </section>
@@ -1305,42 +1810,213 @@ export function PlatformAdminView({ baseUrl, user, onEnterCompany, onLogout }: P
           ) : null}
 
           {tab === 'requests' ? (
-            <section className="platform-admin__panel">
-              <h1>Solicitudes y planes</h1>
-              <p className="platform-admin__hint">
-                Aquí llegan los registros y los pedidos de Pro o Empresa. También le avisamos por Telegram
-                si el bot está vinculado.
-              </p>
-              <div className="platform-admin__table-wrap">
-                <table className="platform-admin__table">
-                  <thead>
-                    <tr>
-                      <th>Empresa</th>
-                      <th>Contacto</th>
-                      <th>Email</th>
-                      <th>Teléfono</th>
-                      <th>Mensaje</th>
-                      <th>Fecha</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {requests.map((r) => (
-                      <tr key={r.id}>
-                        <td data-label="Empresa">{r.companyName}</td>
-                        <td data-label="Contacto">{r.contactName}</td>
-                        <td data-label="Email">{r.email}</td>
-                        <td data-label="Teléfono">{r.phone ?? '—'}</td>
-                        <td data-label="Mensaje">{r.message ?? '—'}</td>
-                        <td data-label="Fecha">{new Date(r.createdAt).toLocaleString('es-CO')}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <section className="platform-admin__panel platform-admin__requests">
+              <header className="platform-admin__section-head">
+                <div>
+                  <h1>Solicitudes</h1>
+                  <p className="platform-admin__hint">
+                    Registros y pedidos de Pro o Empresa. Apruebe, rechace o elimine
+                    cada solicitud.
+                  </p>
+                </div>
+              </header>
+
+              <div className="platform-admin__filters" role="tablist" aria-label="Estado">
+                {(
+                  [
+                    ['PENDING', 'Pendientes'],
+                    ['APPROVED', 'Aprobadas'],
+                    ['REJECTED', 'Rechazadas'],
+                    ['ALL', 'Todas'],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={requestFilter === id}
+                    className={`platform-admin__filter${
+                      requestFilter === id ? ' is-active' : ''
+                    }`}
+                    onClick={() => setRequestFilter(id)}
+                  >
+                    {label}
+                    {id === 'PENDING' ? ` (${pendingRequestCount})` : ''}
+                  </button>
+                ))}
               </div>
+
+              {filteredRequests.length === 0 ? (
+                <p className="platform-admin__empty">No hay solicitudes en este filtro.</p>
+              ) : (
+                <ul className="platform-admin__request-list">
+                  {filteredRequests.map((r) => {
+                    const busy = requestBusyId === r.id
+                    return (
+                      <li key={r.id} className="platform-admin__request-card">
+                        <div className="platform-admin__request-top">
+                          <span className="platform-admin__avatar" aria-hidden>
+                            {companyInitials(r.companyName)}
+                          </span>
+                          <div className="platform-admin__request-meta">
+                            <strong>{r.companyName}</strong>
+                            <span>
+                              {r.contactName} · {formatAgo(r.createdAt)}
+                            </span>
+                          </div>
+                          <span
+                            className={`platform-admin__pill platform-admin__pill--req is-${r.status.toLowerCase()}`}
+                          >
+                            {requestStatusLabel(r.status)}
+                          </span>
+                        </div>
+
+                        <dl className="platform-admin__request-fields">
+                          <div>
+                            <dt>Email</dt>
+                            <dd>
+                              <a href={`mailto:${r.email}`}>{r.email}</a>
+                            </dd>
+                          </div>
+                          <div>
+                            <dt>Teléfono</dt>
+                            <dd>
+                              {r.phone ? (
+                                <a href={`tel:${r.phone.replace(/\s+/g, '')}`}>{r.phone}</a>
+                              ) : (
+                                '—'
+                              )}
+                            </dd>
+                          </div>
+                          <div className="platform-admin__request-msg">
+                            <dt>Mensaje</dt>
+                            <dd>{r.message?.trim() || 'Sin mensaje'}</dd>
+                          </div>
+                          <div>
+                            <dt>Fecha</dt>
+                            <dd>{formatWhen(r.createdAt)}</dd>
+                          </div>
+                        </dl>
+
+                        <div className="platform-admin__request-actions">
+                          {r.status !== 'APPROVED' ? (
+                            <Button
+                              type="button"
+                              size="sm"
+                              disabled={busy || confirmBusy}
+                              onClick={() =>
+                                setConfirm({
+                                  kind: 'approve-request',
+                                  id: r.id,
+                                  companyName: r.companyName,
+                                })
+                              }
+                            >
+                              Aprobar
+                            </Button>
+                          ) : null}
+                          {r.status !== 'REJECTED' ? (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              disabled={busy || confirmBusy}
+                              onClick={() =>
+                                setConfirm({
+                                  kind: 'reject-request',
+                                  id: r.id,
+                                  companyName: r.companyName,
+                                })
+                              }
+                            >
+                              Rechazar
+                            </Button>
+                          ) : null}
+                          <Button
+                            type="button"
+                            variant="danger"
+                            size="sm"
+                            disabled={busy || confirmBusy}
+                            onClick={() =>
+                              setConfirm({
+                                kind: 'delete-request',
+                                id: r.id,
+                                companyName: r.companyName,
+                              })
+                            }
+                          >
+                            Eliminar
+                          </Button>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
             </section>
           ) : null}
         </div>
       )}
+        </>
+      )}
+
+      <AdminConfirmDialog
+        open={Boolean(confirm)}
+        busy={confirmBusy}
+        danger={
+          confirm?.kind === 'delete-user' ||
+          confirm?.kind === 'delete-request' ||
+          confirm?.kind === 'reject-request' ||
+          (confirm?.kind === 'toggle-user' && !confirm.active)
+        }
+        title={
+          confirm?.kind === 'delete-user'
+            ? 'Eliminar cuenta'
+            : confirm?.kind === 'toggle-user'
+              ? confirm.active
+                ? 'Activar cuenta'
+                : 'Desactivar cuenta'
+              : confirm?.kind === 'delete-request'
+                ? 'Eliminar solicitud'
+                : confirm?.kind === 'approve-request'
+                  ? 'Aprobar solicitud'
+                  : confirm?.kind === 'reject-request'
+                    ? 'Rechazar solicitud'
+                    : 'Confirmar'
+        }
+        message={
+          confirm?.kind === 'delete-user'
+            ? `¿Eliminar a ${confirm.name}? Se quita el acceso. Las empresas y sus datos siguen en la plataforma.`
+            : confirm?.kind === 'toggle-user'
+              ? confirm.active
+                ? `¿Activar de nuevo la cuenta de ${confirm.name}?`
+                : `¿Desactivar la cuenta de ${confirm.name}? No podrá iniciar sesión.`
+              : confirm?.kind === 'delete-request'
+                ? `¿Eliminar la solicitud de ${confirm.companyName}? Esta acción no se puede deshacer.`
+                : confirm?.kind === 'approve-request'
+                  ? `¿Marcar como aprobada la solicitud de ${confirm.companyName}? Luego puede crear la cuenta manualmente.`
+                  : confirm?.kind === 'reject-request'
+                    ? `¿Rechazar la solicitud de ${confirm.companyName}?`
+                    : ''
+        }
+        confirmLabel={
+          confirm?.kind === 'delete-user' || confirm?.kind === 'delete-request'
+            ? 'Eliminar'
+            : confirm?.kind === 'approve-request'
+              ? 'Aprobar'
+              : confirm?.kind === 'reject-request'
+                ? 'Rechazar'
+                : confirm?.kind === 'toggle-user'
+                  ? confirm.active
+                    ? 'Activar'
+                    : 'Desactivar'
+                  : 'Confirmar'
+        }
+        onCancel={() => {
+          if (!confirmBusy) setConfirm(null)
+        }}
+        onConfirm={() => void runConfirm()}
+      />
 
       <ViewBootSplash ready={!loading} label="Cargando panel de administración…" />
     </div>

@@ -268,6 +268,10 @@
     @apply flex items-center justify-end gap-1;
   }
 
+  .vos-mobile-header__trailing .platform-admin-return {
+    max-width: 4.85rem;
+  }
+
   .vos-mobile-header__home,
   .vos-mobile-header__theme,
   .vos-mobile-header__profile,
@@ -1997,5 +2001,181 @@ html[data-theme='dark'] .cash-close-panel__status--draft {
   .cash-close-arqueo__actions .btn-secondary {
     width: 100%;
     justify-content: center;
+  }
+
+  .cash-close-manager__week {
+    padding: 0.85rem 0.8rem 0.95rem;
+    border-radius: 14px;
+  }
+
+  .cash-close-manager__week-head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .cash-close-manager__week-stats {
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .cash-close-manager__week-strip {
+    margin-inline: -0.15rem;
+    padding-bottom: 0.15rem;
+  }
+
+  .cash-close-manager__week-day {
+    flex: 0 0 min(28%, 5.2rem);
+  }
+
+  .cash-close-manager__day-nav {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 0.4rem;
+  }
+
+  .cash-close-manager__day-nav .btn-compact {
+    min-height: 2.65rem;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .cash-close-manager__calendars {
+    order: 2;
+  }
+
+  .cash-close-manager__detail {
+    order: 1;
+  }
+
+  .cash-close-manager__layout {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}
+
+.cash-close-manager__week {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem 1.05rem;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface-elevated);
+}
+
+.cash-close-manager__week-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.85rem 1.25rem;
+  align-items: flex-start;
+}
+
+.cash-close-manager__week-kicker {
+  margin: 0 0 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.cash-close-manager__week-head strong {
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.cash-close-manager__week-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(5.5rem, auto));
+  gap: 0.55rem 0.85rem;
+  margin: 0;
+}
+
+.cash-close-manager__week-stats dt {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.cash-close-manager__week-stats dd {
+  margin: 0.1rem 0 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.cash-close-manager__week-stats dd.is-neg {
+  color: var(--danger, #f87171);
+}
+
+.cash-close-manager__week-stats small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.cash-close-manager__week-strip {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.cash-close-manager__week-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.cash-close-manager__week-day {
+  flex: 1 1 0;
+  min-width: 4.4rem;
+  display: grid;
+  gap: 0.12rem;
+  text-align: center;
+  padding: 0.55rem 0.35rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.cash-close-manager__week-day span {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.cash-close-manager__week-day strong {
+  font-size: 1.05rem;
+}
+
+.cash-close-manager__week-day small {
+  font-size: 0.62rem;
+  color: var(--muted);
+  line-height: 1.2;
+}
+
+.cash-close-manager__week-day.is-active {
+  border-color: var(--berry-light, #b07cff);
+  background: color-mix(in srgb, var(--berry, #7a4eaa) 14%, var(--surface));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--berry-light, #b07cff) 30%, transparent);
+}
+
+.cash-close-manager__day-nav {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .cash-close-manager__day-nav {
+    display: grid;
+  }
+
+  .app-shell--mobile-dock .mobile-view--cash-close .cash-close-manager__head {
+    display: none;
   }
 }

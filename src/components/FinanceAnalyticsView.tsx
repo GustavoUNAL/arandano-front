@@ -60,16 +60,39 @@ const GRANULARITY_LABEL: Record<AnalyticsGranularity, string> = {
   month: 'Mes',
 }
 
+type RangePreset = 'today' | 'week' | 'lastWeek' | 'month' | 'prevMonth' | 'all' | 'custom'
+
+function weekRangeAround(ref: string): { from: string; to: string } {
+  const monday = mondayOf(ref)
+  return { from: monday, to: addDays(monday, 6) }
+}
+
+function formatRangeLabel(from: string, to: string): string {
+  const fmt = new Intl.DateTimeFormat('es-CO', {
+    day: 'numeric',
+    month: 'short',
+  })
+  const a = new Date(`${from}T12:00:00-05:00`)
+  const b = new Date(`${to}T12:00:00-05:00`)
+  if (from === to) return fmt.format(a)
+  return `${fmt.format(a)} – ${fmt.format(b)}`
+}
+
 export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
   const first = useFirstName()
   const today = bogotaToday()
-  const [dateFrom, setDateFrom] = useState('2025-01-01')
-  const [dateTo, setDateTo] = useState(() => bogotaToday())
-  const [granularity, setGranularity] = useState<AnalyticsGranularity>('month')
+  const initialWeek = weekRangeAround(today)
+  const [dateFrom, setDateFrom] = useState(initialWeek.from)
+  const [dateTo, setDateTo] = useState(initialWeek.to)
+  const [granularity, setGranularity] = useState<AnalyticsGranularity>('day')
+  const [activePreset, setActivePreset] = useState<RangePreset>('week')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [data, setData] = useState<FinancialAnalyticsOverview | null>(null)
-  const [initialized, setInitialized] = useState(false)
+  const [dataBounds, setDataBounds] = useState<{
+    dateFrom: string
+    dateTo: string
+  } | null>(null)
 
   const [utilMonth, setUtilMonth] = useState(() => toMonthInput(today))
   const [agua, setAgua] = useState('')
@@ -88,26 +111,14 @@ export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
         granularity,
       })
       setData(res)
-      if (!initialized && res.dataBounds) {
-        setInitialized(true)
-        if (
-          res.dataBounds.dateFrom !== dateFrom ||
-          res.dataBounds.dateTo !== dateTo
-        ) {
-          setDateFrom(res.dataBounds.dateFrom)
-          setDateTo(res.dataBounds.dateTo)
-        }
-      } else if (!initialized) {
-        setInitialized(true)
-      }
+      if (res.dataBounds) setDataBounds(res.dataBounds)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al cargar análisis')
       setData(null)
-      setInitialized(true)
     } finally {
       setLoading(false)
     }
-  }, [baseUrl, dateFrom, dateTo, granularity, initialized])
+  }, [baseUrl, dateFrom, dateTo, granularity])
 
   useEffect(() => {
     void load()
@@ -151,10 +162,8 @@ export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
     (summary?.purchasesCOP ?? 0) + (summary?.staffPayCOP ?? 0) + utilitiesTotal
   const inflows = summary?.inflowsCOP ?? summary?.salesCOP ?? 0
 
-  const setPreset = (
-    kind: 'today' | 'week' | 'lastWeek' | 'month' | 'prevMonth' | 'all',
-  ) => {
-    setInitialized(true)
+  const setPreset = (kind: RangePreset) => {
+    setActivePreset(kind)
     if (kind === 'today') {
       setDateFrom(today)
       setDateTo(today)
@@ -162,9 +171,9 @@ export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
       return
     }
     if (kind === 'week') {
-      const monday = mondayOf(today)
-      setDateFrom(monday)
-      setDateTo(addDays(monday, 6))
+      const range = weekRangeAround(today)
+      setDateFrom(range.from)
+      setDateTo(range.to)
       setGranularity('day')
       return
     }
@@ -183,7 +192,10 @@ export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
       return
     }
     if (kind === 'all') {
-      if (data?.dataBounds) {
+      if (dataBounds) {
+        setDateFrom(dataBounds.dateFrom)
+        setDateTo(dataBounds.dateTo)
+      } else if (data?.dataBounds) {
         setDateFrom(data.dataBounds.dateFrom)
         setDateTo(data.dataBounds.dateTo)
       } else {
@@ -193,10 +205,12 @@ export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
       setGranularity('month')
       return
     }
-    const range = monthRange(today)
-    setDateFrom(range.from)
-    setDateTo(range.to)
-    setGranularity('week')
+    if (kind === 'month') {
+      const range = monthRange(today)
+      setDateFrom(range.from)
+      setDateTo(range.to)
+      setGranularity('week')
+    }
   }
 
   const saveUtilities = async () => {
@@ -239,7 +253,7 @@ export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
               className={granularity === g ? 'active' : ''}
               onClick={() => {
                 setGranularity(g)
-                setInitialized(true)
+                setActivePreset('custom')
               }}
             >
               {GRANULARITY_LABEL[g]}
@@ -249,45 +263,92 @@ export function FinanceAnalyticsView({ baseUrl }: { baseUrl: string }) {
       </header>
 
       <div className="finance-analytics__presets" role="group" aria-label="Rangos rápidos">
-        <button type="button" className="btn-secondary btn-compact" onClick={() => setPreset('all')}>
-          Todo el historial
-        </button>
-        <button type="button" className="btn-secondary btn-compact" onClick={() => setPreset('month')}>
-          Este mes
-        </button>
-        <button type="button" className="btn-secondary btn-compact" onClick={() => setPreset('prevMonth')}>
-          Mes pasado
-        </button>
-        <button type="button" className="btn-secondary btn-compact" onClick={() => setPreset('week')}>
-          Esta semana
-        </button>
-        <button type="button" className="btn-secondary btn-compact" onClick={() => setPreset('lastWeek')}>
-          Semana pasada
-        </button>
-        <button type="button" className="btn-secondary btn-compact" onClick={() => setPreset('today')}>
-          Hoy
-        </button>
+        {(
+          [
+            ['week', 'Esta semana'],
+            ['lastWeek', 'Semana pasada'],
+            ['today', 'Hoy'],
+            ['month', 'Este mes'],
+            ['prevMonth', 'Mes pasado'],
+            ['all', 'Todo el historial'],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            className={`btn-secondary btn-compact${activePreset === id ? ' is-active' : ''}`}
+            onClick={() => setPreset(id)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       <div className="finance-analytics__filters">
         <label className="field-stack">
           <span>Desde</span>
-          <input type="date" value={dateFrom} onChange={(e) => {
-            setDateFrom(e.target.value)
-            setInitialized(true)
-          }} />
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => {
+              setDateFrom(e.target.value)
+              setActivePreset('custom')
+            }}
+          />
         </label>
         <label className="field-stack">
           <span>Hasta</span>
-          <input type="date" value={dateTo} onChange={(e) => {
-            setDateTo(e.target.value)
-            setInitialized(true)
-          }} />
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => {
+              setDateTo(e.target.value)
+              setActivePreset('custom')
+            }}
+          />
         </label>
         <button type="button" className="btn-secondary" onClick={() => void load()} disabled={loading}>
           Actualizar
         </button>
       </div>
+
+      <section className="finance-analytics__range-banner" aria-label="Resumen del rango">
+        <div>
+          <p className="finance-analytics__range-kicker">
+            {activePreset === 'week'
+              ? 'Esta semana'
+              : activePreset === 'lastWeek'
+                ? 'Semana pasada'
+                : activePreset === 'today'
+                  ? 'Hoy'
+                  : 'Rango seleccionado'}
+          </p>
+          <strong>{formatRangeLabel(dateFrom, dateTo)}</strong>
+        </div>
+        <dl className="finance-analytics__range-stats">
+          <div>
+            <dt>Ventas</dt>
+            <dd>{loading ? '…' : formatCOP(summary?.salesCOP ?? 0)}</dd>
+            <small>
+              {loading ? '' : `${data?.sales.totals.count ?? 0} ops`}
+            </small>
+          </div>
+          <div>
+            <dt>Compras</dt>
+            <dd>{loading ? '…' : formatCOP(summary?.purchasesCOP ?? 0)}</dd>
+            <small>
+              {loading ? '' : `${data?.purchases.totals.count ?? 0} lotes`}
+            </small>
+          </div>
+          <div>
+            <dt>Utilidad</dt>
+            <dd className={(summary?.netCOP ?? 0) < 0 ? 'is-neg' : undefined}>
+              {loading ? '…' : formatCOP(summary?.netCOP ?? 0)}
+            </dd>
+            <small>Ventas − salidas</small>
+          </div>
+        </dl>
+      </section>
 
       {error ? (
         <p className="banner-warn" role="alert">

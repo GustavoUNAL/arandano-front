@@ -5,6 +5,7 @@ import {
   SALES_FLOOR_ONLY,
 } from '../appScope'
 import { buildCompanyViewHash, getCompanySlugFromUser } from './companyRoutes'
+import { userNeedsBusinessSetup } from './businessSetup'
 import type { AuthUser } from '../api'
 
 export const LANDING_HASH = '#/'
@@ -16,6 +17,7 @@ export const PRIVACY_HASH = '#/privacidad'
 export const TERMS_HASH = '#/terminos'
 export const PLATFORM_HASH = '#/platform'
 export const SELECT_COMPANY_HASH = '#/elegir-empresa'
+export const BUSINESS_SETUP_HASH = '#/configurar-negocio'
 export const GOOGLE_POPUP_HASH = '#/auth/google/popup'
 export const GOOGLE_SIGNUP_HASH = '#/registro-google'
 export const GOOGLE_AUTH_MESSAGE = 'vos-google-auth'
@@ -67,6 +69,10 @@ export function isSelectCompanyHash(): boolean {
   return getPublicHashPath() === 'elegir-empresa'
 }
 
+export function isBusinessSetupHash(): boolean {
+  return getPublicHashPath() === 'configurar-negocio'
+}
+
 export function isGooglePopupHash(): boolean {
   const raw = (window.location.hash ?? '').replace(/^#/, '').split('?')[0] ?? ''
   const parts = raw.split('/').filter(Boolean)
@@ -113,6 +119,10 @@ export function navigateToSelectCompany(replace = true): void {
   setHash(SELECT_COMPANY_HASH, replace)
 }
 
+export function navigateToBusinessSetup(replace = true): void {
+  setHash(BUSINESS_SETUP_HASH, replace)
+}
+
 export function navigateToGoogleSignup(replace = true): void {
   setHash(GOOGLE_SIGNUP_HASH, replace)
 }
@@ -124,6 +134,10 @@ export function navigateToRegister(replace = true): void {
 export function navigateAfterLogin(user: AuthUser): void {
   if (user.isPlatformAdmin && (user.platformView || !user.companyId?.trim())) {
     navigateToPlatform(true)
+    return
+  }
+  if (userNeedsBusinessSetup(user)) {
+    navigateToBusinessSetup(true)
     return
   }
   const slug = getCompanySlugFromUser(user)

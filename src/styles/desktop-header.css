@@ -253,9 +253,13 @@
 .odoo-navbar__end {
   display: flex;
   align-items: center;
-  gap: 0.4rem 0.5rem;
+  gap: 0.45rem 0.55rem;
   flex-shrink: 0;
   margin-left: auto;
+}
+
+.odoo-navbar__end .platform-admin-return {
+  margin-right: 0.15rem;
 }
 
 /* ——— Systray (notificaciones, config, perfil) ——— */
